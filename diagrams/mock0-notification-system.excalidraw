@@ -1,0 +1,1527 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "copilot",
+  "appState": {
+    "viewBackgroundColor": "#ffffff",
+    "gridSize": 20,
+    "zenModeEnabled": true
+  },
+  "elements": [
+    {
+      "type": "text",
+      "id": "m0_title",
+      "x": 40,
+      "y": 20,
+      "width": 1080,
+      "height": 37,
+      "text": "Mock 0 Architecture: Global Notification Service + AI Smart Digest (30k Peak QPS)",
+      "originalText": "Mock 0 Architecture: Global Notification Service + AI Smart Digest (30k Peak QPS)",
+      "fontSize": 20,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "boundElements": []
+    },
+    {
+      "type": "rectangle",
+      "id": "m0_banner",
+      "x": 40,
+      "y": 60,
+      "width": 1120,
+      "height": 48,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "m0_banner_txt"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "m0_banner_txt",
+      "x": 52,
+      "y": 70,
+      "width": 1096,
+      "height": 27,
+      "text": "Core Rule: Zero DB row locks at 30k QPS. Deduplicate with Redis SET NX, partition Kafka by user_id, and batch 15m digests with Redis List + ZSET.",
+      "originalText": "Core Rule: Zero DB row locks at 30k QPS. Deduplicate with Redis SET NX, partition Kafka by user_id, and batch 15m digests with Redis List + ZSET.",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "m0_banner"
+    },
+    {
+      "type": "rectangle",
+      "id": "sec_in",
+      "x": 40,
+      "y": 128,
+      "width": 340,
+      "height": 430,
+      "strokeColor": "#94a3b8",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "dashed",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": []
+    },
+    {
+      "type": "text",
+      "id": "sec_in_t",
+      "x": 56,
+      "y": 140,
+      "width": 300,
+      "height": 30,
+      "text": "1. Ingestion & Deduplication",
+      "originalText": "1. Ingestion & Deduplication",
+      "fontSize": 15,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "boundElements": []
+    },
+    {
+      "type": "rectangle",
+      "id": "sec_q",
+      "x": 400,
+      "y": 128,
+      "width": 420,
+      "height": 430,
+      "strokeColor": "#94a3b8",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "dashed",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": []
+    },
+    {
+      "type": "text",
+      "id": "sec_q_t",
+      "x": 416,
+      "y": 140,
+      "width": 380,
+      "height": 30,
+      "text": "2. Kafka Backbone & 15m AI Digest",
+      "originalText": "2. Kafka Backbone & 15m AI Digest",
+      "fontSize": 15,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "boundElements": []
+    },
+    {
+      "type": "rectangle",
+      "id": "sec_out",
+      "x": 840,
+      "y": 128,
+      "width": 320,
+      "height": 430,
+      "strokeColor": "#94a3b8",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "dashed",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": []
+    },
+    {
+      "type": "text",
+      "id": "sec_out_t",
+      "x": 856,
+      "y": 140,
+      "width": 280,
+      "height": 30,
+      "text": "3. Delivery & Reliability",
+      "originalText": "3. Delivery & Reliability",
+      "fontSize": 15,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "boundElements": []
+    },
+    {
+      "type": "rectangle",
+      "id": "n_caller",
+      "x": 60,
+      "y": 185,
+      "width": 130,
+      "height": 75,
+      "strokeColor": "#334155",
+      "backgroundColor": "#f8fafc",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "n_caller_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "a_c_api"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "n_caller_txt",
+      "x": 72,
+      "y": 200,
+      "width": 106,
+      "height": 46,
+      "text": "Producers\nPOST /v1/notify",
+      "originalText": "Producers\nPOST /v1/notify",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "n_caller"
+    },
+    {
+      "type": "rectangle",
+      "id": "n_api",
+      "x": 220,
+      "y": 185,
+      "width": 140,
+      "height": 75,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "n_api_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "a_c_api"
+        },
+        {
+          "type": "arrow",
+          "id": "a_api_redis"
+        },
+        {
+          "type": "arrow",
+          "id": "a_api_db"
+        },
+        {
+          "type": "arrow",
+          "id": "a_api_kafka"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "n_api_txt",
+      "x": 232,
+      "y": 200,
+      "width": 116,
+      "height": 46,
+      "text": "Ingestion API\n(202 Accepted)",
+      "originalText": "Ingestion API\n(202 Accepted)",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "n_api"
+    },
+    {
+      "type": "rectangle",
+      "id": "n_redis_idem",
+      "x": 60,
+      "y": 315,
+      "width": 300,
+      "height": 95,
+      "strokeColor": "#b45309",
+      "backgroundColor": "#fffbeb",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "n_redis_idem_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "a_api_redis"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "n_redis_idem_txt",
+      "x": 72,
+      "y": 330,
+      "width": 276,
+      "height": 65,
+      "text": "Redis Cache (In-Memory)\n\u2022 SET idem:{uuid} 1 NX EX 86400\n\u2022 HGETALL prefs:{user_id}",
+      "originalText": "Redis Cache (In-Memory)\n\u2022 SET idem:{uuid} 1 NX EX 86400\n\u2022 HGETALL prefs:{user_id}",
+      "fontSize": 13,
+      "fontFamily": 3,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "n_redis_idem"
+    },
+    {
+      "type": "rectangle",
+      "id": "n_db",
+      "x": 60,
+      "y": 435,
+      "width": 300,
+      "height": 95,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "n_db_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "a_api_db"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "n_db_txt",
+      "x": 72,
+      "y": 450,
+      "width": 276,
+      "height": 65,
+      "text": "Cassandra / DynamoDB\n\u2022 PK: user_id\n\u2022 SK: created_at#notif_id",
+      "originalText": "Cassandra / DynamoDB\n\u2022 PK: user_id\n\u2022 SK: created_at#notif_id",
+      "fontSize": 13,
+      "fontFamily": 3,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "n_db"
+    },
+    {
+      "type": "rectangle",
+      "id": "n_kafka",
+      "x": 425,
+      "y": 185,
+      "width": 370,
+      "height": 85,
+      "strokeColor": "#047857",
+      "backgroundColor": "#ecfdf5",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "n_kafka_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "a_api_kafka"
+        },
+        {
+          "type": "arrow",
+          "id": "a_k_deliv"
+        },
+        {
+          "type": "arrow",
+          "id": "a_k_agg"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "n_kafka_txt",
+      "x": 437,
+      "y": 204,
+      "width": 346,
+      "height": 46,
+      "text": "Kafka Topics (high_prio | low_prio)\nPartition key: hash(user_id) % N",
+      "originalText": "Kafka Topics (high_prio | low_prio)\nPartition key: hash(user_id) % N",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "n_kafka"
+    },
+    {
+      "type": "rectangle",
+      "id": "n_agg",
+      "x": 425,
+      "y": 315,
+      "width": 175,
+      "height": 95,
+      "strokeColor": "#047857",
+      "backgroundColor": "#ecfdf5",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "n_agg_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "a_k_agg"
+        },
+        {
+          "type": "arrow",
+          "id": "a_agg_rz"
+        },
+        {
+          "type": "arrow",
+          "id": "a_agg_llm"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "n_agg_txt",
+      "x": 437,
+      "y": 340,
+      "width": 151,
+      "height": 46,
+      "text": "Digest Aggregator\n& Due Poller",
+      "originalText": "Digest Aggregator\n& Due Poller",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "n_agg"
+    },
+    {
+      "type": "rectangle",
+      "id": "n_rz",
+      "x": 620,
+      "y": 315,
+      "width": 175,
+      "height": 95,
+      "strokeColor": "#b45309",
+      "backgroundColor": "#fffbeb",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "n_rz_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "a_agg_rz"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "n_rz_txt",
+      "x": 632,
+      "y": 332,
+      "width": 151,
+      "height": 60,
+      "text": "Redis Window State\n\u2022 List: items:{uid}\n\u2022 ZSET: digest:due",
+      "originalText": "Redis Window State\n\u2022 List: items:{uid}\n\u2022 ZSET: digest:due",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "n_rz"
+    },
+    {
+      "type": "rectangle",
+      "id": "n_llm",
+      "x": 425,
+      "y": 435,
+      "width": 370,
+      "height": 95,
+      "strokeColor": "#6d28d9",
+      "backgroundColor": "#f5f3ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "n_llm_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "a_agg_llm"
+        },
+        {
+          "type": "arrow",
+          "id": "a_llm_deliv"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "n_llm_txt",
+      "x": 437,
+      "y": 450,
+      "width": 346,
+      "height": 65,
+      "text": "Async LLM Digest Worker\n\u2022 Cap 20 items (~2k tokens) -> 3 bullets\n\u2022 Circuit breaker -> template fallback",
+      "originalText": "Async LLM Digest Worker\n\u2022 Cap 20 items (~2k tokens) -> 3 bullets\n\u2022 Circuit breaker -> template fallback",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "n_llm"
+    },
+    {
+      "type": "rectangle",
+      "id": "n_workers",
+      "x": 865,
+      "y": 185,
+      "width": 270,
+      "height": 105,
+      "strokeColor": "#047857",
+      "backgroundColor": "#ecfdf5",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "n_workers_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "a_k_deliv"
+        },
+        {
+          "type": "arrow",
+          "id": "a_llm_deliv"
+        },
+        {
+          "type": "arrow",
+          "id": "a_w_dlq"
+        },
+        {
+          "type": "arrow",
+          "id": "a_w_user"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "n_workers_txt",
+      "x": 877,
+      "y": 205,
+      "width": 246,
+      "height": 65,
+      "text": "Channel Workers\n(APNs / FCM / SES / Twilio)\n1 Worker per Kafka Partition",
+      "originalText": "Channel Workers\n(APNs / FCM / SES / Twilio)\n1 Worker per Kafka Partition",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "n_workers"
+    },
+    {
+      "type": "rectangle",
+      "id": "n_dlq",
+      "x": 865,
+      "y": 330,
+      "width": 270,
+      "height": 85,
+      "strokeColor": "#b45309",
+      "backgroundColor": "#fffbeb",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "n_dlq_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "a_w_dlq"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "n_dlq_txt",
+      "x": 877,
+      "y": 340,
+      "width": 246,
+      "height": 65,
+      "text": "Retry Topic + DLQ\nExp backoff: 1s, 4s, 16s + jitter\nMax 3 attempts -> DLQ alert",
+      "originalText": "Retry Topic + DLQ\nExp backoff: 1s, 4s, 16s + jitter\nMax 3 attempts -> DLQ alert",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "n_dlq"
+    },
+    {
+      "type": "rectangle",
+      "id": "n_users",
+      "x": 865,
+      "y": 445,
+      "width": 270,
+      "height": 85,
+      "strokeColor": "#334155",
+      "backgroundColor": "#f8fafc",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "n_users_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "a_w_user"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "n_users_txt",
+      "x": 877,
+      "y": 455,
+      "width": 246,
+      "height": 65,
+      "text": "User Devices\nPush \u00b7 Email \u00b7 SMS\n(Read receipts update DB)",
+      "originalText": "User Devices\nPush \u00b7 Email \u00b7 SMS\n(Read receipts update DB)",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "n_users"
+    },
+    {
+      "type": "arrow",
+      "id": "a_c_api",
+      "x": 190,
+      "y": 222,
+      "width": 30,
+      "height": 0,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          30,
+          0
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "n_caller",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "n_api",
+        "focus": 0,
+        "gap": 4
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "a_api_redis",
+      "x": 250,
+      "y": 260,
+      "width": 40,
+      "height": 55,
+      "strokeColor": "#b45309",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -40,
+          55
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "n_api",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "n_redis_idem",
+        "focus": 0,
+        "gap": 4
+      }
+    },
+    {
+      "type": "text",
+      "id": "a_api_redis_lbl",
+      "x": 170.0,
+      "y": 267.5,
+      "width": 120,
+      "height": 25,
+      "text": "1. Dedup",
+      "originalText": "1. Dedup",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "lineHeight": 1.35,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "boundElements": []
+    },
+    {
+      "type": "arrow",
+      "id": "a_api_db",
+      "x": 290,
+      "y": 260,
+      "width": 0,
+      "height": 175,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          175
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "n_api",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "n_db",
+        "focus": 0,
+        "gap": 4
+      }
+    },
+    {
+      "type": "text",
+      "id": "a_api_db_lbl",
+      "x": 230.0,
+      "y": 327.5,
+      "width": 120,
+      "height": 25,
+      "text": "2. Log",
+      "originalText": "2. Log",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "lineHeight": 1.35,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "boundElements": []
+    },
+    {
+      "type": "arrow",
+      "id": "a_api_kafka",
+      "x": 360,
+      "y": 222,
+      "width": 65,
+      "height": 0,
+      "strokeColor": "#047857",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          65,
+          0
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "n_api",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "n_kafka",
+        "focus": 0,
+        "gap": 4
+      }
+    },
+    {
+      "type": "text",
+      "id": "a_api_kafka_lbl",
+      "x": 332.5,
+      "y": 202.0,
+      "width": 120,
+      "height": 25,
+      "text": "3. Enqueue",
+      "originalText": "3. Enqueue",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "lineHeight": 1.35,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "boundElements": []
+    },
+    {
+      "type": "arrow",
+      "id": "a_k_deliv",
+      "x": 795,
+      "y": 215,
+      "width": 70,
+      "height": 0,
+      "strokeColor": "#047857",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          70,
+          0
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "n_kafka",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "n_workers",
+        "focus": 0,
+        "gap": 4
+      }
+    },
+    {
+      "type": "text",
+      "id": "a_k_deliv_lbl",
+      "x": 770.0,
+      "y": 195.0,
+      "width": 120,
+      "height": 25,
+      "text": "High Prio",
+      "originalText": "High Prio",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "lineHeight": 1.35,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "boundElements": []
+    },
+    {
+      "type": "arrow",
+      "id": "a_k_agg",
+      "x": 512,
+      "y": 270,
+      "width": 0,
+      "height": 45,
+      "strokeColor": "#047857",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          45
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "n_kafka",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "n_agg",
+        "focus": 0,
+        "gap": 4
+      }
+    },
+    {
+      "type": "text",
+      "id": "a_k_agg_lbl",
+      "x": 452.0,
+      "y": 272.5,
+      "width": 120,
+      "height": 25,
+      "text": "Low Prio",
+      "originalText": "Low Prio",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "lineHeight": 1.35,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "boundElements": []
+    },
+    {
+      "type": "arrow",
+      "id": "a_agg_rz",
+      "x": 600,
+      "y": 362,
+      "width": 20,
+      "height": 0,
+      "strokeColor": "#b45309",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          20,
+          0
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "n_agg",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "n_rz",
+        "focus": 0,
+        "gap": 4
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "a_agg_llm",
+      "x": 512,
+      "y": 410,
+      "width": 0,
+      "height": 25,
+      "strokeColor": "#6d28d9",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          25
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "n_agg",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "n_llm",
+        "focus": 0,
+        "gap": 4
+      }
+    },
+    {
+      "type": "text",
+      "id": "a_agg_llm_lbl",
+      "x": 452.0,
+      "y": 402.5,
+      "width": 120,
+      "height": 25,
+      "text": "Due @ 15m",
+      "originalText": "Due @ 15m",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "lineHeight": 1.35,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "boundElements": []
+    },
+    {
+      "type": "arrow",
+      "id": "a_llm_deliv",
+      "x": 795,
+      "y": 480,
+      "width": 70,
+      "height": 215,
+      "strokeColor": "#6d28d9",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          70,
+          -215
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "n_llm",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "n_workers",
+        "focus": 0,
+        "gap": 4
+      }
+    },
+    {
+      "type": "text",
+      "id": "a_llm_deliv_lbl",
+      "x": 770.0,
+      "y": 352.5,
+      "width": 120,
+      "height": 25,
+      "text": "Digest",
+      "originalText": "Digest",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "lineHeight": 1.35,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "boundElements": []
+    },
+    {
+      "type": "arrow",
+      "id": "a_w_dlq",
+      "x": 1000,
+      "y": 290,
+      "width": 0,
+      "height": 40,
+      "strokeColor": "#b45309",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          40
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "n_workers",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "n_dlq",
+        "focus": 0,
+        "gap": 4
+      }
+    },
+    {
+      "type": "text",
+      "id": "a_w_dlq_lbl",
+      "x": 940.0,
+      "y": 290.0,
+      "width": 120,
+      "height": 25,
+      "text": "On 5xx",
+      "originalText": "On 5xx",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "lineHeight": 1.35,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "boundElements": []
+    },
+    {
+      "type": "arrow",
+      "id": "a_w_user",
+      "x": 1000,
+      "y": 415,
+      "width": 0,
+      "height": 30,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          30
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "n_dlq",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "n_users",
+        "focus": 0,
+        "gap": 4
+      }
+    }
+  ]
+}

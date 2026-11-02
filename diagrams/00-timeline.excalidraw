@@ -1,0 +1,441 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "copilot",
+  "appState": {
+    "viewBackgroundColor": "#ffffff",
+    "gridSize": 20,
+    "zenModeEnabled": true
+  },
+  "elements": [
+    {
+      "type": "text",
+      "id": "t0_title",
+      "x": 40,
+      "y": 24,
+      "width": 960,
+      "height": 40,
+      "text": "4-Week System Design & AI Interview Plan (Minimal Overview)",
+      "originalText": "4-Week System Design & AI Interview Plan (Minimal Overview)",
+      "fontSize": 22,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "boundElements": []
+    },
+    {
+      "type": "rectangle",
+      "id": "w1",
+      "x": 40,
+      "y": 80,
+      "width": 230,
+      "height": 190,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "w1_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "aw12"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "w1_txt",
+      "x": 52,
+      "y": 100,
+      "width": 206,
+      "height": 150,
+      "text": "Week 1 \u00b7 Foundations\n\n\u2022 Mock 0 Diagnostic\n\u2022 8-Step Framework\n\u2022 Kafka + Redis + DB Keys\n\u2022 Cases 1\u20132 (URL, Rate Limit)\n\u2022 AI A1: LLM Basics",
+      "originalText": "Week 1 \u00b7 Foundations\n\n\u2022 Mock 0 Diagnostic\n\u2022 8-Step Framework\n\u2022 Kafka + Redis + DB Keys\n\u2022 Cases 1\u20132 (URL, Rate Limit)\n\u2022 AI A1: LLM Basics",
+      "fontSize": 14,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "w1"
+    },
+    {
+      "type": "rectangle",
+      "id": "w2",
+      "x": 310,
+      "y": 80,
+      "width": 230,
+      "height": 190,
+      "strokeColor": "#047857",
+      "backgroundColor": "#ecfdf5",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "w2_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "aw12"
+        },
+        {
+          "type": "arrow",
+          "id": "aw23"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "w2_txt",
+      "x": 322,
+      "y": 100,
+      "width": 206,
+      "height": 150,
+      "text": "Week 2 \u00b7 Fan-Out & Data\n\n\u2022 Case 3: Notifications\n\u2022 Case 4: News Feed\n\u2022 Case 5: WhatsApp Chat\n\u2022 Case 6: Distributed KV\n\u2022 AI A2: RAG Internals",
+      "originalText": "Week 2 \u00b7 Fan-Out & Data\n\n\u2022 Case 3: Notifications\n\u2022 Case 4: News Feed\n\u2022 Case 5: WhatsApp Chat\n\u2022 Case 6: Distributed KV\n\u2022 AI A2: RAG Internals",
+      "fontSize": 14,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "w2"
+    },
+    {
+      "type": "rectangle",
+      "id": "w3",
+      "x": 580,
+      "y": 80,
+      "width": 230,
+      "height": 190,
+      "strokeColor": "#b45309",
+      "backgroundColor": "#fffbeb",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "w3_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "aw23"
+        },
+        {
+          "type": "arrow",
+          "id": "aw34"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "w3_txt",
+      "x": 592,
+      "y": 100,
+      "width": 206,
+      "height": 150,
+      "text": "Week 3 \u00b7 Scale & Search\n\n\u2022 Case 7: Video / Blob\n\u2022 Case 8: Ticketing / Sagas\n\u2022 Case 9: Typeahead\n\u2022 Case 10: Uber Geo\n\u2022 AI A3\u2013A4 + Full Mock #1",
+      "originalText": "Week 3 \u00b7 Scale & Search\n\n\u2022 Case 7: Video / Blob\n\u2022 Case 8: Ticketing / Sagas\n\u2022 Case 9: Typeahead\n\u2022 Case 10: Uber Geo\n\u2022 AI A3\u2013A4 + Full Mock #1",
+      "fontSize": 14,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "w3"
+    },
+    {
+      "type": "rectangle",
+      "id": "w4",
+      "x": 850,
+      "y": 80,
+      "width": 230,
+      "height": 190,
+      "strokeColor": "#6d28d9",
+      "backgroundColor": "#f5f3ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "w4_txt"
+        },
+        {
+          "type": "arrow",
+          "id": "aw34"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "w4_txt",
+      "x": 862,
+      "y": 100,
+      "width": 206,
+      "height": 150,
+      "text": "Week 4 \u00b7 Simulation\n\n\u2022 3 Timed 45m Mocks\n\u2022 Curveballs & Trade-offs\n\u2022 Spaced Re-Quiz Drills\n\u2022 AI A5\u2013A6: Agents & Evals\n\u2022 Final Calibration",
+      "originalText": "Week 4 \u00b7 Simulation\n\n\u2022 3 Timed 45m Mocks\n\u2022 Curveballs & Trade-offs\n\u2022 Spaced Re-Quiz Drills\n\u2022 AI A5\u2013A6: Agents & Evals\n\u2022 Final Calibration",
+      "fontSize": 14,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "w4"
+    },
+    {
+      "type": "arrow",
+      "id": "aw12",
+      "x": 270,
+      "y": 175,
+      "width": 40,
+      "height": 0,
+      "strokeColor": "#64748b",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          40,
+          0
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "w1",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "w2",
+        "focus": 0,
+        "gap": 4
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "aw23",
+      "x": 540,
+      "y": 175,
+      "width": 40,
+      "height": 0,
+      "strokeColor": "#64748b",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          40,
+          0
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "w2",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "w3",
+        "focus": 0,
+        "gap": 4
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "aw34",
+      "x": 810,
+      "y": 175,
+      "width": 40,
+      "height": 0,
+      "strokeColor": "#64748b",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          40,
+          0
+        ]
+      ],
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "groupIds": [],
+      "boundElements": [],
+      "startBinding": {
+        "elementId": "w3",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "w4",
+        "focus": 0,
+        "gap": 4
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "loop",
+      "x": 40,
+      "y": 300,
+      "width": 1040,
+      "height": 64,
+      "strokeColor": "#334155",
+      "backgroundColor": "#f8fafc",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "roundness": {
+        "type": 3
+      },
+      "groupIds": [],
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "loop_txt"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "loop_txt",
+      "x": 52,
+      "y": 318,
+      "width": 1016,
+      "height": 28,
+      "text": "Weekly Loop: Save Bookmarks (GitHub Issues / Inbox)  ->  Update Question Bank  ->  Re-rank by (Frequency \u00d7 Weakness)  ->  Day 2 & Day 7 Re-Quiz",
+      "originalText": "Weekly Loop: Save Bookmarks (GitHub Issues / Inbox)  ->  Update Question Bank  ->  Re-rank by (Frequency \u00d7 Weakness)  ->  Day 2 & Day 7 Re-Quiz",
+      "fontSize": 14,
+      "fontFamily": 2,
+      "lineHeight": 1.35,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "angle": 0,
+      "groupIds": [],
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "boundElements": [],
+      "containerId": "loop"
+    }
+  ]
+}

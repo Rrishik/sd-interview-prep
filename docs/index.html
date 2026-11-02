@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>SD + AI Interview Prep</title>
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --border: #e2e8f0;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --highlight: #fef08a;
+      --code-bg: #f1f5f9;
+    }
+    [data-theme="dark"] {
+      --bg: #0b0f19;
+      --surface: #111827;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #1e293b;
+      --accent: #60a5fa;
+      --accent-soft: #1e293b;
+      --highlight: #422006;
+      --code-bg: #1e293b;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 16px;
+      padding-bottom: 120px;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+    }
+    .top-row {
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .brand {
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .top-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .btn {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 6px 11px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+    .tabs {
+      max-width: 860px;
+      margin: 8px auto 0;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .tab.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: var(--border);
+      font-weight: 600;
+    }
+    main {
+      max-width: 860px;
+      margin: 16px auto;
+      padding: 0 14px;
+    }
+    .pane { display: none; }
+    .pane.active { display: block; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 22px; margin: 0 0 12px; letter-spacing: -0.02em; }
+    h2 { font-size: 18px; margin: 26px 0 10px; padding-top: 12px; border-top: 1px solid var(--border); letter-spacing: -0.01em; }
+    h3 { font-size: 15.5px; margin: 18px 0 6px; }
+    p, li { font-size: 15.5px; color: var(--text); }
+    ul, ol { padding-left: 20px; margin: 8px 0; }
+    li { margin-bottom: 6px; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13.5px;
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+    .code-block {
+      background: var(--code-bg);
+      padding: 12px 14px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .code-block code { background: none; padding: 0; }
+    .table-wrap { overflow-x: auto; margin: 12px 0; border: 1px solid var(--border); border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { background: var(--code-bg); font-weight: 600; }
+    .inline-diag, .svg-scroll {
+      margin: 14px 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow-x: auto;
+      background: #ffffff;
+      padding: 8px;
+    }
+    .ex-svg {
+      display: block;
+      min-width: 680px;
+      height: auto;
+    }
+    .diag-cap {
+      font-size: 12px;
+      color: #64748b;
+      text-align: center;
+      padding-top: 4px;
+    }
+    .diag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+    }
+    .speakable {
+      cursor: pointer;
+      border-radius: 6px;
+      transition: background 0.15s ease;
+    }
+    .speakable.speaking {
+      background: var(--highlight);
+      padding-left: 6px;
+      padding-right: 6px;
+    }
+    .hint-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      background: var(--accent-soft);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 10px;
+      margin-bottom: 14px;
+    }
+    /* Sticky Audio Bar */
+    .audio-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 40;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+    }
+    .audio-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .audio-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .audio-status {
+      font-size: 12.5px;
+      color: var(--muted);
+      flex: 1;
+      min-width: 120px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    select.voice-select {
+      max-width: 140px;
+      font-size: 12px;
+      padding: 5px 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+    }
+    /* Modal for Quick Bookmark */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      max-width: 480px;
+      width: 100%;
+      padding: 18px;
+    }
+    .modal input, .modal textarea {
+      width: 100%;
+      padding: 9px 11px;
+      margin: 6px 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+    }
+    .diag-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .badge {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--code-bg);
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="top-row">
+      <div class="brand">⚡ SD + AI Prep</div>
+      <div class="top-actions">
+        <button class="btn btn-primary" onclick="openBookmarkModal()">+ Save Source</button>
+        <button class="btn" onclick="toggleTheme()" id="themeBtn" title="Toggle Dark/Light Mode">◐</button>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="guide" onclick="switchTab('guide')">📘 Week 1 Guide</button>
+      <button class="tab" data-tab="diagrams" onclick="switchTab('diagrams')">📐 Diagrams (3)</button>
+      <button class="tab" data-tab="plan" onclick="switchTab('plan')">🗓️ 4-Week Plan</button>
+      <button class="tab" data-tab="bank" onclick="switchTab('bank')">🎯 Question Bank</button>
+      <button class="tab" data-tab="progress" onclick="switchTab('progress')">📊 Progress & Quiz</button>
+      <button class="tab" data-tab="sources" onclick="switchTab('sources')">🔗 Sources</button>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hint-banner">
+      <span>🎧 <strong>Audio Mode:</strong> Tap <strong>▶ Play</strong> below or tap any paragraph to start listening from that line.</span>
+    </div>
+
+    <section id="pane-guide" class="pane active">
+      <div class="card"><h1 class="speakable">Week 1 Async Learning Guide: Core Building Blocks &amp; Mock 0 Fixes</h1>
+<p class="speakable">Written using <strong>ASD-STE100</strong> rules (short sentences, active voice, real-world analogies, and where each analogy breaks).</p>
+<p class="speakable">Open the interactive Excalidraw whiteboards side-by-side in VS Code:</p>
+<ul>
+<li class="speakable"><a href="#diag-00-timeline.excalidraw" class="diag-chip" onclick="switchTab('diagrams', 'diag-00-timeline.excalidraw'); return false;">📐 00-timeline.excalidraw</a> — 4-Week Study Plan</li>
+<div class="inline-diag"><svg class="ex-svg" viewBox="16 0 1088 388" width="100%" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="ex-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+<path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#475569"/>
+</marker>
+</defs>
+<rect x="16" y="0" width="1088" height="388" rx="12" fill="#ffffff"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="22.0" fill="#0f172a" text-anchor="start"><tspan x="40.0" y="46.0" font-weight="600">4-Week System Design &amp; AI Interview Plan (Minimal Overview)</tspan></text>
+<rect x="40.0" y="80.0" width="230.0" height="190.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14.0" fill="#0f172a" text-anchor="middle"><tspan x="155.0" y="114.0" font-weight="600">Week 1 · Foundations</tspan><tspan x="155.0" y="132.9" font-weight="400">&#160;</tspan><tspan x="155.0" y="151.8" font-weight="400">• Mock 0 Diagnostic</tspan><tspan x="155.0" y="170.7" font-weight="400">• 8-Step Framework</tspan><tspan x="155.0" y="189.6" font-weight="400">• Kafka + Redis + DB Keys</tspan><tspan x="155.0" y="208.5" font-weight="400">• Cases 1–2 (URL, Rate Limit)</tspan><tspan x="155.0" y="227.4" font-weight="400">• AI A1: LLM Basics</tspan></text>
+<rect x="310.0" y="80.0" width="230.0" height="190.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14.0" fill="#0f172a" text-anchor="middle"><tspan x="425.0" y="114.0" font-weight="600">Week 2 · Fan-Out &amp; Data</tspan><tspan x="425.0" y="132.9" font-weight="400">&#160;</tspan><tspan x="425.0" y="151.8" font-weight="400">• Case 3: Notifications</tspan><tspan x="425.0" y="170.7" font-weight="400">• Case 4: News Feed</tspan><tspan x="425.0" y="189.6" font-weight="400">• Case 5: WhatsApp Chat</tspan><tspan x="425.0" y="208.5" font-weight="400">• Case 6: Distributed KV</tspan><tspan x="425.0" y="227.4" font-weight="400">• AI A2: RAG Internals</tspan></text>
+<rect x="580.0" y="80.0" width="230.0" height="190.0" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14.0" fill="#0f172a" text-anchor="middle"><tspan x="695.0" y="114.0" font-weight="600">Week 3 · Scale &amp; Search</tspan><tspan x="695.0" y="132.9" font-weight="400">&#160;</tspan><tspan x="695.0" y="151.8" font-weight="400">• Case 7: Video / Blob</tspan><tspan x="695.0" y="170.7" font-weight="400">• Case 8: Ticketing / Sagas</tspan><tspan x="695.0" y="189.6" font-weight="400">• Case 9: Typeahead</tspan><tspan x="695.0" y="208.5" font-weight="400">• Case 10: Uber Geo</tspan><tspan x="695.0" y="227.4" font-weight="400">• AI A3–A4 + Full Mock #1</tspan></text>
+<rect x="850.0" y="80.0" width="230.0" height="190.0" rx="10" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14.0" fill="#0f172a" text-anchor="middle"><tspan x="965.0" y="114.0" font-weight="600">Week 4 · Simulation</tspan><tspan x="965.0" y="132.9" font-weight="400">&#160;</tspan><tspan x="965.0" y="151.8" font-weight="400">• 3 Timed 45m Mocks</tspan><tspan x="965.0" y="170.7" font-weight="400">• Curveballs &amp; Trade-offs</tspan><tspan x="965.0" y="189.6" font-weight="400">• Spaced Re-Quiz Drills</tspan><tspan x="965.0" y="208.5" font-weight="400">• AI A5–A6: Agents &amp; Evals</tspan><tspan x="965.0" y="227.4" font-weight="400">• Final Calibration</tspan></text>
+<polyline points="270.0,175.0 310.0,175.0" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="540.0,175.0 580.0,175.0" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="810.0,175.0 850.0,175.0" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<rect x="40.0" y="300.0" width="1040.0" height="64.0" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14.0" fill="#0f172a" text-anchor="middle"><tspan x="560.0" y="332.0" font-weight="400">Weekly Loop: Save Bookmarks (GitHub Issues / Inbox)  -&gt;  Update Question Bank  -&gt;  Re-rank by (Frequency × Weakness)  -&gt;  Day 2 &amp; Day 7 Re-Quiz</tspan></text>
+</svg><div class="diag-cap">00-timeline.excalidraw (pinch or scroll to zoom)</div></div>
+<li class="speakable"><a href="#diag-mock0-notification-system.excalidraw" class="diag-chip" onclick="switchTab('diagrams', 'diag-mock0-notification-system.excalidraw'); return false;">📐 mock0-notification-system.excalidraw</a> — Reference Notification + AI Digest Architecture</li>
+<div class="inline-diag"><svg class="ex-svg" viewBox="16 -4 1168 586" width="100%" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="ex-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+<path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#475569"/>
+</marker>
+</defs>
+<rect x="16" y="-4" width="1168" height="586" rx="12" fill="#ffffff"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20.0" fill="#0f172a" text-anchor="start"><tspan x="40.0" y="40.0" font-weight="600">Mock 0 Architecture: Global Notification Service + AI Smart Digest (30k Peak QPS)</tspan></text>
+<rect x="40.0" y="60.0" width="1120.0" height="48.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="600.0" y="83.0" font-weight="400">Core Rule: Zero DB row locks at 30k QPS. Deduplicate with Redis SET NX, partition Kafka by user_id, and batch 15m digests with Redis List + ZSET.</tspan></text>
+<rect x="40.0" y="128.0" width="340.0" height="430.0" rx="10" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15.0" fill="#334155" text-anchor="start"><tspan x="56.0" y="155.0" font-weight="600">1. Ingestion &amp; Deduplication</tspan></text>
+<rect x="400.0" y="128.0" width="420.0" height="430.0" rx="10" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15.0" fill="#334155" text-anchor="start"><tspan x="416.0" y="155.0" font-weight="600">2. Kafka Backbone &amp; 15m AI Digest</tspan></text>
+<rect x="840.0" y="128.0" width="320.0" height="430.0" rx="10" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15.0" fill="#334155" text-anchor="start"><tspan x="856.0" y="155.0" font-weight="600">3. Delivery &amp; Reliability</tspan></text>
+<rect x="60.0" y="185.0" width="130.0" height="75.0" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="125.0" y="213.0" font-weight="600">Producers</tspan><tspan x="125.0" y="230.6" font-weight="400">POST /v1/notify</tspan></text>
+<rect x="220.0" y="185.0" width="140.0" height="75.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="290.0" y="213.0" font-weight="600">Ingestion API</tspan><tspan x="290.0" y="230.6" font-weight="400">(202 Accepted)</tspan></text>
+<rect x="60.0" y="315.0" width="300.0" height="95.0" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="210.0" y="343.0" font-weight="600">Redis Cache (In-Memory)</tspan><tspan x="210.0" y="360.6" font-weight="400">• SET idem:{uuid} 1 NX EX 86400</tspan><tspan x="210.0" y="378.1" font-weight="400">• HGETALL prefs:{user_id}</tspan></text>
+<rect x="60.0" y="435.0" width="300.0" height="95.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="210.0" y="463.0" font-weight="600">Cassandra / DynamoDB</tspan><tspan x="210.0" y="480.6" font-weight="400">• PK: user_id</tspan><tspan x="210.0" y="498.1" font-weight="400">• SK: created_at#notif_id</tspan></text>
+<rect x="425.0" y="185.0" width="370.0" height="85.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="610.0" y="217.0" font-weight="600">Kafka Topics (high_prio | low_prio)</tspan><tspan x="610.0" y="234.6" font-weight="400">Partition key: hash(user_id) % N</tspan></text>
+<rect x="425.0" y="315.0" width="175.0" height="95.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="512.5" y="353.0" font-weight="600">Digest Aggregator</tspan><tspan x="512.5" y="370.6" font-weight="400">&amp; Due Poller</tspan></text>
+<rect x="620.0" y="315.0" width="175.0" height="95.0" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#0f172a" text-anchor="middle"><tspan x="707.5" y="344.0" font-weight="600">Redis Window State</tspan><tspan x="707.5" y="360.2" font-weight="400">• List: items:{uid}</tspan><tspan x="707.5" y="376.4" font-weight="400">• ZSET: digest:due</tspan></text>
+<rect x="425.0" y="435.0" width="370.0" height="95.0" rx="10" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="610.0" y="463.0" font-weight="600">Async LLM Digest Worker</tspan><tspan x="610.0" y="480.6" font-weight="400">• Cap 20 items (~2k tokens) -&gt; 3 bullets</tspan><tspan x="610.0" y="498.1" font-weight="400">• Circuit breaker -&gt; template fallback</tspan></text>
+<rect x="865.0" y="185.0" width="270.0" height="105.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="1000.0" y="218.0" font-weight="600">Channel Workers</tspan><tspan x="1000.0" y="235.6" font-weight="400">(APNs / FCM / SES / Twilio)</tspan><tspan x="1000.0" y="253.1" font-weight="400">1 Worker per Kafka Partition</tspan></text>
+<rect x="865.0" y="330.0" width="270.0" height="85.0" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="1000.0" y="353.0" font-weight="600">Retry Topic + DLQ</tspan><tspan x="1000.0" y="370.6" font-weight="400">Exp backoff: 1s, 4s, 16s + jitter</tspan><tspan x="1000.0" y="388.1" font-weight="400">Max 3 attempts -&gt; DLQ alert</tspan></text>
+<rect x="865.0" y="445.0" width="270.0" height="85.0" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="1000.0" y="468.0" font-weight="600">User Devices</tspan><tspan x="1000.0" y="485.6" font-weight="400">Push · Email · SMS</tspan><tspan x="1000.0" y="503.1" font-weight="400">(Read receipts update DB)</tspan></text>
+<polyline points="190.0,222.0 220.0,222.0" fill="none" stroke="#334155" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="250.0,260.0 210.0,315.0" fill="none" stroke="#b45309" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="230.0" y="279.5" font-weight="400">1. Dedup</tspan></text>
+<polyline points="290.0,260.0 290.0,435.0" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="290.0" y="339.5" font-weight="400">2. Log</tspan></text>
+<polyline points="360.0,222.0 425.0,222.0" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="392.5" y="214.0" font-weight="400">3. Enqueue</tspan></text>
+<polyline points="795.0,215.0 865.0,215.0" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="830.0" y="207.0" font-weight="400">High Prio</tspan></text>
+<polyline points="512.0,270.0 512.0,315.0" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="512.0" y="284.5" font-weight="400">Low Prio</tspan></text>
+<polyline points="600.0,362.0 620.0,362.0" fill="none" stroke="#b45309" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="512.0,410.0 512.0,435.0" fill="none" stroke="#6d28d9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="512.0" y="414.5" font-weight="400">Due @ 15m</tspan></text>
+<polyline points="795.0,480.0 865.0,265.0" fill="none" stroke="#6d28d9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="830.0" y="364.5" font-weight="400">Digest</tspan></text>
+<polyline points="1000.0,290.0 1000.0,330.0" fill="none" stroke="#b45309" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="1000.0" y="302.0" font-weight="400">On 5xx</tspan></text>
+<polyline points="1000.0,415.0 1000.0,445.0" fill="none" stroke="#334155" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+</svg><div class="diag-cap">mock0-notification-system.excalidraw (pinch or scroll to zoom)</div></div>
+<li class="speakable"><a href="#diag-01-kafka-and-redis.excalidraw" class="diag-chip" onclick="switchTab('diagrams', 'diag-01-kafka-and-redis.excalidraw'); return false;">📐 01-kafka-and-redis.excalidraw</a> — Kafka Partitions, Hot Keys, and Redis Data Structures</li>
+<div class="inline-diag"><svg class="ex-svg" viewBox="16 -4 1168 566" width="100%" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="ex-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+<path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#475569"/>
+</marker>
+</defs>
+<rect x="16" y="-4" width="1168" height="566" rx="12" fill="#ffffff"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20.0" fill="#0f172a" text-anchor="start"><tspan x="40.0" y="40.0" font-weight="600">Week 1 Visual Guide: Kafka Partition Ownership &amp; Redis 4 Core Data Structures</tspan></text>
+<rect x="40.0" y="68.0" width="540.0" height="470.0" rx="10" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16.0" fill="#047857" text-anchor="start"><tspan x="56.0" y="96.0" font-weight="600">Kafka: Lock-Free Parallelism via Partitions</tspan></text>
+<rect x="60.0" y="215.0" width="130.0" height="90.0" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="125.0" y="231.0" font-weight="600">Producer</tspan><tspan x="125.0" y="248.6" font-weight="400">&#160;</tspan><tspan x="125.0" y="266.1" font-weight="400">hash(user_id)</tspan><tspan x="125.0" y="283.6" font-weight="400">% 3</tspan></text>
+<rect x="230.0" y="130.0" width="150.0" height="65.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="305.0" y="153.0" font-weight="600">Partition 0</tspan><tspan x="305.0" y="170.6" font-weight="400">[u_101, u_104]</tspan></text>
+<rect x="230.0" y="225.0" width="150.0" height="65.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="305.0" y="247.0" font-weight="600">Partition 1</tspan><tspan x="305.0" y="264.6" font-weight="400">[u_202, u_209]</tspan></text>
+<rect x="230.0" y="320.0" width="150.0" height="65.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="305.0" y="343.0" font-weight="600">Partition 2</tspan><tspan x="305.0" y="360.6" font-weight="400">[u_307, u_311]</tspan></text>
+<rect x="420.0" y="130.0" width="140.0" height="65.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="490.0" y="153.0" font-weight="600">Worker 1</tspan><tspan x="490.0" y="170.6" font-weight="400">(Owns P0 only)</tspan></text>
+<rect x="420.0" y="225.0" width="140.0" height="65.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="490.0" y="247.0" font-weight="600">Worker 2</tspan><tspan x="490.0" y="264.6" font-weight="400">(Owns P1 only)</tspan></text>
+<rect x="420.0" y="320.0" width="140.0" height="65.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="490.0" y="343.0" font-weight="600">Worker 3</tspan><tspan x="490.0" y="360.6" font-weight="400">(Owns P2 only)</tspan></text>
+<polyline points="190.0,240.0 230.0,162.0" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="190.0,260.0 230.0,257.0" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="190.0,280.0 230.0,352.0" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="380.0,162.0 420.0,162.0" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="380.0,257.0 420.0,257.0" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="380.0,352.0 420.0,352.0" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<rect x="60.0" y="420.0" width="500.0" height="95.0" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="310.0" y="448.0" font-weight="600">Hot Key Fix (Celebrity Fan-Out):</tspan><tspan x="310.0" y="465.6" font-weight="400">Append random salt 0..9 to key -&gt; event_id#0 .. event_id#9</tspan><tspan x="310.0" y="483.1" font-weight="400">Spreads 1M fan-out writes across 10 partitions in parallel.</tspan></text>
+<rect x="600.0" y="68.0" width="560.0" height="470.0" rx="10" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16.0" fill="#b45309" text-anchor="start"><tspan x="616.0" y="96.0" font-weight="600">Redis: 4 Core In-Memory Data Structures (Atomic)</tspan></text>
+<rect x="620.0" y="130.0" width="250.0" height="175.0" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="745.0" y="170.0" font-weight="600">1. String (SET NX / INCR)</tspan><tspan x="745.0" y="187.6" font-weight="400">&#160;</tspan><tspan x="745.0" y="205.1" font-weight="400">SET idem:99 1 NX EX 86400</tspan><tspan x="745.0" y="222.7" font-weight="400">&#160;</tspan><tspan x="745.0" y="240.2" font-weight="400">• Idempotency locks</tspan><tspan x="745.0" y="257.8" font-weight="400">• Rate-limit counters</tspan></text>
+<rect x="890.0" y="130.0" width="250.0" height="175.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="1015.0" y="170.0" font-weight="600">2. List (RPUSH / LRANGE)</tspan><tspan x="1015.0" y="187.6" font-weight="400">&#160;</tspan><tspan x="1015.0" y="205.1" font-weight="400">RPUSH digest:u_123 {msg}</tspan><tspan x="1015.0" y="222.7" font-weight="400">&#160;</tspan><tspan x="1015.0" y="240.2" font-weight="400">• 15m event buffer</tspan><tspan x="1015.0" y="257.8" font-weight="400">• Deleted after digest sent</tspan></text>
+<rect x="620.0" y="335.0" width="250.0" height="180.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="745.0" y="377.0" font-weight="600">3. Sorted Set (ZSET)</tspan><tspan x="745.0" y="394.6" font-weight="400">&#160;</tspan><tspan x="745.0" y="412.1" font-weight="400">ZADD digest:due 1415 u_123</tspan><tspan x="745.0" y="429.6" font-weight="400">ZRANGEBYSCORE .. -inf NOW</tspan><tspan x="745.0" y="447.2" font-weight="400">&#160;</tspan><tspan x="745.0" y="464.8" font-weight="400">• Timers &amp; leaderboards</tspan></text>
+<rect x="890.0" y="335.0" width="250.0" height="180.0" rx="10" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="1015.0" y="377.0" font-weight="600">4. Hash (HSET / HGETALL)</tspan><tspan x="1015.0" y="394.6" font-weight="400">&#160;</tspan><tspan x="1015.0" y="412.1" font-weight="400">HGETALL prefs:u_123</tspan><tspan x="1015.0" y="429.6" font-weight="400">-&gt; {push:1, email:0, tz:IST}</tspan><tspan x="1015.0" y="447.2" font-weight="400">&#160;</tspan><tspan x="1015.0" y="464.8" font-weight="400">• User settings cache</tspan></text>
+</svg><div class="diag-cap">01-kafka-and-redis.excalidraw (pinch or scroll to zoom)</div></div>
+</ul>
+<hr/>
+<h2 class="speakable">1. Mock 0 Recap: 4 Fixes That Separate Mid-Level from Senior/SDE2-3</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Mid-Level Instinct (What Trips Candidates)</th>
+<th>Senior / L5 Pattern (What Interviewers Expect)</th>
+<th>Why It Matters at 30k QPS</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">Workers poll a DB table for <code>status = PENDING</code> and lock rows.</td>
+<td class="speakable">Producers write to <strong>Kafka partitions</strong>. Each partition has <strong>1 assigned worker</strong> (zero locks).</td>
+<td class="speakable">Polling and locking DB rows at 30k QPS causes lock contention and hot secondary indexes.</td>
+</tr>
+<tr>
+<td class="speakable">Deduplicate retries by hashing <code>(user_id + channel + content)</code>.</td>
+<td class="speakable">Caller sends a UUID <strong><code>idempotency_key</code></strong> stored in Redis (<code>SET idem:&lt;uuid&gt; 1 NX EX 86400</code>).</td>
+<td class="speakable">Content hashing drops valid repeat alerts (for example, two <code>&quot;Build failed&quot;</code> alerts 2 minutes apart).</td>
+</tr>
+<tr>
+<td class="speakable">Hardcode channel mappings or check user preferences only at the final worker.</td>
+<td class="speakable">Cache <strong>User Preferences &amp; Device Tokens</strong> in Redis (<code>user_prefs:&lt;user_id&gt;</code>) and check at the <strong>Ingestion Router</strong>.</td>
+<td class="speakable">Checking preferences early avoids queuing and rendering millions of muted notifications.</td>
+</tr>
+<tr>
+<td class="speakable">Fail the digest if all LLM providers are down or rate-limited.</td>
+<td class="speakable">Trip a <strong>circuit breaker</strong> and send a <strong>deterministic template summary</strong> (<em>&quot;12 new messages in #eng&quot;</em>).</td>
+<td class="speakable">Core product reliability must never depend on external LLM availability.</td>
+</tr>
+</tbody></table></div>
+<hr/>
+<h2 class="speakable">2. Building Block 1: Message Queues &amp; Kafka Internals</h2>
+<p class="speakable"><strong>Visual:</strong> Left half of <a href="#diag-01-kafka-and-redis.excalidraw" class="diag-chip" onclick="switchTab('diagrams', 'diag-01-kafka-and-redis.excalidraw'); return false;">📐 01-kafka-and-redis.excalidraw</a>.</p>
+<h3 class="speakable">What It Is</h3>
+<p class="speakable"><strong>Kafka</strong> is a distributed, append-only event log. A <strong>topic</strong> (such as <code>push.notifications</code>) is split into $N$ independent <strong>partitions</strong> (lanes), numbered <code>0</code> to $N-1$.</p>
+<h3 class="speakable">How Work Distribution Works Without Locks</h3>
+<ol>
+<li class="speakable"><strong>Producer routing:</strong> The producer picks a partition using a hash of the key: <code>partition = hash(user_id) % N</code>. All events for <code>user_42</code> land in the same partition, in exact arrival order.</li>
+<li class="speakable"><strong>Exclusive ownership:</strong> Inside a <strong>consumer group</strong>, Kafka assigns each partition to <strong>at most one worker thread</strong>.</li>
+</ol>
+<ul>
+<li class="speakable">If a topic has 8 partitions and 8 workers, <strong>Worker 2 is the only reader of Partition 2</strong>.</li>
+<li class="speakable">Because two workers never read the same partition, <strong>no row locks are needed</strong>.</li>
+</ul>
+<ol>
+<li class="speakable"><strong>Offset tracking:</strong> Each worker simply increments its own read pointer (<strong>offset</strong>): <code>offset = 1041, 1042, 1043...</code>.</li>
+</ol>
+<h3 class="speakable">Real-World Analogy</h3>
+<p class="speakable">A highway toll plaza with 16 lanes (partitions) and 16 toll booths (workers). Every car with license plate ending in <code>3</code> enters Lane 3 and is served only by Booth 3. Booths never coordinate or lock cars.</p>
+<ul>
+<li class="speakable"><strong>Where the analogy breaks:</strong> On a highway, a driver can swerve into another lane if Lane 3 is jammed. In Kafka, <code>hash(user_id) % 16</code> always sends that user to Partition 3.</li>
+</ul>
+<h3 class="speakable">What Breaks: The &quot;Hot Partition&quot; (Celebrity / Noisy Bot Key)</h3>
+<ul>
+<li class="speakable"><strong>Scenario:</strong> An enterprise bot receives 500,000 notifications in 1 minute.</li>
+<li class="speakable"><strong>What breaks:</strong> <code>hash(bot_id) % 16</code> sends all 500,000 messages to <strong>one partition</strong> (say Partition 3). Worker 3 falls 20 minutes behind, while the other 15 workers sit idle.</li>
+<li class="speakable"><strong>How to fix it (2 steps):</strong></li>
+</ul>
+<ol>
+<li class="speakable"><strong>Key Salting:</strong> Detect hot keys and append a random suffix <code>1..10</code> (<code>bot_id#1</code> through <code>bot_id#10</code>). Now the bot&#x27;s traffic spreads evenly across 10 partitions and 10 workers. (Trade-off: you lose strict global ordering across those 10 sub-keys.)</li>
+<li class="speakable"><strong>Ingestion Rate Limiting:</strong> Cap per-sender or per-user volume at the API gateway before messages enter Kafka.</li>
+</ol>
+<h3 class="speakable">Kafka vs. SQS / RabbitMQ (When to Choose Which)</h3>
+<div class="table-wrap"><table><thead><tr>
+<th>Feature</th>
+<th>Kafka (Log-based Stream)</th>
+<th>SQS / RabbitMQ (Traditional Queue)</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">Ordering</td>
+<td class="speakable">Strict ordering per partition key</td>
+<td class="speakable">Best-effort (or lower-throughput FIFO)</td>
+</tr>
+<tr>
+<td class="speakable">Replayability</td>
+<td class="speakable">Retains messages for days; multiple services can replay</td>
+<td class="speakable">Message is deleted once ACKed</td>
+</tr>
+<tr>
+<td class="speakable">Best for</td>
+<td class="speakable">High-throughput event streams, fan-out to multiple consumers, ordered per-user processing</td>
+<td class="speakable">Simple background jobs where any free worker can grab the next task (e.g., video transcoding)</td>
+</tr>
+</tbody></table></div>
+<hr/>
+<h2 class="speakable">3. Building Block 2: The 4 Essential Redis Data Structures</h2>
+<p class="speakable"><strong>Visual:</strong> Right half of <a href="#diag-01-kafka-and-redis.excalidraw" class="diag-chip" onclick="switchTab('diagrams', 'diag-01-kafka-and-redis.excalidraw'); return false;">📐 01-kafka-and-redis.excalidraw</a>.</p>
+<p class="speakable">Most candidates only say <em>&quot;use Redis as a cache.&quot;</em> Senior candidates name the <strong>exact Redis data structure and command</strong>:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>#</th>
+<th>Redis Structure</th>
+<th>Key Commands</th>
+<th>Classic Interview Use Cases</th>
+<th>Complexity</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable"><strong>1</strong></td>
+<td class="speakable"><strong>String</strong> (with atomic flags)</td>
+<td class="speakable"><code>SET key val NX EX 86400</code>, <code>INCR key</code></td>
+<td class="speakable"><strong>Idempotency keys</strong> (<code>NX</code> = set only if not exists), <strong>rate-limit counters</strong>, short distributed locks.</td>
+<td class="speakable">$O(1)$</td>
+</tr>
+<tr>
+<td class="speakable"><strong>2</strong></td>
+<td class="speakable"><strong>List</strong> (doubly linked list)</td>
+<td class="speakable"><code>RPUSH key item</code>, <code>LRANGE key 0 -1</code>, <code>DEL key</code></td>
+<td class="speakable"><strong>Message buffers</strong> (holding a user&#x27;s messages during a 15-min AI digest window), recent activity feeds.</td>
+<td class="speakable">$O(1)$ push/pop</td>
+</tr>
+<tr>
+<td class="speakable"><strong>3</strong></td>
+<td class="speakable"><strong>Sorted Set (<code>ZSET</code>)</strong></td>
+<td class="speakable"><code>ZADD key score member</code>, <code>ZRANGEBYSCORE key -inf now</code></td>
+<td class="speakable"><strong>Delayed timers</strong> (<code>score = trigger_timestamp</code>), <strong>sliding-window rate limiters</strong>, <strong>live leaderboards</strong>.</td>
+<td class="speakable">$O(\log N)$</td>
+</tr>
+<tr>
+<td class="speakable"><strong>4</strong></td>
+<td class="speakable"><strong>Hash</strong> (field-value map)</td>
+<td class="speakable"><code>HGETALL user:42</code>, <code>HSET user:42 push_opt_in 1</code></td>
+<td class="speakable"><strong>User preferences &amp; device cache</strong>, shopping carts, session metadata.</td>
+<td class="speakable">$O(1)$ per field</td>
+</tr>
+</tbody></table></div>
+<h3 class="speakable">Deep Dive: How <code>List</code> + <code>ZSET</code> Solve the 15-Minute AI Digest Window</h3>
+<ol>
+<li class="speakable"><strong>When a low-priority message arrives for <code>user_42</code>:</strong></li>
+</ol>
+<ul>
+<li class="speakable">Append the message to a <strong>Redis List</strong>: <code>RPUSH digest:msgs:user_42 &lt;msg_json&gt;</code>.</li>
+<li class="speakable">If this is the <em>first</em> message in the window, schedule the flush time in a <strong>Redis Sorted Set (<code>ZSET</code>)</strong> where <code>member = &quot;user_42&quot;</code> and <code>score = current_unix_time + 900 + random_jitter(0..120)</code>:</li>
+</ul>
+<p class="speakable">     <code>ZADD digest:timers 1730459742 &quot;user_42&quot;</code> (<code>NX</code> flag so later messages don&#x27;t push the deadline back).</p>
+<ol>
+<li class="speakable"><strong>Every second, Timer Workers poll due timers:</strong></li>
+</ol>
+<ul>
+<li class="speakable">Run <code>ZRANGEBYSCORE digest:timers -inf &lt;current_unix_time&gt; LIMIT 0 100</code>.</li>
+<li class="speakable">Because <code>ZSET</code> keeps members sorted by <code>score</code> (timestamp), Redis returns <strong>only expired users</strong> in $O(\log N)$ time—never scanning all 10M users!</li>
+<li class="speakable">For each due <code>user_id</code>, read the list (<code>LRANGE digest:msgs:user_42 0 -1</code>). If length $\ge 10$, send batch to the LLM Digest Worker; if $&lt; 10$, send normal push notifications. Delete the list and remove <code>user_42</code> from <code>digest:timers</code>.</li>
+</ul>
+<ol>
+<li class="speakable"><strong>Bonus:</strong> The exact same <code>ZSET</code> timer pattern solves <strong>&quot;Wait 15 minutes; if Push is still unread, send Email&quot;</strong>: schedule <code>notif_id</code> in <code>ZSET</code> at <code>now + 15m</code>; when due, check NoSQL <code>is_read</code> status and send Email if <code>false</code>.</li>
+</ol>
+<hr/>
+<h2 class="speakable">4. Building Block 3: Database Choice, Sharding &amp; Indexing</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Requirement</th>
+<th>Pick SQL (PostgreSQL / MySQL / Spanner)</th>
+<th>Pick Wide-Column / KV NoSQL (Cassandra / DynamoDB)</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">Access pattern</td>
+<td class="speakable">Complex joins, multi-row ACID transactions, balances/inventory</td>
+<td class="speakable">High-velocity writes/reads by a known key (<code>user_id</code> + <code>timestamp</code>)</td>
+</tr>
+<tr>
+<td class="speakable">Write scale</td>
+<td class="speakable">Up to ~5k–10k writes/sec per primary before sharding</td>
+<td class="speakable">Scales horizontally to 100k+ writes/sec across partitions</td>
+</tr>
+<tr>
+<td class="speakable">Classic cases</td>
+<td class="speakable">Payments, ledger, ticket booking, user accounts</td>
+<td class="speakable">Notification logs, chat messages, telemetry, activity feeds</td>
+</tr>
+</tbody></table></div>
+<h3 class="speakable">How DynamoDB / Cassandra Keys Work (Partition Key + Sort Key)</h3>
+<p class="speakable">In our Notification Log table:</p>
+<ul>
+<li class="speakable"><strong>Partition Key (<code>user_id</code>):</strong> Determines <strong>which storage node</strong> holds the data (<code>hash(user_id)</code>).</li>
+<li class="speakable"><strong>Sort Key (<code>created_at_ts</code> + <code>notif_id</code>):</strong> Keeps all notifications for <code>user_42</code> physically sorted by time on disk.</li>
+<li class="speakable"><strong>Why this is fast:</strong> Fetching <em>&quot;latest 20 notifications for <code>user_42</code>&quot;</em> hits <strong>one node</strong> and reads a contiguous slice on disk in $&lt; 5\text{ ms}$.</li>
+<li class="speakable"><strong>Why polling <code>WHERE status = &#x27;PENDING&#x27;</code> is an anti-pattern:</strong> <code>status</code> only has 3 values (<code>PENDING</code>, <code>SENT</code>, <code>FAILED</code>). Indexing <code>status</code> puts all 30,000 writes/sec into a single <code>&#x27;PENDING&#x27;</code> index partition—melting that node.</li>
+</ul>
+<hr/>
+<h2 class="speakable">5. Building Block 4: Back-of-the-Envelope Cheat Sheet</h2>
+<p class="speakable">Memorize these 4 anchors:</p>
+<ul>
+<li class="speakable"><strong>$1\text{ day} = 86{,}400\text{ seconds} \approx 10^5\text{ seconds}$.</strong></li>
+<li class="speakable">$100\text{M requests/day} \approx 1{,}000\text{ QPS}$.</li>
+<li class="speakable">$1\text{B requests/day} \approx 10{,}000\text{ QPS}$ (Peak $\approx 3\times = 30{,}000\text{ QPS}$).</li>
+<li class="speakable"><strong>Storage math:</strong> $\text{Events/day} \times \text{Bytes/event} \times 365$.</li>
+<li class="speakable">$1\text{B notifications/day} \times 1\text{ KB} = 1\text{ TB/day} = 365\text{ TB/year}$.</li>
+<li class="speakable"><strong>LLM Token &amp; Cost Math (AI Track A1):</strong></li>
+<li class="speakable">$1\text{ token} \approx 0.75\text{ English words}$ ($1{,}000\text{ tokens} \approx 750\text{ words} \approx 3\text{ KB text}$).</li>
+<li class="speakable">Always separate <strong>Input Tokens</strong> (prompt + retrieved context) from <strong>Output Tokens</strong> (generated text—usually $3\times$ to $5\times$ more expensive and the main driver of latency).</li>
+<li class="speakable">Example from Mock 0 Quiz Q4:</li>
+<li class="speakable">$10\text{M users} \times 20\% \text{ active} \times 4\text{ digests/day} = 8\text{M digests/day}$.</li>
+<li class="speakable">$\text{Average LLM QPS} = 8 \times 10^6 / 10^5\text{ s} = \mathbf{80\text{ QPS}}$.</li>
+<li class="speakable">$\text{Tokens/day} = 8\text{M digests} \times (1{,}000\text{ in} + 200\text{ out}) = 8\text{M} \times 1{,}200 = \mathbf{9.6\text{ Billion tokens/day}}$.</li>
+</ul>
+<hr/>
+<h2 class="speakable">6. Quick Self-Check (For When You Return)</h2>
+<p class="speakable">When you are back, reply with your 1-line answers to these 3 questions and we will move straight into <strong>Case Study #1 (URL Shortener) &amp; Case Study #2 (Rate Limiter)</strong>:</p>
+<ol>
+<li class="speakable"><strong>Kafka Ownership:</strong> If a Kafka topic has 8 partitions and a consumer group has 8 workers, how many workers read from Partition 2 at the same time—and why does that eliminate DB row locks?</li>
+<li class="speakable"><strong>Hot Partition Fix:</strong> Why did the noisy enterprise bot overload a single Kafka worker, and how does <strong>key salting</strong> (<code>bot_id#1..10</code>) fix it?</li>
+<li class="speakable"><strong>Redis <code>ZSET</code> Timer:</strong> In <code>ZADD digest:timers &lt;score&gt; &lt;member&gt;</code>, what value do we store as <code>&lt;member&gt;</code> and what value do we store as <code>&lt;score&gt;</code> to fire a 15-minute timer?</li>
+</ol></div>
+    </section>
+
+    <section id="pane-diagrams" class="pane">
+      <div class="card diag-card" id="diag-00-timeline.excalidraw"><div class="diag-header"><h3>4-Week System Design &amp; AI Study Plan</h3><span class="badge">00-timeline.excalidraw</span></div><div class="svg-scroll"><svg class="ex-svg" viewBox="16 0 1088 388" width="100%" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="ex-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+<path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#475569"/>
+</marker>
+</defs>
+<rect x="16" y="0" width="1088" height="388" rx="12" fill="#ffffff"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="22.0" fill="#0f172a" text-anchor="start"><tspan x="40.0" y="46.0" font-weight="600">4-Week System Design &amp; AI Interview Plan (Minimal Overview)</tspan></text>
+<rect x="40.0" y="80.0" width="230.0" height="190.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14.0" fill="#0f172a" text-anchor="middle"><tspan x="155.0" y="114.0" font-weight="600">Week 1 · Foundations</tspan><tspan x="155.0" y="132.9" font-weight="400">&#160;</tspan><tspan x="155.0" y="151.8" font-weight="400">• Mock 0 Diagnostic</tspan><tspan x="155.0" y="170.7" font-weight="400">• 8-Step Framework</tspan><tspan x="155.0" y="189.6" font-weight="400">• Kafka + Redis + DB Keys</tspan><tspan x="155.0" y="208.5" font-weight="400">• Cases 1–2 (URL, Rate Limit)</tspan><tspan x="155.0" y="227.4" font-weight="400">• AI A1: LLM Basics</tspan></text>
+<rect x="310.0" y="80.0" width="230.0" height="190.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14.0" fill="#0f172a" text-anchor="middle"><tspan x="425.0" y="114.0" font-weight="600">Week 2 · Fan-Out &amp; Data</tspan><tspan x="425.0" y="132.9" font-weight="400">&#160;</tspan><tspan x="425.0" y="151.8" font-weight="400">• Case 3: Notifications</tspan><tspan x="425.0" y="170.7" font-weight="400">• Case 4: News Feed</tspan><tspan x="425.0" y="189.6" font-weight="400">• Case 5: WhatsApp Chat</tspan><tspan x="425.0" y="208.5" font-weight="400">• Case 6: Distributed KV</tspan><tspan x="425.0" y="227.4" font-weight="400">• AI A2: RAG Internals</tspan></text>
+<rect x="580.0" y="80.0" width="230.0" height="190.0" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14.0" fill="#0f172a" text-anchor="middle"><tspan x="695.0" y="114.0" font-weight="600">Week 3 · Scale &amp; Search</tspan><tspan x="695.0" y="132.9" font-weight="400">&#160;</tspan><tspan x="695.0" y="151.8" font-weight="400">• Case 7: Video / Blob</tspan><tspan x="695.0" y="170.7" font-weight="400">• Case 8: Ticketing / Sagas</tspan><tspan x="695.0" y="189.6" font-weight="400">• Case 9: Typeahead</tspan><tspan x="695.0" y="208.5" font-weight="400">• Case 10: Uber Geo</tspan><tspan x="695.0" y="227.4" font-weight="400">• AI A3–A4 + Full Mock #1</tspan></text>
+<rect x="850.0" y="80.0" width="230.0" height="190.0" rx="10" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14.0" fill="#0f172a" text-anchor="middle"><tspan x="965.0" y="114.0" font-weight="600">Week 4 · Simulation</tspan><tspan x="965.0" y="132.9" font-weight="400">&#160;</tspan><tspan x="965.0" y="151.8" font-weight="400">• 3 Timed 45m Mocks</tspan><tspan x="965.0" y="170.7" font-weight="400">• Curveballs &amp; Trade-offs</tspan><tspan x="965.0" y="189.6" font-weight="400">• Spaced Re-Quiz Drills</tspan><tspan x="965.0" y="208.5" font-weight="400">• AI A5–A6: Agents &amp; Evals</tspan><tspan x="965.0" y="227.4" font-weight="400">• Final Calibration</tspan></text>
+<polyline points="270.0,175.0 310.0,175.0" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="540.0,175.0 580.0,175.0" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="810.0,175.0 850.0,175.0" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<rect x="40.0" y="300.0" width="1040.0" height="64.0" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14.0" fill="#0f172a" text-anchor="middle"><tspan x="560.0" y="332.0" font-weight="400">Weekly Loop: Save Bookmarks (GitHub Issues / Inbox)  -&gt;  Update Question Bank  -&gt;  Re-rank by (Frequency × Weakness)  -&gt;  Day 2 &amp; Day 7 Re-Quiz</tspan></text>
+</svg></div></div>
+<div class="card diag-card" id="diag-01-kafka-and-redis.excalidraw"><div class="diag-header"><h3>Week 1: Kafka Partitions vs DB Locks &amp; Redis 4 Data Structures</h3><span class="badge">01-kafka-and-redis.excalidraw</span></div><div class="svg-scroll"><svg class="ex-svg" viewBox="16 -4 1168 566" width="100%" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="ex-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+<path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#475569"/>
+</marker>
+</defs>
+<rect x="16" y="-4" width="1168" height="566" rx="12" fill="#ffffff"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20.0" fill="#0f172a" text-anchor="start"><tspan x="40.0" y="40.0" font-weight="600">Week 1 Visual Guide: Kafka Partition Ownership &amp; Redis 4 Core Data Structures</tspan></text>
+<rect x="40.0" y="68.0" width="540.0" height="470.0" rx="10" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16.0" fill="#047857" text-anchor="start"><tspan x="56.0" y="96.0" font-weight="600">Kafka: Lock-Free Parallelism via Partitions</tspan></text>
+<rect x="60.0" y="215.0" width="130.0" height="90.0" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="125.0" y="231.0" font-weight="600">Producer</tspan><tspan x="125.0" y="248.6" font-weight="400">&#160;</tspan><tspan x="125.0" y="266.1" font-weight="400">hash(user_id)</tspan><tspan x="125.0" y="283.6" font-weight="400">% 3</tspan></text>
+<rect x="230.0" y="130.0" width="150.0" height="65.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="305.0" y="153.0" font-weight="600">Partition 0</tspan><tspan x="305.0" y="170.6" font-weight="400">[u_101, u_104]</tspan></text>
+<rect x="230.0" y="225.0" width="150.0" height="65.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="305.0" y="247.0" font-weight="600">Partition 1</tspan><tspan x="305.0" y="264.6" font-weight="400">[u_202, u_209]</tspan></text>
+<rect x="230.0" y="320.0" width="150.0" height="65.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="305.0" y="343.0" font-weight="600">Partition 2</tspan><tspan x="305.0" y="360.6" font-weight="400">[u_307, u_311]</tspan></text>
+<rect x="420.0" y="130.0" width="140.0" height="65.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="490.0" y="153.0" font-weight="600">Worker 1</tspan><tspan x="490.0" y="170.6" font-weight="400">(Owns P0 only)</tspan></text>
+<rect x="420.0" y="225.0" width="140.0" height="65.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="490.0" y="247.0" font-weight="600">Worker 2</tspan><tspan x="490.0" y="264.6" font-weight="400">(Owns P1 only)</tspan></text>
+<rect x="420.0" y="320.0" width="140.0" height="65.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="490.0" y="343.0" font-weight="600">Worker 3</tspan><tspan x="490.0" y="360.6" font-weight="400">(Owns P2 only)</tspan></text>
+<polyline points="190.0,240.0 230.0,162.0" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="190.0,260.0 230.0,257.0" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="190.0,280.0 230.0,352.0" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="380.0,162.0 420.0,162.0" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="380.0,257.0 420.0,257.0" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="380.0,352.0 420.0,352.0" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<rect x="60.0" y="420.0" width="500.0" height="95.0" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="310.0" y="448.0" font-weight="600">Hot Key Fix (Celebrity Fan-Out):</tspan><tspan x="310.0" y="465.6" font-weight="400">Append random salt 0..9 to key -&gt; event_id#0 .. event_id#9</tspan><tspan x="310.0" y="483.1" font-weight="400">Spreads 1M fan-out writes across 10 partitions in parallel.</tspan></text>
+<rect x="600.0" y="68.0" width="560.0" height="470.0" rx="10" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16.0" fill="#b45309" text-anchor="start"><tspan x="616.0" y="96.0" font-weight="600">Redis: 4 Core In-Memory Data Structures (Atomic)</tspan></text>
+<rect x="620.0" y="130.0" width="250.0" height="175.0" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="745.0" y="170.0" font-weight="600">1. String (SET NX / INCR)</tspan><tspan x="745.0" y="187.6" font-weight="400">&#160;</tspan><tspan x="745.0" y="205.1" font-weight="400">SET idem:99 1 NX EX 86400</tspan><tspan x="745.0" y="222.7" font-weight="400">&#160;</tspan><tspan x="745.0" y="240.2" font-weight="400">• Idempotency locks</tspan><tspan x="745.0" y="257.8" font-weight="400">• Rate-limit counters</tspan></text>
+<rect x="890.0" y="130.0" width="250.0" height="175.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="1015.0" y="170.0" font-weight="600">2. List (RPUSH / LRANGE)</tspan><tspan x="1015.0" y="187.6" font-weight="400">&#160;</tspan><tspan x="1015.0" y="205.1" font-weight="400">RPUSH digest:u_123 {msg}</tspan><tspan x="1015.0" y="222.7" font-weight="400">&#160;</tspan><tspan x="1015.0" y="240.2" font-weight="400">• 15m event buffer</tspan><tspan x="1015.0" y="257.8" font-weight="400">• Deleted after digest sent</tspan></text>
+<rect x="620.0" y="335.0" width="250.0" height="180.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="745.0" y="377.0" font-weight="600">3. Sorted Set (ZSET)</tspan><tspan x="745.0" y="394.6" font-weight="400">&#160;</tspan><tspan x="745.0" y="412.1" font-weight="400">ZADD digest:due 1415 u_123</tspan><tspan x="745.0" y="429.6" font-weight="400">ZRANGEBYSCORE .. -inf NOW</tspan><tspan x="745.0" y="447.2" font-weight="400">&#160;</tspan><tspan x="745.0" y="464.8" font-weight="400">• Timers &amp; leaderboards</tspan></text>
+<rect x="890.0" y="335.0" width="250.0" height="180.0" rx="10" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="1015.0" y="377.0" font-weight="600">4. Hash (HSET / HGETALL)</tspan><tspan x="1015.0" y="394.6" font-weight="400">&#160;</tspan><tspan x="1015.0" y="412.1" font-weight="400">HGETALL prefs:u_123</tspan><tspan x="1015.0" y="429.6" font-weight="400">-&gt; {push:1, email:0, tz:IST}</tspan><tspan x="1015.0" y="447.2" font-weight="400">&#160;</tspan><tspan x="1015.0" y="464.8" font-weight="400">• User settings cache</tspan></text>
+</svg></div></div>
+<div class="card diag-card" id="diag-mock0-notification-system.excalidraw"><div class="diag-header"><h3>Mock 0 Reference: Global Notification Service + AI Smart Digest</h3><span class="badge">mock0-notification-system.excalidraw</span></div><div class="svg-scroll"><svg class="ex-svg" viewBox="16 -4 1168 586" width="100%" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="ex-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+<path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#475569"/>
+</marker>
+</defs>
+<rect x="16" y="-4" width="1168" height="586" rx="12" fill="#ffffff"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20.0" fill="#0f172a" text-anchor="start"><tspan x="40.0" y="40.0" font-weight="600">Mock 0 Architecture: Global Notification Service + AI Smart Digest (30k Peak QPS)</tspan></text>
+<rect x="40.0" y="60.0" width="1120.0" height="48.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="600.0" y="83.0" font-weight="400">Core Rule: Zero DB row locks at 30k QPS. Deduplicate with Redis SET NX, partition Kafka by user_id, and batch 15m digests with Redis List + ZSET.</tspan></text>
+<rect x="40.0" y="128.0" width="340.0" height="430.0" rx="10" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15.0" fill="#334155" text-anchor="start"><tspan x="56.0" y="155.0" font-weight="600">1. Ingestion &amp; Deduplication</tspan></text>
+<rect x="400.0" y="128.0" width="420.0" height="430.0" rx="10" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15.0" fill="#334155" text-anchor="start"><tspan x="416.0" y="155.0" font-weight="600">2. Kafka Backbone &amp; 15m AI Digest</tspan></text>
+<rect x="840.0" y="128.0" width="320.0" height="430.0" rx="10" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15.0" fill="#334155" text-anchor="start"><tspan x="856.0" y="155.0" font-weight="600">3. Delivery &amp; Reliability</tspan></text>
+<rect x="60.0" y="185.0" width="130.0" height="75.0" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="125.0" y="213.0" font-weight="600">Producers</tspan><tspan x="125.0" y="230.6" font-weight="400">POST /v1/notify</tspan></text>
+<rect x="220.0" y="185.0" width="140.0" height="75.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="290.0" y="213.0" font-weight="600">Ingestion API</tspan><tspan x="290.0" y="230.6" font-weight="400">(202 Accepted)</tspan></text>
+<rect x="60.0" y="315.0" width="300.0" height="95.0" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="210.0" y="343.0" font-weight="600">Redis Cache (In-Memory)</tspan><tspan x="210.0" y="360.6" font-weight="400">• SET idem:{uuid} 1 NX EX 86400</tspan><tspan x="210.0" y="378.1" font-weight="400">• HGETALL prefs:{user_id}</tspan></text>
+<rect x="60.0" y="435.0" width="300.0" height="95.0" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="210.0" y="463.0" font-weight="600">Cassandra / DynamoDB</tspan><tspan x="210.0" y="480.6" font-weight="400">• PK: user_id</tspan><tspan x="210.0" y="498.1" font-weight="400">• SK: created_at#notif_id</tspan></text>
+<rect x="425.0" y="185.0" width="370.0" height="85.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="610.0" y="217.0" font-weight="600">Kafka Topics (high_prio | low_prio)</tspan><tspan x="610.0" y="234.6" font-weight="400">Partition key: hash(user_id) % N</tspan></text>
+<rect x="425.0" y="315.0" width="175.0" height="95.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="512.5" y="353.0" font-weight="600">Digest Aggregator</tspan><tspan x="512.5" y="370.6" font-weight="400">&amp; Due Poller</tspan></text>
+<rect x="620.0" y="315.0" width="175.0" height="95.0" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#0f172a" text-anchor="middle"><tspan x="707.5" y="344.0" font-weight="600">Redis Window State</tspan><tspan x="707.5" y="360.2" font-weight="400">• List: items:{uid}</tspan><tspan x="707.5" y="376.4" font-weight="400">• ZSET: digest:due</tspan></text>
+<rect x="425.0" y="435.0" width="370.0" height="95.0" rx="10" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="610.0" y="463.0" font-weight="600">Async LLM Digest Worker</tspan><tspan x="610.0" y="480.6" font-weight="400">• Cap 20 items (~2k tokens) -&gt; 3 bullets</tspan><tspan x="610.0" y="498.1" font-weight="400">• Circuit breaker -&gt; template fallback</tspan></text>
+<rect x="865.0" y="185.0" width="270.0" height="105.0" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="1000.0" y="218.0" font-weight="600">Channel Workers</tspan><tspan x="1000.0" y="235.6" font-weight="400">(APNs / FCM / SES / Twilio)</tspan><tspan x="1000.0" y="253.1" font-weight="400">1 Worker per Kafka Partition</tspan></text>
+<rect x="865.0" y="330.0" width="270.0" height="85.0" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="1000.0" y="353.0" font-weight="600">Retry Topic + DLQ</tspan><tspan x="1000.0" y="370.6" font-weight="400">Exp backoff: 1s, 4s, 16s + jitter</tspan><tspan x="1000.0" y="388.1" font-weight="400">Max 3 attempts -&gt; DLQ alert</tspan></text>
+<rect x="865.0" y="445.0" width="270.0" height="85.0" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+<text font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.0" fill="#0f172a" text-anchor="middle"><tspan x="1000.0" y="468.0" font-weight="600">User Devices</tspan><tspan x="1000.0" y="485.6" font-weight="400">Push · Email · SMS</tspan><tspan x="1000.0" y="503.1" font-weight="400">(Read receipts update DB)</tspan></text>
+<polyline points="190.0,222.0 220.0,222.0" fill="none" stroke="#334155" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="250.0,260.0 210.0,315.0" fill="none" stroke="#b45309" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="230.0" y="279.5" font-weight="400">1. Dedup</tspan></text>
+<polyline points="290.0,260.0 290.0,435.0" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="290.0" y="339.5" font-weight="400">2. Log</tspan></text>
+<polyline points="360.0,222.0 425.0,222.0" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="392.5" y="214.0" font-weight="400">3. Enqueue</tspan></text>
+<polyline points="795.0,215.0 865.0,215.0" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="830.0" y="207.0" font-weight="400">High Prio</tspan></text>
+<polyline points="512.0,270.0 512.0,315.0" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="512.0" y="284.5" font-weight="400">Low Prio</tspan></text>
+<polyline points="600.0,362.0 620.0,362.0" fill="none" stroke="#b45309" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<polyline points="512.0,410.0 512.0,435.0" fill="none" stroke="#6d28d9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="512.0" y="414.5" font-weight="400">Due @ 15m</tspan></text>
+<polyline points="795.0,480.0 865.0,265.0" fill="none" stroke="#6d28d9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="830.0" y="364.5" font-weight="400">Digest</tspan></text>
+<polyline points="1000.0,290.0 1000.0,330.0" fill="none" stroke="#b45309" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+<text font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.0" fill="#334155" text-anchor="middle"><tspan x="1000.0" y="302.0" font-weight="400">On 5xx</tspan></text>
+<polyline points="1000.0,415.0 1000.0,445.0" fill="none" stroke="#334155" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ex-arrow)"/>
+</svg></div></div>
+    </section>
+
+    <section id="pane-plan" class="pane">
+      <div class="card"><h1 class="speakable">System Design Interview Prep: 4-Week Plan (Senior SDE / SDE2-3)</h1>
+<p class="speakable"><strong>Profile:</strong> 6.5 yrs. Chromium C++, TS/React, Python, .NET backend for AI services on Edge. Strong coding bar; focusing now on leveling up distributed systems and AI architecture for Senior SDE / SDE2-3 roles across Big Tech and top product companies.</p>
+<p class="speakable"><strong>Budget:</strong> 4 weeks x 6-8 hrs (about 28 hrs). <strong>Mix:</strong> about 90% core design, about 10% AI/LLM systems (about 3 hrs).</p>
+<p class="speakable"><strong>Format:</strong> Conversational. I play the interviewer. Each topic ends with a quiz. Everything is tracked in this folder and revised weekly.</p>
+<h2 class="speakable">Senior / SDE2-3 calibration (hypotheses to test in Mock 0)</h2>
+<p class="speakable">Moving from client-heavy + service development to Senior/SDE2-3 interviews across Google, Meta, Microsoft, Amazon, and top product companies usually requires sharpening four areas:</p>
+<ol>
+<li class="speakable">Pinning functional/non-functional requirements and back-of-envelope numbers before drawing boxes.</li>
+<li class="speakable">Going 2 levels deeper on backend internals (storage engine choice, partitioning/sharding, replication, consistency, and failure modes).</li>
+<li class="speakable">Defending trade-offs with concrete numbers (&quot;why X over Y at this QPS/latency, and what breaks first&quot;).</li>
+<li class="speakable">Demonstrating senior ownership: observability, graceful degradation, cost, and rollout safety.</li>
+</ol>
+<p class="speakable">-&gt; Mock 0 on Day 1 is a baseline diagnostic. We will re-weight the plan every week based on your progress.</p>
+<h2 class="speakable">80/20: the topics that cover most questions</h2>
+<p class="speakable">Recent sources show the same ~12 problems recurring across Amazon, Google, Meta and Microsoft, so they are the core set.</p>
+<p class="speakable"><strong>Building blocks (Week 1):</strong> the 8-step answer framework, back-of-envelope estimation, API + data modeling, SQL vs NoSQL and indexing, sharding/replication/consistency (CAP/PACELC), caching (aside/through/back, invalidation, stampede), queues/streams (Kafka/SQS, at-least-once, idempotency, DLQ), load balancing/CDN, rate limiting, and reliability/observability (SLOs, retries, backoff, circuit breakers, multi-region).</p>
+<p class="speakable"><strong>Core case studies (ordered by frequency x teachable patterns):</strong></p>
+<div class="table-wrap"><table><thead><tr>
+<th>#</th>
+<th>Case</th>
+<th>Patterns it drills</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">1</td>
+<td class="speakable">URL shortener</td>
+<td class="speakable">ID generation, read-heavy caching, DB choice</td>
+</tr>
+<tr>
+<td class="speakable">2</td>
+<td class="speakable">Rate limiter</td>
+<td class="speakable">Token bucket, distributed counters, Redis</td>
+</tr>
+<tr>
+<td class="speakable">3</td>
+<td class="speakable">Notification system</td>
+<td class="speakable">Fan-out, queues, retries, idempotency, priority</td>
+</tr>
+<tr>
+<td class="speakable">4</td>
+<td class="speakable">News feed</td>
+<td class="speakable">Fan-out on write vs read, ranking, hot keys</td>
+</tr>
+<tr>
+<td class="speakable">5</td>
+<td class="speakable">Chat (WhatsApp)</td>
+<td class="speakable">WebSockets, ordering, presence, delivery guarantees</td>
+</tr>
+<tr>
+<td class="speakable">6</td>
+<td class="speakable">Distributed cache / KV store</td>
+<td class="speakable">Consistent hashing, replication, quorum</td>
+</tr>
+<tr>
+<td class="speakable">7</td>
+<td class="speakable">File storage / video upload+stream</td>
+<td class="speakable">Chunking, blob store, CDN, async processing</td>
+</tr>
+<tr>
+<td class="speakable">8</td>
+<td class="speakable">Ticketing / e-commerce order + payments</td>
+<td class="speakable">Inventory contention, sagas, idempotency, exactly-once illusions</td>
+</tr>
+<tr>
+<td class="speakable">9</td>
+<td class="speakable">Typeahead / search</td>
+<td class="speakable">Tries, inverted index, ranking</td>
+</tr>
+<tr>
+<td class="speakable">10</td>
+<td class="speakable">Ride-sharing (Uber)</td>
+<td class="speakable">Geospatial index, matching, real-time location</td>
+</tr>
+<tr>
+<td class="speakable">11</td>
+<td class="speakable">Web crawler / job scheduler</td>
+<td class="speakable">Queues, politeness, dedup, leases</td>
+</tr>
+<tr>
+<td class="speakable">12</td>
+<td class="speakable">Collaborative doc editing</td>
+<td class="speakable">OT/CRDT, conflict resolution (stretch)</td>
+</tr>
+<tr>
+<td class="speakable">Bonus (your edge)</td>
+<td class="speakable">Browser sync across devices / telemetry pipeline</td>
+<td class="speakable">Leverages your Edge experience. Good &quot;tell me about a system you built&quot; material.</td>
+</tr>
+</tbody></table></div>
+<p class="speakable"><strong>Company-style rotation (across mocks):</strong></p>
+<p class="speakable">We rotate interviewer styles so you are ready for any top company:</p>
+<ul>
+<li class="speakable"><strong>Google style:</strong> deep storage/distributed-systems internals, custom data structures, scale bottlenecks.</li>
+<li class="speakable"><strong>Meta style:</strong> product-driven API design, real-time fan-out, caching at massive read scale.</li>
+<li class="speakable"><strong>Microsoft / AI-product style:</strong> pragmatic end-to-end architecture, multi-tenant SaaS, hybrid cloud + LLM/RAG integration.</li>
+<li class="speakable"><strong>Amazon / Uber / Stripe style:</strong> operational rigor, idempotency, failure recovery, and senior ownership trade-offs.</li>
+</ul>
+<p class="speakable"><strong>AI track (about 10%):</strong></p>
+<div class="table-wrap"><table><thead><tr>
+<th>#</th>
+<th>Topic</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">A1</td>
+<td class="speakable">LLM app fundamentals: tokens, context, latency/cost, streaming, prompt vs fine-tune vs RAG</td>
+</tr>
+<tr>
+<td class="speakable">A2</td>
+<td class="speakable">RAG internals: chunking, embeddings, hybrid retrieval (BM25 + dense), reranking, vector DB choice</td>
+</tr>
+<tr>
+<td class="speakable">A3</td>
+<td class="speakable">Design an enterprise RAG chatbot: scale, latency, security (ACLs), caching</td>
+</tr>
+<tr>
+<td class="speakable">A4</td>
+<td class="speakable">LLM gateway/platform: routing, semantic cache, rate limits, cost controls, fallbacks</td>
+</tr>
+<tr>
+<td class="speakable">A5</td>
+<td class="speakable">Agents: tool use, planning, memory, failure modes, guardrails, prompt injection</td>
+</tr>
+<tr>
+<td class="speakable">A6</td>
+<td class="speakable">Evaluation: offline/online evals, LLM-as-judge, hallucination detection, regression testing</td>
+</tr>
+</tbody></table></div>
+<h2 class="speakable">Weekly schedule (about 7 hrs/week)</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Week</th>
+<th>Theme</th>
+<th>Sessions</th>
+<th>AI slice (about 45 min)</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable"><strong>1</strong></td>
+<td class="speakable">Foundations + diagnostic</td>
+<td class="speakable">Mock 0 (diagnostic, 45 min), building blocks 1-5 with quizzes, cases #1-2</td>
+<td class="speakable">A1</td>
+</tr>
+<tr>
+<td class="speakable"><strong>2</strong></td>
+<td class="speakable">Data-heavy and fan-out systems</td>
+<td class="speakable">Cases #3-6 (mini-mock each: 25 min), weekly cumulative quiz</td>
+<td class="speakable">A2</td>
+</tr>
+<tr>
+<td class="speakable"><strong>3</strong></td>
+<td class="speakable">Transactional, geo, media, search</td>
+<td class="speakable">Cases #7-10, one full 45-min mock, weekly cumulative quiz</td>
+<td class="speakable">A3, A4</td>
+</tr>
+<tr>
+<td class="speakable"><strong>4</strong></td>
+<td class="speakable">Interview simulation</td>
+<td class="speakable">3 full mocks (random case from the bank, curveballs), weak-spot drills, A5 and A6 mock, final scorecard + next-steps plan</td>
+<td class="speakable">A5, A6</td>
+</tr>
+</tbody></table></div>
+<h2 class="speakable">Session protocol (conversational)</h2>
+<p class="speakable"><strong>Topic session (about 60-75 min):</strong> (1) 10-min primer from me with the &quot;why&quot;, (2) you answer a guided design with me probing, (3) I reveal a reference design and trade-offs, (4) <strong>quiz (5 questions)</strong>.</p>
+<p class="speakable"><strong>Quiz format:</strong> 3 conceptual, 1 estimation, 1 &quot;what breaks?&quot; failure scenario. Scored 0-4 per question. Misses go to <code>progress.md</code>, and are re-quizzed after 2 days and again a week later.</p>
+<p class="speakable"><strong>Full mock (45 min simulated):</strong> I act as interviewer with an ambiguous prompt. Phases: requirements (5 min), estimation (5), API + data (5), HLD (10), deep dive (15), wrap-up &amp; senior trade-offs (5). I inject curveballs (&quot;traffic 10x&quot;, &quot;region fails&quot;, &quot;cut cost by 50%&quot;). Afterwards you get a scorecard.</p>
+<p class="speakable"><strong>Scorecard (1-5 each):</strong> requirements and scoping, estimation, API/data model, HLD clarity, deep-dive depth, trade-offs (with numbers), reliability/ops, communication, senior ownership signal. Targets: &gt;= 4 in all by Mock 4.</p>
+<h2 class="speakable">Continuous improvement loop (weekly, about 30 min)</h2>
+<p class="speakable">See <span class="file-ref">weekly-refresh.md</span>. In short, every week we:</p>
+<ol>
+<li class="speakable"><strong>Harvest:</strong> pull fresh interview experiences from the sources in <span class="file-ref">sources.md</span> (Reddit, Blind, LeetCode Discuss, IGotAnOffer, Design Gurus, etc.).</li>
+<li class="speakable"><strong>Extract</strong> the questions into <span class="file-ref">question-bank.md</span> with company, level, date and a frequency tally.</li>
+<li class="speakable"><strong>Re-rank</strong> topics by frequency x your weakness score from <code>progress.md</code>.</li>
+<li class="speakable"><strong>Update</strong> the next week&#x27;s plan (add, swap or retire cases) and log the change in the changelog.</li>
+<li class="speakable"><strong>Refresh</strong> sources: add new ones, drop stale or low-signal ones.</li>
+</ol>
+<p class="speakable">This can be automated as a scheduled Copilot task once you approve it (see the confirmations list).</p>
+<h2 class="speakable">Timeline</h2>
+<p class="speakable"><strong>Flow:</strong> <code>Week 1 (Mock 0 + Foundations + Cases 1-2 + AI A1) -&gt; Week 2 (Cases 3-6 + AI A2) -&gt; Week 3 (Cases 7-10 + AI A3-A4 + Full Mock #1) -&gt; Week 4 (3 Full Mocks + AI A5-A6 + Final Scorecard)</code></p>
+<p class="speakable">Interactive whiteboard diagram: <a href="#diag-00-timeline.excalidraw" class="diag-chip" onclick="switchTab('diagrams', 'diag-00-timeline.excalidraw'); return false;">📐 00-timeline.excalidraw</a> (open in VS Code with the Excalidraw extension).</p>
+<h2 class="speakable">Why this order</h2>
+<ol>
+<li class="speakable">Mock 0 first: it shows your real gaps before you invest time.</li>
+<li class="speakable">Building blocks before cases: every case reuses them.</li>
+<li class="speakable">Simple cases (URL, rate limiter) before fan-out and transactional cases: difficulty grows step by step.</li>
+<li class="speakable">Mocks last: you need the patterns in memory before you test under time pressure.</li>
+</ol>
+<h2 class="speakable">Files</h2>
+<ul>
+<li class="speakable"><span class="file-ref">01-week1-learning-guide.md</span>: Async reading guide (Mock 0 fixes, Kafka partitions &amp; hot keys, Redis data structures, DB keys, estimation &amp; LLM math)</li>
+<li class="speakable"><span class="file-ref">sources.md</span>: vetted source registry</li>
+<li class="speakable"><span class="file-ref">question-bank.md</span>: questions seen, tallied by frequency</li>
+<li class="speakable"><span class="file-ref">progress.md</span>: quiz and mock scores, missed-question log</li>
+<li class="speakable"><span class="file-ref">weekly-refresh.md</span>: refresh procedure and changelog</li>
+<li class="speakable"><span class="file-ref">inbox/manual-drops.md</span>: drop URLs or raw pasted interview posts here anytime</li>
+</ul></div>
+    </section>
+
+    <section id="pane-bank" class="pane">
+      <div class="card"><h1 class="speakable">Question Bank</h1>
+<p class="speakable">Tally = number of independent sources seen in. Update weekly. Add new questions at the bottom of the matching section.</p>
+<h2 class="speakable">Classic (verified across repos + 2025–2026 interview reports on 2026-11-01)</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Question</th>
+<th>Seen at</th>
+<th>Tally</th>
+<th>Plan slot</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">URL shortener (TinyURL)</td>
+<td class="speakable">Amazon, Google, Meta, MS</td>
+<td class="speakable">6</td>
+<td class="speakable">W1</td>
+</tr>
+<tr>
+<td class="speakable">Rate limiter</td>
+<td class="speakable">Amazon, Google, Stripe</td>
+<td class="speakable">5</td>
+<td class="speakable">W1</td>
+</tr>
+<tr>
+<td class="speakable">Notification / broadcast service</td>
+<td class="speakable">Google, Meta, MS (Teams), Amazon</td>
+<td class="speakable">6</td>
+<td class="speakable">W2</td>
+</tr>
+<tr>
+<td class="speakable">News feed / social timeline + ranking</td>
+<td class="speakable">Meta, Google, Reddit, Twitter</td>
+<td class="speakable">6</td>
+<td class="speakable">W2</td>
+</tr>
+<tr>
+<td class="speakable">Chat / messaging (WhatsApp / Messenger / Slack)</td>
+<td class="speakable">Meta, MS, Google</td>
+<td class="speakable">6</td>
+<td class="speakable">W2</td>
+</tr>
+<tr>
+<td class="speakable">Distributed cache / sharded KV store</td>
+<td class="speakable">Google, Amazon</td>
+<td class="speakable">5</td>
+<td class="speakable">W2</td>
+</tr>
+<tr>
+<td class="speakable">Cloud file storage &amp; sync (Google Drive / OneDrive / Dropbox)</td>
+<td class="speakable">Google, MS, Dropbox</td>
+<td class="speakable">6</td>
+<td class="speakable">W3</td>
+</tr>
+<tr>
+<td class="speakable">Video streaming / media library (YouTube / Netflix / Google Photos)</td>
+<td class="speakable">Google, Meta, Netflix</td>
+<td class="speakable">5</td>
+<td class="speakable">W3</td>
+</tr>
+<tr>
+<td class="speakable">Ticketing / e-commerce orders / Stripe payments &amp; ledger</td>
+<td class="speakable">Stripe, Amazon, Uber, MS</td>
+<td class="speakable">6</td>
+<td class="speakable">W3</td>
+</tr>
+<tr>
+<td class="speakable">Typeahead / search autocomplete</td>
+<td class="speakable">Google, Meta</td>
+<td class="speakable">4</td>
+<td class="speakable">W3</td>
+</tr>
+<tr>
+<td class="speakable">Ride-sharing &amp; real-time geolocation (Uber / Google Maps)</td>
+<td class="speakable">Uber, Google, Meta</td>
+<td class="speakable">5</td>
+<td class="speakable">W3</td>
+</tr>
+<tr>
+<td class="speakable">Collaborative document editing (Google Docs / Office Live)</td>
+<td class="speakable">Google, MS</td>
+<td class="speakable">4</td>
+<td class="speakable">W4 pool</td>
+</tr>
+<tr>
+<td class="speakable">Telemetry / metrics &amp; logging pipeline at scale</td>
+<td class="speakable">Google, MS, Datadog</td>
+<td class="speakable">4</td>
+<td class="speakable">W4 pool</td>
+</tr>
+<tr>
+<td class="speakable">Distributed job scheduler / web crawler</td>
+<td class="speakable">Amazon, Google, MS</td>
+<td class="speakable">4</td>
+<td class="speakable">W4 pool</td>
+</tr>
+</tbody></table></div>
+<h2 class="speakable">AI / LLM (verified from IGotAnOffer GenAI guide + ivesh/ai-interview + 2025–2026 reports)</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Question</th>
+<th>Seen at</th>
+<th>Tally</th>
+<th>Plan slot</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">Enterprise RAG search / customer-support chatbot</td>
+<td class="speakable">Google, MS, Amazon, OpenAI/Anthropic</td>
+<td class="speakable">6</td>
+<td class="speakable">W3</td>
+</tr>
+<tr>
+<td class="speakable">LLM inference serving at scale (100k+ req/day, &lt;2s latency, vLLM/batching/KV cache)</td>
+<td class="speakable">Meta, Google, Anthropic, MS</td>
+<td class="speakable">4</td>
+<td class="speakable">W3</td>
+</tr>
+<tr>
+<td class="speakable">LLM evaluation &amp; hallucination detection pipeline (RAGAS, LLM-as-judge, A/B)</td>
+<td class="speakable">Anthropic, Google, Meta</td>
+<td class="speakable">4</td>
+<td class="speakable">W4</td>
+</tr>
+<tr>
+<td class="speakable">Autonomous multi-step LLM agent (coding assistant / research / travel planner, ReAct &amp; tools)</td>
+<td class="speakable">Anthropic, MS, Google</td>
+<td class="speakable">4</td>
+<td class="speakable">W4</td>
+</tr>
+<tr>
+<td class="speakable">Scalable multi-tenant GenAI API gateway (semantic cache, routing, cost/rate limits)</td>
+<td class="speakable">MS, Amazon, Stripe</td>
+<td class="speakable">3</td>
+<td class="speakable">W3</td>
+</tr>
+<tr>
+<td class="speakable">Prompt injection &amp; multi-layer safety guardrails</td>
+<td class="speakable">Anthropic, OpenAI, MS</td>
+<td class="speakable">3</td>
+<td class="speakable">W4</td>
+</tr>
+<tr>
+<td class="speakable">Hybrid retrieval (BM25 + dense embeddings + cross-encoder reranking)</td>
+<td class="speakable">Google, MS, Databricks</td>
+<td class="speakable">4</td>
+<td class="speakable">W2</td>
+</tr>
+</tbody></table></div>
+<h2 class="speakable">Newly harvested (add weekly)</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Date</th>
+<th>Question</th>
+<th>Source</th>
+<th>Company</th>
+<th>Level</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">2026-11-01</td>
+<td class="speakable">Design a payment processing &amp; reconciliation ledger (idempotency, fraud, rollback)</td>
+<td class="speakable">Reddit / Stripe reports</td>
+<td class="speakable">Stripe / Uber</td>
+<td class="speakable">Senior / L5</td>
+</tr>
+<tr>
+<td class="speakable">2026-11-01</td>
+<td class="speakable">Design a telemetry/metrics ingestion pipeline for millions of clients</td>
+<td class="speakable">Google L5 / MS reports</td>
+<td class="speakable">Google / Microsoft</td>
+<td class="speakable">L5 / Senior</td>
+</tr>
+<tr>
+<td class="speakable">2026-11-01</td>
+<td class="speakable">Design a production LLM serving layer (100k req/day, &lt;2s latency, continuous batching)</td>
+<td class="speakable">ivesh/ai-interview + GenAI reports</td>
+<td class="speakable">Big Tech AI</td>
+<td class="speakable">Senior AI Eng</td>
+</tr>
+</tbody></table></div></div>
+    </section>
+
+    <section id="pane-progress" class="pane">
+      <div class="card"><h1 class="speakable">Progress Tracker</h1>
+<h2 class="speakable">Scorecards (1-5; target &gt;= 4 by Mock 4)</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Date</th>
+<th>Session</th>
+<th>Reqs</th>
+<th>Estimation</th>
+<th>API/Data</th>
+<th>HLD</th>
+<th>Deep-dive</th>
+<th>Trade-offs</th>
+<th>Reliability</th>
+<th>Comms</th>
+<th>Ownership</th>
+<th>Notes</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">2026-11-01</td>
+<td class="speakable">Mock 0 (diagnostic: Notification + AI Digest)</td>
+<td class="speakable">3.5</td>
+<td class="speakable">3.5</td>
+<td class="speakable">2.5</td>
+<td class="speakable">2.5</td>
+<td class="speakable">2.0</td>
+<td class="speakable">2.5</td>
+<td class="speakable">3.5</td>
+<td class="speakable">3.5</td>
+<td class="speakable">3.0</td>
+<td class="speakable">Good QPS math, backoff/DLQ, jitter &amp; multi-LLM instincts. Key gap: used DB row locks/polling instead of Kafka partitions + Redis ZSET delayed timers.</td>
+</tr>
+</tbody></table></div>
+<h2 class="speakable">Quiz scores (each question 0-4, total /20)</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Date</th>
+<th>Topic</th>
+<th>Score</th>
+<th>Weakest area</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">2026-11-01</td>
+<td class="speakable">Mock 0 Diagnostic Quiz</td>
+<td class="speakable">6 / 20</td>
+<td class="speakable">Kafka partitions &amp; hot keys (Q1, Q5) + Redis Lists &amp; ZSET timers (Q3)</td>
+</tr>
+</tbody></table></div>
+<h2 class="speakable">Missed-question log (re-quiz after 2 days, then 1 week)</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Date</th>
+<th>Topic</th>
+<th>Question</th>
+<th>Correct idea</th>
+<th>Re-quiz 1</th>
+<th>Re-quiz 2</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">2026-11-01</td>
+<td class="speakable">Mock 0</td>
+<td class="speakable">How to distribute 30k tasks/sec to workers without DB polling or row locks?</td>
+<td class="speakable">Partition Kafka topics by <code>user_id</code>; consumer group assigns 1 worker per partition (zero locks). Use NoSQL only for inbox/state log.</td>
+<td class="speakable">Due 2026-11-03</td>
+<td class="speakable">Due 2026-11-08</td>
+</tr>
+<tr>
+<td class="speakable">2026-11-01</td>
+<td class="speakable">Mock 0</td>
+<td class="speakable">How to execute &quot;after 15m if unread, send Email&quot; and &quot;15m AI digest window&quot; at scale?</td>
+<td class="speakable">Use a Redis Sorted Set (<code>ZSET</code>) keyed by <code>trigger_timestamp</code> (or delayed queue) + Redis List/counter for message buffering.</td>
+<td class="speakable">Due 2026-11-03</td>
+<td class="speakable">Due 2026-11-08</td>
+</tr>
+<tr>
+<td class="speakable">2026-11-01</td>
+<td class="speakable">Mock 0</td>
+<td class="speakable">How should idempotency keys be generated, and what if all LLMs fail?</td>
+<td class="speakable">Caller generates a UUID <code>idempotency_key</code> (stored in Redis <code>SET NX EX</code>), not a content hash. If all LLMs fail, degrade to a deterministic template summary.</td>
+<td class="speakable">Due 2026-11-03</td>
+<td class="speakable">Due 2026-11-08</td>
+</tr>
+</tbody></table></div>
+<h2 class="speakable">Weakness heat-map (updated weekly; feeds the refresh ranking)</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Area</th>
+<th>Score 1-5 (1 = weak)</th>
+<th>Last updated</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">Estimation</td>
+<td class="speakable">3.5</td>
+<td class="speakable">2026-11-01</td>
+</tr>
+<tr>
+<td class="speakable">DB / sharding / replication</td>
+<td class="speakable">2.0</td>
+<td class="speakable">2026-11-01</td>
+</tr>
+<tr>
+<td class="speakable">Caching</td>
+<td class="speakable">2.5</td>
+<td class="speakable">2026-11-01</td>
+</tr>
+<tr>
+<td class="speakable">Queues / streaming</td>
+<td class="speakable">2.0</td>
+<td class="speakable">2026-11-01</td>
+</tr>
+<tr>
+<td class="speakable">Consistency / transactions</td>
+<td class="speakable">2.5</td>
+<td class="speakable">2026-11-01</td>
+</tr>
+<tr>
+<td class="speakable">Reliability / observability</td>
+<td class="speakable">3.5</td>
+<td class="speakable">2026-11-01</td>
+</tr>
+<tr>
+<td class="speakable">Geospatial / search</td>
+<td class="speakable">2.5</td>
+<td class="speakable">2026-11-01</td>
+</tr>
+<tr>
+<td class="speakable">LLM / RAG / agents</td>
+<td class="speakable">3.0</td>
+<td class="speakable">2026-11-01</td>
+</tr>
+<tr>
+<td class="speakable">Communication / structure</td>
+<td class="speakable">3.5</td>
+<td class="speakable">2026-11-01</td>
+</tr>
+<tr>
+<td class="speakable">Senior trade-offs &amp; ops</td>
+<td class="speakable">2.5</td>
+<td class="speakable">2026-11-01</td>
+</tr>
+</tbody></table></div></div>
+    </section>
+
+    <section id="pane-sources" class="pane">
+      <div class="card"><h1 class="speakable">Source Registry</h1>
+<p class="speakable">Status: <strong>Verified</strong> on 2026-11-01 across all 5 approved GitHub repositories and primary web guides.</p>
+<h2 class="speakable">Verified GitHub Repositories (approved for reference)</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Repo</th>
+<th>URL</th>
+<th>Verified Contents</th>
+<th>Rel.</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">donnemartin/system-design-primer</td>
+<td class="speakable">https://github.com/donnemartin/system-design-primer</td>
+<td class="speakable">Verified (<code>README.md</code>): scalability lectures, trade-offs, Anki decks, step-by-step framework, classic worked solutions</td>
+<td class="speakable">H</td>
+</tr>
+<tr>
+<td class="speakable">ashishps1/awesome-system-design-resources</td>
+<td class="speakable">https://github.com/ashishps1/awesome-system-design-resources</td>
+<td class="speakable">Verified (<code>README.md</code>): 30 core concepts, top 15 trade-offs, 40+ categorized Easy/Medium/Hard interview problems</td>
+<td class="speakable">H</td>
+</tr>
+<tr>
+<td class="speakable">karanpratapsingh/system-design</td>
+<td class="speakable">https://github.com/karanpratapsingh/system-design</td>
+<td class="speakable">Verified (<code>README.md</code>): 5-chapter course (Networking, DB/CAP/PACELC/Sharding, EDA/CQRS/Queues, Geohash/Rate Limit/SLO, 5 deep case studies)</td>
+<td class="speakable">H</td>
+</tr>
+<tr>
+<td class="speakable">ByteByteGoHq/system-design-101</td>
+<td class="speakable">https://github.com/ByteByteGoHq/system-design-101</td>
+<td class="speakable">Verified (<code>README.md</code>): visual guides on APIs, gRPC, HTTP/1-3, load balancers, caching, DB internals, payment &amp; messaging systems</td>
+<td class="speakable">H</td>
+</tr>
+<tr>
+<td class="speakable">ivesh/ai-interview</td>
+<td class="speakable">https://github.com/ivesh/ai-interview</td>
+<td class="speakable">Verified (<code>LLM-ML-SYSTEM-DESIGN-MASTER-GUIDE.md</code>): 7 deep guides covering vLLM/PagedAttention, Production RAG (chunking, hybrid search, RAGAS), Agentic patterns (ReAct, CoT), MLOps, Embeddings</td>
+<td class="speakable">H</td>
+</tr>
+</tbody></table></div>
+<h2 class="speakable">Interview experiences and question lists (harvest weekly)</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Source</th>
+<th>URL</th>
+<th>Use</th>
+<th>Status / Rel.</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">IGotAnOffer: 50+ SD questions</td>
+<td class="speakable">https://igotanoffer.com/blogs/tech/system-design-interviews</td>
+<td class="speakable">Question list across Google/Meta/Amazon/MS</td>
+<td class="speakable">Verified (updated Oct 2026) / H</td>
+</tr>
+<tr>
+<td class="speakable">Hello Interview: Google L5 Guide 2026</td>
+<td class="speakable">https://www.hellointerview.com/guides/google/l5</td>
+<td class="speakable">Senior/L5 expectations &amp; rubric</td>
+<td class="speakable">Surfaced / H</td>
+</tr>
+<tr>
+<td class="speakable">Design Gurus: SD interviews at Google/Amazon/Meta 2026</td>
+<td class="speakable">https://www.designgurus.io/blog/system-design-interviews-at-google-meta-amazon</td>
+<td class="speakable">Company patterns</td>
+<td class="speakable">Surfaced / M-H</td>
+</tr>
+<tr>
+<td class="speakable">System Design Handbook: Google &amp; Amazon SD 2026</td>
+<td class="speakable">https://www.systemdesignhandbook.com/blog/google-system-design-interview-questions/</td>
+<td class="speakable">Company-specific questions</td>
+<td class="speakable">Surfaced / M</td>
+</tr>
+<tr>
+<td class="speakable">KORE1: SD questions for senior engineers 2026</td>
+<td class="speakable">https://www.kore1.com/system-design-interview-questions/</td>
+<td class="speakable">Senior-level trends</td>
+<td class="speakable">Surfaced / M</td>
+</tr>
+<tr>
+<td class="speakable">Reddit: r/ExperiencedDevs, r/leetcode</td>
+<td class="speakable">https://www.reddit.com/r/ExperiencedDevs/</td>
+<td class="speakable">Fresh first-hand reports</td>
+<td class="speakable">Harvested via search / M</td>
+</tr>
+<tr>
+<td class="speakable">LeetCode Discuss: interview experience</td>
+<td class="speakable">https://leetcode.com/discuss/interview-experience</td>
+<td class="speakable">Company-tagged reports</td>
+<td class="speakable">Harvested via search / M-H</td>
+</tr>
+</tbody></table></div>
+<h2 class="speakable">AI / LLM system design</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Source</th>
+<th>URL</th>
+<th>Status / Rel.</th>
+</tr></thead><tbody>
+<tr>
+<td class="speakable">IGotAnOffer: Generative AI SD interview</td>
+<td class="speakable">https://igotanoffer.com/en/advice/generative-ai-system-design-interview</td>
+<td class="speakable">Verified (updated Apr 2026; covers Amazon, Anthropic, Apple, Google, Meta, Netflix) / H</td>
+</tr>
+<tr>
+<td class="speakable">DataCamp: Top 30 RAG interview questions</td>
+<td class="speakable">https://www.datacamp.com/blog/rag-interview-questions</td>
+<td class="speakable">Surfaced / M-H</td>
+</tr>
+<tr>
+<td class="speakable">System Design Handbook: AI SD questions 2026</td>
+<td class="speakable">https://www.systemdesignhandbook.com/blog/ai-system-design-interview-questions/</td>
+<td class="speakable">Surfaced / M</td>
+</tr>
+<tr>
+<td class="speakable">Interview Query: AI SD questions</td>
+<td class="speakable">https://www.interviewquery.com/blog/ai-system-design-interview-questions/</td>
+<td class="speakable">Surfaced / M</td>
+</tr>
+</tbody></table></div>
+<h2 class="speakable">Changelog</h2>
+<ul>
+<li class="speakable">2026-11-01: initial registry created; verified all 5 GitHub repos + IGotAnOffer SD &amp; GenAI guides; added Google L5 / Meta / Microsoft / Uber / Stripe sources.</li>
+</ul></div>
+    </section>
+  </main>
+
+  <div class="audio-bar">
+    <div class="audio-inner">
+      <div class="audio-controls">
+        <button class="btn" onclick="prevLine()" title="Previous paragraph">⏮</button>
+        <button class="btn btn-primary" id="playBtn" onclick="togglePlay()">▶ Listen</button>
+        <button class="btn" onclick="nextLine()" title="Next paragraph">⏭</button>
+        <button class="btn" id="speedBtn" onclick="cycleSpeed()">1x</button>
+      </div>
+      <div class="audio-status" id="audioStatus">Tap Play or any paragraph to listen</div>
+      <select class="voice-select" id="voiceSelect" onchange="onVoiceChange()"></select>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="bmModal" onclick="if(event.target===this)closeBookmarkModal()">
+    <div class="modal">
+      <h3 style="margin-top:0">📌 Save Interview Source / Note</h3>
+      <p style="font-size:13px;color:var(--muted);margin-top:4px">
+        Submits a tagged GitHub Issue to <code>Rrishik/sd-interview-prep</code>. Our weekly refresh script automatically ingests open issues into your prep materials.
+      </p>
+      <label style="font-size:13px;font-weight:600">Title or Company / Question</label>
+      <input id="bmTitle" placeholder="e.g. Meta E5 SD: Distributed Rate Limiter + Token Bucket" />
+      <label style="font-size:13px;font-weight:600">URL or Raw Notes</label>
+      <textarea id="bmBody" rows="4" placeholder="Paste link, Blind/LeetCode snippet, or key takeaway..."></textarea>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn" onclick="closeBookmarkModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitBookmarkIssue()">Open in GitHub ↗</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Theme toggle
+    const savedTheme = localStorage.getItem('sd_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    function toggleTheme() {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('sd_theme', next);
+    }
+
+    // Tabs
+    function switchTab(tabId, scrollTargetId) {
+      stopSpeech();
+      document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+      document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + tabId));
+      if (scrollTargetId) {
+        setTimeout(() => {
+          const el = document.getElementById(scrollTargetId);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 60);
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    // Web Speech API Audio Player
+    const synth = window.speechSynthesis;
+    let voices = [];
+    let selectedVoice = null;
+    let speeds = [1.0, 1.25, 1.5, 1.75, 2.0];
+    let speedIdx = 0;
+    let isPlaying = false;
+    let currentIdx = 0;
+
+    function getActiveSpeakables() {
+      const activePane = document.querySelector('.pane.active');
+      return activePane ? Array.from(activePane.querySelectorAll('.speakable')) : [];
+    }
+
+    function loadVoices() {
+      if (!synth) return;
+      voices = synth.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+      if (!voices.length) voices = synth.getVoices();
+      const sel = document.getElementById('voiceSelect');
+      sel.innerHTML = '';
+      // Prefer Natural / Online / Samantha / Google US English voices
+      voices.sort((a, b) => {
+        const score = v => (v.name.includes('Natural') || v.name.includes('Online') || v.name.includes('Samantha') || v.name.includes('Google')) ? 0 : 1;
+        return score(a) - score(b);
+      });
+      voices.forEach((v, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = v.name.replace(/Microsoft |Online \(Natural\) - /g, '');
+        sel.appendChild(opt);
+      });
+      selectedVoice = voices[0] || null;
+    }
+    if (synth) {
+      loadVoices();
+      if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
+    }
+
+    function onVoiceChange() {
+      const sel = document.getElementById('voiceSelect');
+      selectedVoice = voices[Number(sel.value)] || null;
+      if (isPlaying) speakAt(currentIdx);
+    }
+
+    function clearHighlights() {
+      document.querySelectorAll('.speakable.speaking').forEach(el => el.classList.remove('speaking'));
+    }
+
+    function speakAt(idx) {
+      if (!synth) return;
+      const items = getActiveSpeakables();
+      if (!items.length) return;
+      if (idx < 0) idx = 0;
+      if (idx >= items.length) {
+        stopSpeech();
+        return;
+      }
+      currentIdx = idx;
+      synth.cancel();
+      clearHighlights();
+
+      const el = items[currentIdx];
+      el.classList.add('speaking');
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      const cleanText = el.innerText.replace(/📐/g, '').trim();
+      document.getElementById('audioStatus').textContent = `[${currentIdx + 1}/${items.length}] ` + cleanText.slice(0, 65);
+
+      const utter = new SpeechSynthesisUtterance(cleanText);
+      if (selectedVoice) utter.voice = selectedVoice;
+      utter.rate = speeds[speedIdx];
+      utter.onend = () => {
+        if (isPlaying) speakAt(currentIdx + 1);
+      };
+      utter.onerror = () => {
+        if (isPlaying) speakAt(currentIdx + 1);
+      };
+      isPlaying = true;
+      document.getElementById('playBtn').textContent = '⏸ Pause';
+      synth.speak(utter);
+    }
+
+    function togglePlay() {
+      if (!synth) {
+        alert('Web Speech API is not supported in this browser.');
+        return;
+      }
+      if (isPlaying) {
+        stopSpeech();
+      } else {
+        speakAt(currentIdx);
+      }
+    }
+
+    function stopSpeech() {
+      isPlaying = false;
+      if (synth) synth.cancel();
+      clearHighlights();
+      document.getElementById('playBtn').textContent = '▶ Listen';
+    }
+
+    function prevLine() {
+      speakAt(Math.max(0, currentIdx - 1));
+    }
+
+    function nextLine() {
+      speakAt(currentIdx + 1);
+    }
+
+    function cycleSpeed() {
+      speedIdx = (speedIdx + 1) % speeds.length;
+      document.getElementById('speedBtn').textContent = speeds[speedIdx] + 'x';
+      if (isPlaying) speakAt(currentIdx);
+    }
+
+    // Tap any paragraph to start reading from there
+    document.addEventListener('click', e => {
+      const sp = e.target.closest('.speakable');
+      if (!sp || e.target.closest('a')) return;
+      const items = getActiveSpeakables();
+      const idx = items.indexOf(sp);
+      if (idx !== -1 && isPlaying) {
+        speakAt(idx);
+      } else if (idx !== -1) {
+        currentIdx = idx;
+        clearHighlights();
+        sp.classList.add('speaking');
+        document.getElementById('audioStatus').textContent = `Ready at [${idx + 1}/${items.length}] — tap ▶ Listen`;
+      }
+    });
+
+    // Bookmark modal -> GitHub Issue
+    function openBookmarkModal() {
+      document.getElementById('bmModal').classList.add('open');
+      document.getElementById('bmTitle').focus();
+    }
+    function closeBookmarkModal() {
+      document.getElementById('bmModal').classList.remove('open');
+    }
+    function submitBookmarkIssue() {
+      const title = document.getElementById('bmTitle').value.trim() || 'New Interview Source / Note';
+      const body = document.getElementById('bmBody').value.trim();
+      const url = `https://github.com/Rrishik/sd-interview-prep/issues/new?labels=inbox&title=${encodeURIComponent('[Inbox] ' + title)}&body=${encodeURIComponent(body)}`;
+      window.open(url, '_blank');
+      closeBookmarkModal();
+    }
+  </script>
+</body>
+</html>

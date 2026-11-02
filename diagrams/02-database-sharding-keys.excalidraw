@@ -1,0 +1,1968 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://excalidraw.com",
+  "elements": [
+    {
+      "id": "d_title",
+      "type": "text",
+      "x": 40.0,
+      "y": 18.0,
+      "width": 980.0,
+      "height": 34.0,
+      "angle": 0,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 605720,
+      "version": 2,
+      "versionNonce": 845127,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "text": "Database Keys, Sharding & Storage Engines (B-Tree vs LSM-Tree)",
+      "fontSize": 22,
+      "fontFamily": 2,
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": null,
+      "originalText": "Database Keys, Sharding & Storage Engines (B-Tree vs LSM-Tree)",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "d_sub",
+      "type": "text",
+      "x": 40.0,
+      "y": 52.0,
+      "width": 980.0,
+      "height": 22.0,
+      "angle": 0,
+      "strokeColor": "#475569",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 312007,
+      "version": 2,
+      "versionNonce": 612092,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "text": "Partition Key = Which Physical Node (Hash)   |   Sort Key = Contiguous Order on Disk",
+      "fontSize": 13,
+      "fontFamily": 3,
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": null,
+      "originalText": "Partition Key = Which Physical Node (Hash)   |   Sort Key = Contiguous Order on Disk",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "c_pk",
+      "type": "rectangle",
+      "x": 40.0,
+      "y": 90.0,
+      "width": 980.0,
+      "height": 195.0,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 76930,
+      "version": 2,
+      "versionNonce": 254865,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "c_pk_lbl",
+      "type": "text",
+      "x": 54.0,
+      "y": 98.0,
+      "width": 952.0,
+      "height": 24.0,
+      "angle": 0,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 220342,
+      "version": 2,
+      "versionNonce": 41843,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "text": "1. COMPOSITE PRIMARY KEY ROUTING:  PRIMARY KEY ( (user_id),  created_at DESC )",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": null,
+      "originalText": "1. COMPOSITE PRIMARY KEY ROUTING:  PRIMARY KEY ( (user_id),  created_at DESC )",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "d_q",
+      "type": "rectangle",
+      "x": 60.0,
+      "y": 135.0,
+      "width": 255.0,
+      "height": 125.0,
+      "angle": 0,
+      "strokeColor": "#334155",
+      "backgroundColor": "#f8fafc",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 168712,
+      "version": 2,
+      "versionNonce": 891949,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_q_ico_lib_0",
+      "type": "rectangle",
+      "x": 74.0,
+      "y": 173.96153846153848,
+      "width": 48.00000000000002,
+      "height": 47.076923076923045,
+      "angle": 0,
+      "strokeColor": "#334155",
+      "backgroundColor": "#f8fafc",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_q_ico"
+      ],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 777284,
+      "version": 2,
+      "versionNonce": 634419,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_q_txt",
+      "type": "text",
+      "x": 134.0,
+      "y": 159.5,
+      "width": 173.0,
+      "height": 76.0,
+      "angle": 0,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 224424,
+      "version": 2,
+      "versionNonce": 467095,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "text": "Application Query\nWHERE user_id = 'u_42'\nORDER BY created_at DESC\nLIMIT 20",
+      "fontSize": 13,
+      "fontFamily": 3,
+      "textAlign": "left",
+      "verticalAlign": "middle",
+      "containerId": null,
+      "originalText": "Application Query\nWHERE user_id = 'u_42'\nORDER BY created_at DESC\nLIMIT 20",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "d_hash",
+      "type": "rectangle",
+      "x": 375.0,
+      "y": 135.0,
+      "width": 265.0,
+      "height": 125.0,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 60818,
+      "version": 2,
+      "versionNonce": 519623,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_hash_ico_lib_0",
+      "type": "rectangle",
+      "x": 404.711012382171,
+      "y": 173.5,
+      "width": 16.577975235658002,
+      "height": 47.99999999999999,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_hash_ico"
+      ],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 175970,
+      "version": 2,
+      "versionNonce": 672749,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_hash_ico_lib_1",
+      "type": "ellipse",
+      "x": 414.970690191622,
+      "y": 190.12330011055647,
+      "width": 4.391806760412692,
+      "height": 4.256674244707683,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_hash_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 503384,
+      "version": 2,
+      "versionNonce": 197054,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_hash_ico_lib_2",
+      "type": "ellipse",
+      "x": 406.39226281829474,
+      "y": 189.43540021837256,
+      "width": 4.391806760412692,
+      "height": 4.256674244707683,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_hash_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 86601,
+      "version": 2,
+      "versionNonce": 279700,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_hash_ico_lib_3",
+      "type": "ellipse",
+      "x": 415.08766326768415,
+      "y": 202.15935413350044,
+      "width": 4.391806760412692,
+      "height": 4.256674244707683,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_hash_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 87103,
+      "version": 2,
+      "versionNonce": 489123,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_hash_ico_lib_4",
+      "type": "ellipse",
+      "x": 414.9255042488411,
+      "y": 177.85287462284458,
+      "width": 4.391806760412692,
+      "height": 4.256674244707683,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_hash_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 242837,
+      "version": 2,
+      "versionNonce": 246218,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_hash_ico_lib_5",
+      "type": "arrow",
+      "x": 409.5009959389334,
+      "y": 193.76819340266937,
+      "width": 6.3470627632093795,
+      "height": 8.93956337303159,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_hash_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 489172,
+      "version": 2,
+      "versionNonce": 291759,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          6.3470627632093795,
+          8.93956337303159
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": "arrow"
+    },
+    {
+      "id": "d_hash_ico_lib_6",
+      "type": "arrow",
+      "x": 410.92470753461316,
+      "y": 191.62926543330036,
+      "width": 3.9513036870853315,
+      "height": 1.0,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_hash_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 726265,
+      "version": 2,
+      "versionNonce": 277673,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          3.9513036870853315,
+          0.3141605589826947
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": "arrow"
+    },
+    {
+      "id": "d_hash_ico_lib_7",
+      "type": "arrow",
+      "x": 409.8629828420586,
+      "y": 189.61830096541757,
+      "width": 6.041955676125018,
+      "height": 7.7377950424861135,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_hash_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 173409,
+      "version": 2,
+      "versionNonce": 590776,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          6.041955676125018,
+          -7.7377950424861135
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": "arrow"
+    },
+    {
+      "id": "d_hash_txt",
+      "type": "text",
+      "x": 449.0,
+      "y": 159.5,
+      "width": 183.0,
+      "height": 76.0,
+      "angle": 0,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 19693,
+      "version": 2,
+      "versionNonce": 701485,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "text": "1. Partition Router\nMurmur3('u_42') -> Token 74\nRoutes directly to Shard #3\n(No scatter-gather!)",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "textAlign": "left",
+      "verticalAlign": "middle",
+      "containerId": null,
+      "originalText": "1. Partition Router\nMurmur3('u_42') -> Token 74\nRoutes directly to Shard #3\n(No scatter-gather!)",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "d_disk",
+      "type": "rectangle",
+      "x": 700.0,
+      "y": 135.0,
+      "width": 300.0,
+      "height": 125.0,
+      "angle": 0,
+      "strokeColor": "#047857",
+      "backgroundColor": "#ecfdf5",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 270850,
+      "version": 2,
+      "versionNonce": 51338,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_disk_ico_lib_0",
+      "type": "line",
+      "x": 720.9344179705548,
+      "y": 177.43885621572267,
+      "width": 34.13849208688217,
+      "height": 44.061143784277334,
+      "angle": 0,
+      "strokeColor": "#047857",
+      "backgroundColor": "#ecfdf5",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_disk_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 634908,
+      "version": 2,
+      "versionNonce": 123778,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.11257121526426443,
+          33.301173657447826
+        ],
+        [
+          0.005268068609217725,
+          37.092367669290546
+        ],
+        [
+          1.7582078447554657,
+          38.73049572116761
+        ],
+        [
+          7.862733149160209,
+          40.11688247920009
+        ],
+        [
+          18.18111012696433,
+          40.54858260530533
+        ],
+        [
+          28.039636993728664,
+          39.8593101170478
+        ],
+        [
+          33.27754490478727,
+          38.21092742780184
+        ],
+        [
+          34.01628093800154,
+          36.82132352863378
+        ],
+        [
+          34.12003373961788,
+          33.76906087643141
+        ],
+        [
+          34.03859985462838,
+          2.7937825966583154
+        ],
+        [
+          33.855021738590054,
+          -0.13281047994281273
+        ],
+        [
+          31.66298614747836,
+          -1.7685026022101344
+        ],
+        [
+          27.047026992167385,
+          -2.7158089277828035
+        ],
+        [
+          16.527879751007486,
+          -3.512561178972006
+        ],
+        [
+          8.094191510846315,
+          -3.0374560175482306
+        ],
+        [
+          1.461152986169079,
+          -1.4259572800692764
+        ],
+        [
+          -0.018458347264289195,
+          -0.020009468883153348
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": null
+    },
+    {
+      "id": "d_disk_ico_lib_1",
+      "type": "ellipse",
+      "x": 720.927089942563,
+      "y": 173.5,
+      "width": 33.91952220778814,
+      "height": 6.859968179481581,
+      "angle": 0,
+      "strokeColor": "#047857",
+      "backgroundColor": "#ecfdf5",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_disk_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 440137,
+      "version": 2,
+      "versionNonce": 785654,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_disk_ico_lib_2",
+      "type": "rectangle",
+      "x": 728.5921903973317,
+      "y": 187.12662384544865,
+      "width": 1.9650845790571771,
+      "height": 22.107201514393246,
+      "angle": 0,
+      "strokeColor": "#047857",
+      "backgroundColor": "#ecfdf5",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_disk_ico"
+      ],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 383094,
+      "version": 2,
+      "versionNonce": 85340,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_disk_ico_lib_3",
+      "type": "rectangle",
+      "x": 732.9317521760828,
+      "y": 187.26308805232816,
+      "width": 1.9650845790571771,
+      "height": 22.107201514393246,
+      "angle": 0,
+      "strokeColor": "#047857",
+      "backgroundColor": "#ecfdf5",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_disk_ico"
+      ],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 349989,
+      "version": 2,
+      "versionNonce": 373624,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_disk_ico_lib_4",
+      "type": "rectangle",
+      "x": 737.0529712238283,
+      "y": 187.12662384544865,
+      "width": 1.9650845790571771,
+      "height": 22.107201514393246,
+      "angle": 0,
+      "strokeColor": "#047857",
+      "backgroundColor": "#ecfdf5",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_disk_ico"
+      ],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 573799,
+      "version": 2,
+      "versionNonce": 842032,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_disk_ico_lib_5",
+      "type": "rectangle",
+      "x": 741.1468974301971,
+      "y": 187.26308805232816,
+      "width": 1.9650845790571771,
+      "height": 22.107201514393246,
+      "angle": 0,
+      "strokeColor": "#047857",
+      "backgroundColor": "#ecfdf5",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_disk_ico"
+      ],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 514260,
+      "version": 2,
+      "versionNonce": 744564,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_disk_ico_lib_6",
+      "type": "rectangle",
+      "x": 745.2408236365657,
+      "y": 187.20850236957594,
+      "width": 1.9650845790571771,
+      "height": 22.107201514393246,
+      "angle": 0,
+      "strokeColor": "#047857",
+      "backgroundColor": "#ecfdf5",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_disk_ico"
+      ],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 220339,
+      "version": 2,
+      "versionNonce": 207585,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_disk_txt",
+      "type": "text",
+      "x": 774.0,
+      "y": 159.5,
+      "width": 218.0,
+      "height": 76.0,
+      "angle": 0,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 435398,
+      "version": 2,
+      "versionNonce": 658651,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "text": "2. Shard #3 Storage\nSeeks to 'u_42' on disk\nReads 20 contiguous rows\nsorted by created_at (<3 ms)",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "textAlign": "left",
+      "verticalAlign": "middle",
+      "containerId": null,
+      "originalText": "2. Shard #3 Storage\nSeeks to 'u_42' on disk\nReads 20 contiguous rows\nsorted by created_at (<3 ms)",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "ad1",
+      "type": "arrow",
+      "x": 315.0,
+      "y": 197.0,
+      "width": 60.0,
+      "height": 1.0,
+      "angle": 0,
+      "strokeColor": "#475569",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 594568,
+      "version": 2,
+      "versionNonce": 199527,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          60.0,
+          0.0
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "ad1_lbl",
+      "type": "text",
+      "x": 290.0,
+      "y": 177.0,
+      "width": 110.0,
+      "height": 20.0,
+      "angle": 0,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 537677,
+      "version": 2,
+      "versionNonce": 535100,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "text": "O(1) hop",
+      "fontSize": 11,
+      "fontFamily": 3,
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "containerId": null,
+      "originalText": "O(1) hop",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "ad2",
+      "type": "arrow",
+      "x": 640.0,
+      "y": 197.0,
+      "width": 60.0,
+      "height": 1.0,
+      "angle": 0,
+      "strokeColor": "#475569",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 342927,
+      "version": 2,
+      "versionNonce": 690892,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          60.0,
+          0.0
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "ad2_lbl",
+      "type": "text",
+      "x": 615.0,
+      "y": 177.0,
+      "width": 110.0,
+      "height": 20.0,
+      "angle": 0,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 157991,
+      "version": 2,
+      "versionNonce": 689701,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "text": "1 disk seek",
+      "fontSize": 11,
+      "fontFamily": 3,
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "containerId": null,
+      "originalText": "1 disk seek",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "c_eng",
+      "type": "rectangle",
+      "x": 40.0,
+      "y": 310.0,
+      "width": 980.0,
+      "height": 225.0,
+      "angle": 0,
+      "strokeColor": "#64748b",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "dashed",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 101862,
+      "version": 2,
+      "versionNonce": 423649,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "c_eng_lbl",
+      "type": "text",
+      "x": 54.0,
+      "y": 318.0,
+      "width": 952.0,
+      "height": 24.0,
+      "angle": 0,
+      "strokeColor": "#334155",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 295206,
+      "version": 2,
+      "versionNonce": 895738,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "text": "2. STORAGE ENGINE COMPARISON: RELATIONAL B-TREE vs COLUMNAR / LOG LSM-TREE",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": null,
+      "originalText": "2. STORAGE ENGINE COMPARISON: RELATIONAL B-TREE vs COLUMNAR / LOG LSM-TREE",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "d_btree",
+      "type": "rectangle",
+      "x": 60.0,
+      "y": 355.0,
+      "width": 450.0,
+      "height": 155.0,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 341445,
+      "version": 2,
+      "versionNonce": 340316,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_btree_ico_lib_0",
+      "type": "line",
+      "x": 80.86513403432824,
+      "y": 411.7105716824936,
+      "width": 34.70276558591719,
+      "height": 44.78942831750642,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_btree_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 649037,
+      "version": 2,
+      "versionNonce": 357084,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.11443189948447335,
+          33.85160716030558
+        ],
+        [
+          0.005355144262697418,
+          37.70546563621235
+        ],
+        [
+          1.7872691779293526,
+          39.37067022812361
+        ],
+        [
+          7.992695888427147,
+          40.779972506413465
+        ],
+        [
+          18.48162482461337,
+          41.21880818320654
+        ],
+        [
+          28.503102809320517,
+          40.51814274303573
+        ],
+        [
+          33.82758784912503,
+          38.84251401534609
+        ],
+        [
+          34.57853441481574,
+          37.429941419949124
+        ],
+        [
+          34.684002141515904,
+          34.327228064700215
+        ],
+        [
+          34.60122223974542,
+          2.8399608952588453
+        ],
+        [
+          34.41460976982828,
+          -0.13500569799857284
+        ],
+        [
+          32.186342127521804,
+          -1.797734096936422
+        ],
+        [
+          27.494086004631225,
+          -2.760698403348679
+        ],
+        [
+          16.80106828303156,
+          -3.5706201342998822
+        ],
+        [
+          8.227980014276989,
+          -3.0876619824404243
+        ],
+        [
+          1.4853043138268098,
+          -1.4495268595882298
+        ],
+        [
+          -0.018763444401289766,
+          -0.020340204435027136
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": null
+    },
+    {
+      "id": "d_btree_ico_lib_1",
+      "type": "line",
+      "x": 81.10097947235528,
+      "y": 437.4258157742816,
+      "width": 34.73876178462943,
+      "height": 3.8543185264680555,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_btree_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 6484,
+      "version": 2,
+      "versionNonce": 630325,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.9152172123655087,
+          1.53639577840832
+        ],
+        [
+          4.862170677082069,
+          2.825417717219401
+        ],
+        [
+          10.114210444666657,
+          3.606041609107631
+        ],
+        [
+          18.342186678964435,
+          3.6771763498398804
+        ],
+        [
+          27.943952593653897,
+          3.180188343117479
+        ],
+        [
+          33.551492396099164,
+          1.372157193665899
+        ],
+        [
+          34.73876178462943,
+          -0.17714217662817436
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": null
+    },
+    {
+      "id": "d_btree_ico_lib_2",
+      "type": "line",
+      "x": 80.63649165313944,
+      "y": 424.387723583726,
+      "width": 34.73876178462943,
+      "height": 3.8543185264680555,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_btree_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 241294,
+      "version": 2,
+      "versionNonce": 565543,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.9152172123655087,
+          1.53639577840832
+        ],
+        [
+          4.862170677082069,
+          2.825417717219401
+        ],
+        [
+          10.114210444666657,
+          3.606041609107631
+        ],
+        [
+          18.342186678964435,
+          3.6771763498398804
+        ],
+        [
+          27.943952593653897,
+          3.180188343117479
+        ],
+        [
+          33.551492396099164,
+          1.372157193665899
+        ],
+        [
+          34.73876178462943,
+          -0.17714217662817436
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": null
+    },
+    {
+      "id": "d_btree_ico_lib_3",
+      "type": "ellipse",
+      "x": 80.16025874301529,
+      "y": 408.5,
+      "width": 34.4801763641894,
+      "height": 6.973356264639348,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_btree_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 53180,
+      "version": 2,
+      "versionNonce": 387581,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_btree_ico_lib_4",
+      "type": "ellipse",
+      "x": 96.58702932426945,
+      "y": 419.51810661644765,
+      "width": 5.053400367132033,
+      "height": 5.48448635763434,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_btree_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 70753,
+      "version": 2,
+      "versionNonce": 396038,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_btree_ico_lib_5",
+      "type": "ellipse",
+      "x": 96.7450948609457,
+      "y": 431.3194455533787,
+      "width": 5.053400367132033,
+      "height": 5.48448635763434,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_btree_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 147489,
+      "version": 2,
+      "versionNonce": 56331,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_btree_ico_lib_6",
+      "type": "ellipse",
+      "x": 97.03717665480227,
+      "y": 444.269611022281,
+      "width": 5.053400367132033,
+      "height": 5.48448635763434,
+      "angle": 0,
+      "strokeColor": "#1d4ed8",
+      "backgroundColor": "#eff6ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_btree_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 709748,
+      "version": 2,
+      "versionNonce": 544535,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_btree_txt",
+      "type": "text",
+      "x": 134.0,
+      "y": 385.0,
+      "width": 368.0,
+      "height": 95.0,
+      "angle": 0,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 811849,
+      "version": 2,
+      "versionNonce": 135426,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "text": "B-Tree (PostgreSQL / MySQL InnoDB)\n\u2022 Updates 16 KB pages in place + WAL\n\u2022 Fast predictable reads (1 canonical tree)\n\u2022 Row/page locks cap writes at ~5k\u201310k/s per primary\n\u2022 Best for: Users, Billing, ACID inventory",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "textAlign": "left",
+      "verticalAlign": "middle",
+      "containerId": null,
+      "originalText": "B-Tree (PostgreSQL / MySQL InnoDB)\n\u2022 Updates 16 KB pages in place + WAL\n\u2022 Fast predictable reads (1 canonical tree)\n\u2022 Row/page locks cap writes at ~5k\u201310k/s per primary\n\u2022 Best for: Users, Billing, ACID inventory",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "d_lsm",
+      "type": "rectangle",
+      "x": 550.0,
+      "y": 355.0,
+      "width": 450.0,
+      "height": 155.0,
+      "angle": 0,
+      "strokeColor": "#b45309",
+      "backgroundColor": "#fffbeb",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 517454,
+      "version": 2,
+      "versionNonce": 391715,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_lsm_ico_lib_0",
+      "type": "line",
+      "x": 570.9344179705548,
+      "y": 412.4388562157227,
+      "width": 34.13849208688217,
+      "height": 44.061143784277334,
+      "angle": 0,
+      "strokeColor": "#b45309",
+      "backgroundColor": "#fffbeb",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_lsm_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 391889,
+      "version": 2,
+      "versionNonce": 204931,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.11257121526426443,
+          33.301173657447826
+        ],
+        [
+          0.005268068609217725,
+          37.092367669290546
+        ],
+        [
+          1.7582078447554657,
+          38.73049572116761
+        ],
+        [
+          7.862733149160209,
+          40.11688247920009
+        ],
+        [
+          18.18111012696433,
+          40.54858260530533
+        ],
+        [
+          28.039636993728664,
+          39.8593101170478
+        ],
+        [
+          33.27754490478727,
+          38.21092742780184
+        ],
+        [
+          34.01628093800154,
+          36.82132352863378
+        ],
+        [
+          34.12003373961788,
+          33.76906087643141
+        ],
+        [
+          34.03859985462838,
+          2.7937825966583154
+        ],
+        [
+          33.855021738590054,
+          -0.13281047994281273
+        ],
+        [
+          31.66298614747836,
+          -1.7685026022101344
+        ],
+        [
+          27.047026992167385,
+          -2.7158089277828035
+        ],
+        [
+          16.527879751007486,
+          -3.512561178972006
+        ],
+        [
+          8.094191510846315,
+          -3.0374560175482306
+        ],
+        [
+          1.461152986169079,
+          -1.4259572800692764
+        ],
+        [
+          -0.018458347264289195,
+          -0.020009468883153348
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": null
+    },
+    {
+      "id": "d_lsm_ico_lib_1",
+      "type": "ellipse",
+      "x": 570.927089942563,
+      "y": 408.5,
+      "width": 33.91952220778814,
+      "height": 6.859968179481581,
+      "angle": 0,
+      "strokeColor": "#b45309",
+      "backgroundColor": "#fffbeb",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_lsm_ico"
+      ],
+      "frameId": null,
+      "roundness": null,
+      "seed": 271707,
+      "version": 2,
+      "versionNonce": 757388,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_lsm_ico_lib_2",
+      "type": "rectangle",
+      "x": 578.5921903973317,
+      "y": 422.12662384544865,
+      "width": 1.9650845790571771,
+      "height": 22.107201514393246,
+      "angle": 0,
+      "strokeColor": "#b45309",
+      "backgroundColor": "#fffbeb",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_lsm_ico"
+      ],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 674472,
+      "version": 2,
+      "versionNonce": 221434,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_lsm_ico_lib_3",
+      "type": "rectangle",
+      "x": 582.9317521760828,
+      "y": 422.26308805232816,
+      "width": 1.9650845790571771,
+      "height": 22.107201514393246,
+      "angle": 0,
+      "strokeColor": "#b45309",
+      "backgroundColor": "#fffbeb",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_lsm_ico"
+      ],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 754446,
+      "version": 2,
+      "versionNonce": 151921,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_lsm_ico_lib_4",
+      "type": "rectangle",
+      "x": 587.0529712238283,
+      "y": 422.12662384544865,
+      "width": 1.9650845790571771,
+      "height": 22.107201514393246,
+      "angle": 0,
+      "strokeColor": "#b45309",
+      "backgroundColor": "#fffbeb",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_lsm_ico"
+      ],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 707007,
+      "version": 2,
+      "versionNonce": 284463,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_lsm_ico_lib_5",
+      "type": "rectangle",
+      "x": 591.1468974301971,
+      "y": 422.26308805232816,
+      "width": 1.9650845790571771,
+      "height": 22.107201514393246,
+      "angle": 0,
+      "strokeColor": "#b45309",
+      "backgroundColor": "#fffbeb",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_lsm_ico"
+      ],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 13299,
+      "version": 2,
+      "versionNonce": 832259,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_lsm_ico_lib_6",
+      "type": "rectangle",
+      "x": 595.2408236365657,
+      "y": 422.20850236957597,
+      "width": 1.9650845790571771,
+      "height": 22.107201514393246,
+      "angle": 0,
+      "strokeColor": "#b45309",
+      "backgroundColor": "#fffbeb",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [
+        "grp_d_lsm_ico"
+      ],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 418016,
+      "version": 2,
+      "versionNonce": 3721,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "d_lsm_txt",
+      "type": "text",
+      "x": 624.0,
+      "y": 385.0,
+      "width": 368.0,
+      "height": 95.0,
+      "angle": 0,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 630368,
+      "version": 2,
+      "versionNonce": 503673,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1711800000000,
+      "link": null,
+      "locked": false,
+      "text": "LSM-Tree (Cassandra / ScyllaDB / DynamoDB)\n\u2022 Appends to sequential WAL + RAM MemTable (lock-free)\n\u2022 Flushes immutable SSTables; Bloom filter skips misses\n\u2022 Absorbs 50k\u2013100k+ writes/sec per node\n\u2022 Best for: Chat messages, Notification logs, Events",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "textAlign": "left",
+      "verticalAlign": "middle",
+      "containerId": null,
+      "originalText": "LSM-Tree (Cassandra / ScyllaDB / DynamoDB)\n\u2022 Appends to sequential WAL + RAM MemTable (lock-free)\n\u2022 Flushes immutable SSTables; Bloom filter skips misses\n\u2022 Absorbs 50k\u2013100k+ writes/sec per node\n\u2022 Best for: Chat messages, Notification logs, Events",
+      "lineHeight": 1.25,
+      "autoResize": true
+    }
+  ],
+  "appState": {
+    "gridSize": 20,
+    "viewBackgroundColor": "#ffffff",
+    "zenModeEnabled": true
+  },
+  "files": {}
+}

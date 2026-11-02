@@ -10,24 +10,21 @@ $DigestFile = Join-Path $PrepDir ("weekly-digest-" + (Get-Date -Format 'yyyy-MM-
 $RepoSlug = 'Rrishik/sd-interview-prep'
 $GhIssuesJson = Join-Path $PrepDir 'inbox\gh-open-issues.json'
 try {
-    gh issue list --repo $RepoSlug --state open --json number,title,body,createdAt,url | Set-Content -Path $GhIssuesJson -Encoding UTF8
+    gh issue list --repo $RepoSlug --state all --limit 100 --json number,title,body,state,labels,comments,createdAt,url | Set-Content -Path $GhIssuesJson -Encoding UTF8
 } catch {
     "[]" | Set-Content -Path $GhIssuesJson -Encoding UTF8
 }
 
 $Prompt = @"
-Run the weekly system design interview refresh in $PrepDir following weekly-refresh.md:
-1. First, read $InboxFile ("Pending Drops") AND open GitHub Issues in $GhIssuesJson (from repo $RepoSlug). For any URLs, fetch the page; for any pasted raw text or issue body, parse the interview questions, company, level, and key takeaways, add them to sources.md and question-bank.md, move local items to "Processed Archive" in $InboxFile, and close processed GitHub issues with `gh issue close <number> --repo $RepoSlug --comment "Ingested into question-bank.md and sources.md"`.
-2. Search recent (last 7 days) senior/L5/SDE2-3 system design & AI system design interview experiences from Reddit (r/ExperiencedDevs, r/leetcode), LeetCode Discuss, Hello Interview, and IGotAnOffer.
-3. Append newly seen questions to question-bank.md and bump tallies.
-4. Read progress.md weakness heat-map and compute Priority = Tally * (6 - WeaknessScore).
-5. Write a concise ASD-STE100 digest to $DigestFile with:
-   - Bookmarks & notes processed from GitHub Issues and inbox/manual-drops.md
-   - New questions harvested from web search
-   - Updated top-priority topics for next week
-   - Recommended swaps in 00-plan.md
-   - Spaced-repetition quiz questions due from progress.md
-6. Rebuild the mobile web app by running `python build-site.py`.
+Run the weekly system design refresh in $PrepDir following weekly-refresh.md:
+1. Answer Inline Chapter Questions (`line-question` issues):
+   - Inspect $GhIssuesJson for issues with label `line-question` that are either open OR have a latest comment from the user waiting for a reply.
+   - Read the referenced chapter in `chapters/*.md` matching the `<!-- anchor:chXX-bYY -->` tag.
+   - Post a clear, first-principles Wait But Why x ByteByteGo reply on the issue thread via `gh issue comment <number> --repo $RepoSlug --body "<answer>"`. If the question clarifies a gap in the chapter, also update the corresponding `chapters/chXX-*.md` file.
+2. Process New Sources (`inbox` issues + $InboxFile):
+   - For open issues labeled `inbox` and items in $InboxFile ("Pending Drops"), fetch URLs, add citations to the relevant `chapters/chXX-*.md` "Sources & References" section (and `sources.md`), and close processed `inbox` issues with `gh issue close <number> --repo $RepoSlug --comment "Added to chapter references"`.
+3. Harvest Web Sources (last 7 days) from Reddit (r/ExperiencedDevs, r/leetcode), LeetCode Discuss, Hello Interview, and ByteByteGo, and fold high-signal architecture patterns or citations into `chapters/*.md`.
+4. Rebuild the diagrams and blog by running `python build-diagrams.py` and `python build-site.py`, then commit and push `chapters/`, `diagrams/`, and `docs/index.html` to `origin/main`.
 "@
 
 # Invoke GitHub Copilot CLI non-interactively to generate the weekly digest

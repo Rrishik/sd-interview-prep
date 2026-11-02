@@ -87,10 +87,12 @@ Interactive whiteboard diagram: [00-timeline.excalidraw](./diagrams/00-timeline.
 3. Simple cases (URL, rate limiter) before fan-out and transactional cases: difficulty grows step by step.
 4. Mocks last: you need the patterns in memory before you test under time pressure.
 
-## Files
+## Files & Mobile / Audio Access
+- **Mobile & Audio Web App (GitHub Pages):** https://rrishik.github.io/sd-interview-prep/ (also openable locally at [docs/index.html](./docs/index.html))
+- **Shared Bookmark Inbox (Phone + PC):** https://github.com/Rrishik/sd-interview-prep/issues/new?labels=inbox (or use the **+ Save Source** button in the web app, or paste into [inbox/manual-drops.md](./inbox/manual-drops.md))
 - [01-week1-learning-guide.md](./01-week1-learning-guide.md): Async reading guide (Mock 0 fixes, Kafka partitions & hot keys, Redis data structures, DB keys, estimation & LLM math)
 - [sources.md](./sources.md): vetted source registry
 - [question-bank.md](./question-bank.md): questions seen, tallied by frequency
 - [progress.md](./progress.md): quiz and mock scores, missed-question log
 - [weekly-refresh.md](./weekly-refresh.md): refresh procedure and changelog
-- [inbox/manual-drops.md](./inbox/manual-drops.md): drop URLs or raw pasted interview posts here anytime
+- [build-site.py](./build-site.py): rebuilds [docs/index.html](./docs/index.html) from all Markdown files and `.excalidraw` diagrams

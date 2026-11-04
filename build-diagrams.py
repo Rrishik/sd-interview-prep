@@ -391,12 +391,56 @@ lib_node(els5, "ai_ag", 58, 365, 290, 135, "Bounded ReAct Agent Loop", "• Max 
 lib_node(els5, "ai_gw", 385, 365, 290, 135, "LLM Gateway & PII Shield", "• Scrubs SSN / secrets before prompt\n• Dual Token Bucket (RPM + TPM)\n• Circuit breaker -> fallback model", LIB_SD, 16, stroke="#dc2626", bg="#fef2f2")
 lib_node(els5, "ai_ev", 712, 365, 290, 135, "Async Eval (5% Kafka Sample)", "• Streams traces to Kafka -> Judge LLM\n• Scores Faithfulness & Context Recall\n• 0 ms added latency to user path!", LIB_SW, 1, stroke="#047857", bg="#ecfdf5")
 
+# ==============================================================================
+# DIAGRAM 6: 05-agent-loops-memory.excalidraw
+# ==============================================================================
+els6 = []
+els6.append(text_el("am_title", 40, 18, 980, 34, "Agent Loop Architectures (ReAct vs Adaptive DAG) & 3-Tier Memory Hierarchy", size=22, family=2))
+els6.append(text_el("am_sub", 40, 52, 980, 22, "ReAct Loop  •  Plan-and-Execute DAG  •  Working / Episodic / Semantic Memory  •  KV Prefix Cache", size=13, family=3, color="#475569"))
+
+container(els6, "am_c1", 40, 90, 980, 205, "1. AGENT ORCHESTRATION LOOPS: REACT VS. ADAPTIVE PLAN-AND-EXECUTE DAG", stroke="#1d4ed8", dash="solid")
+lib_node(els6, "am_ra", 58, 135, 285, 135, "A. ReAct Loop (Dynamic)", "Thought -> Tool -> Observation\n• N sequential LLM turns\n• Best for exploratory tasks\n• Risk: unbounded latency/cost", LIB_SD, 2, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els6, "am_pe", 385, 135, 295, 135, "B. Plan-and-Execute (DAG)", "1. Planner builds dependency DAG\n2. Parallel tool wave execution\n3. Re-Planner only on step failure", LIB_SD, 18, stroke="#047857", bg="#ecfdf5")
+lib_node(els6, "am_2p", 720, 135, 280, 135, "C. Two-Pass Guarded Flow", "Pass 1: Read-only diagnostics\nPass 2: Grounded action proposal\n• Predictable 2-hop latency\n• >90% precision (zero rogue write)", LIB_SD, 16, stroke="#6d28d9", bg="#f5f3ff")
+arrow(els6, "aam1", 343, 202, 385, 202, "Add DAG")
+arrow(els6, "aam2", 680, 202, 720, 202, "Privilege split")
+
+container(els6, "am_c2", 40, 320, 980, 205, "2. THREE-TIER AGENT MEMORY ARCHITECTURE & KV PROMPT CACHING", stroke="#b45309", dash="solid")
+lib_node(els6, "am_wm", 58, 365, 220, 135, "1. Working Memory", "Active context window\n• Plan scratchpad + state\n• Redis session TTL\n• Sliding summary buffer", LIB_SW, 2, stroke="#dc2626", bg="#fef2f2")
+lib_node(els6, "am_em", 300, 365, 225, 135, "2. Episodic Memory", "Past session trajectories\n• What worked/failed before\n• pgvector + time-decay\n• Few-shot experience replay", LIB_SD, 9, stroke="#b45309", bg="#fffbeb")
+lib_node(els6, "am_sm", 545, 365, 220, 135, "3. Semantic Memory", "Facts & domain knowledge\n• Hybrid BM25 + HNSW\n• Versioned fact upsert\n• Conflict resolution", LIB_SD, 6, stroke="#047857", bg="#ecfdf5")
+lib_node(els6, "am_kv", 785, 365, 215, 135, "4. KV Prefix Cache", "[Static System + Tools]\nat immutable prefix\n• 80% lower TTFT & cost\n• Append-only history tail", LIB_SW, 6, stroke="#1d4ed8", bg="#eff6ff")
+
+
+# ==============================================================================
+# DIAGRAM 7: 06-mcp-evals-reactive.excalidraw
+# ==============================================================================
+els7 = []
+els7.append(text_el("mc_title", 40, 18, 980, 34, "MCP Tool Architecture, RAG Evaluation Math & Reactive Agent Streaming", size=22, family=2))
+els7.append(text_el("mc_sub", 40, 52, 980, 22, "Model Context Protocol (JSON-RPC)  •  Recall@K / MRR / nDCG@K  •  OpenTelemetry  •  Spring WebFlux SSE", size=13, family=3, color="#475569"))
+
+container(els7, "mc_c1", 40, 90, 980, 205, "1. MODEL CONTEXT PROTOCOL (MCP), SANDboxed EXECUTION & PROMPT INJECTION DEFENSE", stroke="#047857", dash="solid")
+lib_node(els7, "mc_cl", 58, 135, 220, 135, "Agent Host & MCP Client", "Spring AI / Orchestrator\n• JSON-RPC 2.0 transport\n• Discovers Tools/Resources\n• Injects caller auth token", LIB_SD, 1, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els7, "mc_gd", 305, 135, 225, 135, "Policy & Schema Gate", "• JSON Schema validation\n• Dual-LLM privilege split\n• Idempotency key check\n• HITL gate on write tools", LIB_SD, 16, stroke="#dc2626", bg="#fef2f2")
+lib_node(els7, "mc_sv", 555, 135, 215, 135, "MCP Server Registry", "Exposes 3 primitives:\n1. Tools (model-called)\n2. Resources (data URIs)\n3. Prompts (templates)", LIB_SD, 2, stroke="#047857", bg="#ecfdf5")
+lib_node(els7, "mc_sb", 795, 135, 205, 135, "Sandboxed Runtime", "Isolated container / WASM\n• Egress allowlist\n• CPU/RAM/time quotas\n• Structured error JSON", LIB_SW, 4, stroke="#6d28d9", bg="#f5f3ff")
+arrow(els7, "amc1", 278, 202, 305, 202)
+arrow(els7, "amc2", 530, 202, 555, 202)
+arrow(els7, "amc3", 770, 202, 795, 202)
+
+container(els7, "mc_c2", 40, 320, 980, 205, "2. OBSERVABILITY (OPENTELEMETRY), RETRIEVAL METRICS & REACTIVE SSE STREAMING", stroke="#6d28d9", dash="solid")
+lib_node(els7, "mc_rk", 58, 365, 290, 135, "Retrieval Metrics Suite", "• Recall@K = FoundRel / TotalRel\n• MRR = 1 / first_relevant_rank\n• nDCG@K = graded relevance discount\n• Isolates Retriever vs Generator", LIB_SD, 9, stroke="#b45309", bg="#fffbeb")
+lib_node(els7, "mc_ot", 385, 365, 290, 135, "OpenTelemetry & Replay", "• Trace -> Run -> Step/Tool Spans\n• Token & cost accounting per tenant\n• Deterministic cassette tool replay\n• Canary rollout regression gates", LIB_SW, 1, stroke="#047857", bg="#ecfdf5")
+lib_node(els7, "mc_rx", 712, 365, 290, 135, "Reactive Backend (WebFlux)", "• Flux<ServerSentEvent> non-blocking\n• Event-loop handles 50k open streams\n• LongAdder striped atomic counters\n• Keyset pagination: (ts, id) < cursor", LIB_SD, 23, stroke="#1d4ed8", bg="#eff6ff")
+
 diagrams = {
     "01-kafka-and-redis.excalidraw": els1,
     "02-database-sharding-keys.excalidraw": els2,
     "03-notification-system.excalidraw": els3,
     "03-core-case-studies.excalidraw": els4,
     "04-rag-and-agents.excalidraw": els5,
+    "05-agent-loops-memory.excalidraw": els6,
+    "06-mcp-evals-reactive.excalidraw": els7,
     # Keep mock0-notification-system.excalidraw synced so existing links never break
     "mock0-notification-system.excalidraw": els3,
 }

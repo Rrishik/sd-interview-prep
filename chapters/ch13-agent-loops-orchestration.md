@@ -1,111 +1,76 @@
 # Chapter 13: Agent Loop Architectures (ReAct, Plan-and-Execute & Multi-Agent DAGs)
 
-*Part IV · Autonomous Agent Systems · 9 min read*
+*Part III · AI & LLM Engineering Systems · 8 min read*
 
-When people first hear the term **"AI Agent,"** they often picture something mystical—a digital coworker improvising freely inside a GPU.
+When people first hear **"AI Agent,"** they often picture something mystical—a digital coworker improvising freely inside a GPU.
 
-Strip away the hype, and an AI Agent is a concrete piece of systems engineering: **an LLM running inside a control loop that can inspect state, invoke external tools, observe the results, and decide what to do next** [1, 2].
+Strip away the hype, and an AI Agent is a concrete control loop: **an LLM that can inspect state, call external tools, read the results, and decide what to do next** [1, 2].
 
-Yet the *shape* of that control loop determines everything about your production system: whether a user waits `1.8 seconds` or `25 seconds`, whether a single request costs `$0.004` or `$0.40`, and whether a failed API call gracefully recovers or sends the model into an infinite retry spiral.
-
-Let us design the four production agent loop patterns shown in the upper half of the architecture diagram below [1, 2, 3].
+Yet the *shape* of that loop dictates whether a user waits `2.3 seconds` or `12 seconds`, whether a request costs `$0.004` or `$0.40`, and whether a failed API call recovers cleanly or traps the model in an infinite retry spiral [1, 2, 3].
 
 {{diagram:05-agent-loops-memory.excalidraw}}
 
 ---
 
-### 1) The Classic ReAct Loop (Reason + Act)
+### 1) Pure ReAct vs. Plan-and-Execute DAGs
 
-Before 2022, engineers either asked an LLM to reason silently in its head (**Chain-of-Thought**, which hallucinates facts it cannot look up) or asked it to emit a single function call (**Action-only**, which fails on multi-step problems).
+In a classic **ReAct (Reason + Act)** loop, the model alternates `Thought -> Action -> Observation` one step at a time [1]. That works well when Step 2 is unknowable until Step 1 returns, but it hits three walls on longer workflows:
+1. **Serial Latency:** Four `300 ms` tools plus five `1.0s` LLM turns take **`5 × 1.0s + 4 × 0.3s = 6.2 seconds`** end-to-end.
+2. **Quadratic Tokens (`O(N^2)`):** Every turn re-sends the entire prior trajectory plus new tool outputs.
+3. **Local Myopia:** One noisy error trace on Step 2 can derail the model from the original goal.
 
-Shunyu Yao et al. introduced **ReAct (Reason + Act)** [1], which interleaves verbal reasoning with real tool execution in an iterative `Thought -> Action -> Observation` loop:
+To cut latency without losing adaptability, production orchestrators separate **Planning** from **Execution** [2, 3]:
 
-1. **Thought:** The LLM writes down *why* it needs information (*"The user's audio is cutting out; I should check microphone permissions and exclusive-mode conflicts first"*).
-2. **Action:** The LLM emits a structured tool call (`get_audio_diagnostics(include_permissions=true)`).
-3. **Observation:** The runtime harness executes the tool against the real system and appends the JSON output (`{"mic_permission": "granted", "exclusive_mode_conflict": true}`) back into the prompt.
-4. **Next Iteration:** The LLM reads the observation, emits a new `Thought`, and either calls another tool or returns the `Final Answer`.
-
-**Where Pure ReAct Breaks in Production:**
-- **Serial Latency Multiplication:** A 6-step workflow requires **6 sequential LLM round-trips**. At `1.2 seconds` per LLM turn plus `300 ms` per tool call, the user stares at a spinner for **`9+ seconds`**.
-- **Quadratic Token Accumulation (`O(N^2)`):** Turn 1 sends `2,000` tokens; Turn 2 re-sends Turn 1's `2,000` tokens plus a `1,000`-token observation; by Turn 8, a single user query has billed `40,000+` input tokens.
-- **Local Myopia:** Because ReAct only plans one step ahead, a noisy stack trace on Step 2 can derail the model from answering the user's original goal.
-
----
-
-### 2) Plan-and-Execute, Adaptive DAGs & Two-Pass Guarded Flows
-
-To eliminate serial LLM round-trips on multi-step workflows, production orchestrators separate **Planning** from **Execution** [2, 3]:
-
-| Architecture Pattern | How It Works | LLM Calls (`K` tool steps) | Best Production Fit | Primary Failure Mode |
+| Loop Architecture | How It Executes `K` Tool Steps | LLM Calls | Best Fit | Main Failure Mode |
 | :--- | :--- | :--- | :--- | :--- |
-| **1. ReAct Loop** | Chooses 1 tool (or 1 parallel batch) per turn after inspecting the prior observation. | **`K + 1` sequential calls** | Open-ended debugging where Step 2 is unknowable until Step 1 returns. | High latency, token bloat, and wandering loops. |
-| **2. Plan-and-Execute (DAG)** | **Planner LLM** emits a full dependency DAG upfront; **Executor** runs independent waves in parallel; **Re-Planner** wakes up only on failure. | **2 calls** in the happy path (Planner + Synthesizer). | Long structured workflows (order fulfillment, multi-source enterprise reports). | **Stale plan:** Step 1's output invalidates Step 3's assumptions if no Re-Planner exists. |
-| **3. Two-Pass Guarded Flow** | **Pass 1** classifies intent and runs read-only diagnostic tools in parallel; **Pass 2** reasons over sanitized telemetry to propose a verified action. | **Strictly 2 calls** (bounded `p99` latency). | Client/OS diagnostics & system settings where false-positive writes are unacceptable. | Lower recall (`~70%`) if Pass 1 omits an edge-case diagnostic probe. |
-
-**How the DAG Wave Executor Works Without Calling the LLM Between Steps:**
-1. The Planner outputs a JSON Directed Acyclic Graph (DAG) of tool steps where each node lists its parent dependencies (`deps: ["step_1"]`).
-2. The orchestrator finds all ready nodes with `in_degree == 0` (for example, `get_user_profile`, `get_recent_orders`, `search_refund_policy`) and dispatches them **concurrently** (`Mono.zip` in Java / `asyncio.gather` in Python / `Task.WhenAll` in C#).
-3. As parent nodes finish, their structured outputs are substituted into child arguments (`$step_1.account_tier`), and the next wave executes immediately.
-4. **Adaptive Re-Planning:** The heavy Re-Planner LLM is invoked **only** if a tool returns a non-retryable error, an empty result that blocks a downstream dependency, or a schema violation [3].
+| **1. ReAct Loop** | Picks 1 tool (or 1 batch) per turn after reading the prior observation. | **`K + 1` serial calls** | Open-ended debugging where each step depends on the last. | High latency (`6s+`) and `O(N^2)` token growth. |
+| **2. Plan-and-Execute DAG** | **Planner** emits a dependency DAG upfront; **Executor** runs independent waves in parallel; **Re-Planner** wakes up only on failure. | **2 calls** on happy path | Multi-source workflows (`get_profile`, `get_orders`, `get_policy` in parallel -> `2.3s` total). | Stale plan if Step 1 invalidates Step 3 without a Re-Planner. |
+| **3. Two-Pass Guarded Flow** | **Pass 1** classifies intent and runs read-only probes in parallel; **Pass 2** reasons over sanitized state to propose a verified action. | **Strictly 2 calls** | Diagnostics & system settings where false-positive writes are unacceptable. | Lower recall (`~70%`) if Pass 1 misses an edge-case probe. |
 
 ---
 
-### 3) Multi-Agent Orchestration: Role Specialization, Handoffs & Conflict Resolution
+### 2) Multi-Agent Specialization, Handoffs & Conflict Resolution
 
-Why split one agent into **multiple specialized agents**?
+Why not give one giant agent **80+ tools** across billing, diagnostics, and logistics?
+Because once a single agent's tool registry crosses **`15–20 tools`**, overlapping descriptions degrade function-calling accuracy and burn `10,000+` schema tokens per turn [2].
 
-If you build a single "God Agent" and hand it **80+ tools** across billing, hardware diagnostics, logistics, and HR policies, two things fail immediately:
-- **Tool Selection Degradation:** Once a single agent's tool registry exceeds **`15–20 tools`**, overlapping descriptions cause function-calling precision to drop sharply.
-- **Prompt Context Bloat:** Sending 80 JSON Schema definitions on every turn burns `12,000+` tokens before the user even speaks.
-
-**Three Patterns for Multi-Agent Collaboration [2]:**
-1. **Supervisor / Router Pattern (Centralized):** A lightweight **Triage Supervisor** decomposes the request, delegates sub-tasks to specialist workers (`DiagnosticsAgent`, `BillingAgent`, `PolicyAgent`), and merges their structured responses.
-2. **Peer Handoff / State-Graph Pattern (Decentralized):** Each specialist agent carries only its `5–8` domain tools plus explicit **Handoff Tools** (`transfer_to_billing_agent(summary)`). When `DiagnosticsAgent` finishes hardware checks and spots an invoice dispute, it transfers control and a **compacted state summary** directly to `BillingAgent` without paying for an extra supervisor round-trip.
-3. **Blackboard Conflict Resolution:** When two specialist agents run in parallel and propose contradictory actions (for example, `RetentionAgent` proposes a `$50` credit while `FraudAgent` flags the account for suspension), sub-agents never execute external writes directly. They write **typed action proposals** to a shared `AgentState` blackboard, and a deterministic **Policy Arbiter** resolves conflicts using priority rules (`FraudHold > Compliance > CreditGrant`) and optimistic concurrency (`version` check).
+Instead, split work across **specialist agents** (`5–8` domain tools each) using three coordination patterns:
+- **Supervisor Router:** A lightweight triage agent decomposes the request, dispatches sub-tasks to specialist workers, and merges their structured outputs.
+- **Peer Handoffs:** A specialist invokes an explicit transfer tool (`transfer_to_billing(compacted_state)`), handing control directly to the next specialist without an extra supervisor round-trip.
+- **Blackboard Arbiter (Conflict Resolution):** Parallel sub-agents never execute external writes directly. They post **typed action proposals** to a shared `AgentState` blackboard, and a deterministic **Policy Arbiter** resolves conflicts by priority (`FraudHold > Compliance > CreditGrant`) before any mutation runs.
 
 ---
 
-### 4) Important Focus Areas for Interviews
+### 3) Loop Termination & Precision vs. Recall Trade-Offs
 
-- **Latency Math (`ReAct` vs `DAG`):** Always quantify wall-clock savings. Four independent `300 ms` tools plus `1.0s` per LLM call take `5 × 1.0s + 4 × 0.3s = 6.2s` in sequential ReAct, versus `1.0s (Planner) + 0.3s (4 parallel tools) + 1.0s (Synthesizer) = 2.3s` in a DAG orchestrator.
-- **Precision vs. Recall Trade-Off in Action Agents:** In agents that mutate settings or production records, a **False Positive** breaks user state (high blast radius), whereas a **False Negative** safely falls back to standard UI search. Tune confidence thresholds and schema validators for **`>90%` precision** first, then expand tool coverage to improve recall.
-- **Loop Termination Guarantees:** Every agent loop must enforce hard ceilings on `max_steps` (e.g., `6`), `max_token_budget`, and `wall_clock_timeout_ms`, plus duplicate tool-call detection (`hash(tool_name + canonical_args)`) to break infinite retry cycles immediately.
+- **Hard Loop Ceilings:** Enforce strict caps on `max_steps` (e.g., `6`), `max_token_budget`, and `wall_clock_timeout_ms`, plus duplicate call detection (`hash(tool_name + canonical_args)`) to break retry loops immediately.
+- **Precision First on Write Actions:** When an agent can mutate user settings or production records, a **False Positive** breaks state (high blast radius), while a **False Negative** safely falls back to standard search. Tune thresholds for **`>90%` precision** first, then expand tool coverage to raise recall.
 
 ---
 
 ### Analogy, Where It Breaks & Real System
 
-- **Real-world analogy:** **ReAct** is like a detective walking into a building with no blueprint: they open one door, look around, think, and pick the next door. **Plan-and-Execute** is an architect handing a dependency blueprint (DAG) to a crew: the electrician, plumber, and painter work on independent rooms in parallel and only call the architect back if they hit an unexpected steel beam behind a wall.
-- **Where the analogy breaks:** Human crew members use common sense if a measurement is off by an inch. A deterministic DAG executor will pass `null` into Step 4 if Step 2's output schema shifts—which is why a **strict JSON Schema validator + conditional re-planner** between waves is mandatory.
-- **Real production system:** **Anthropic Claude Code** and **Enterprise Customer Support Orchestrators** combine upfront task decomposition with bounded inner tool loops and strict separation between read-only inspection tools and confirmation-gated write tools [2].
+- **Real-world analogy:** **ReAct** is a detective opening one door at a time with no floor plan. **Plan-and-Execute** is an architect handing a dependency blueprint (DAG) to an electrician, plumber, and painter so they work on independent rooms in parallel and only call the architect back if they hit an unexpected steel beam.
+- **Where the analogy breaks:** Human tradespeople use common sense if a pipe is an inch off. A DAG executor will pass `null` into Step 3 if Step 1's output schema shifts—requiring a **JSON Schema validator + conditional re-planner** between waves.
+- **Real production system:** **Anthropic Claude Code** and **LLM Compiler** combine upfront task decomposition with parallel read-tool waves and confirmation-gated writes [2, 3].
 
 ---
 
 ### Quick Self-Check
 
 <details>
-<summary><strong>Q1: What are the three phases of a single ReAct turn, and why does pure ReAct struggle on a 10-step workflow?</strong></summary>
-<p><strong>Answer:</strong> Each ReAct turn runs <strong>Thought</strong> (verbal reasoning), <strong>Action</strong> (tool call JSON), and <strong>Observation</strong> (tool result). On a 10-step workflow, pure ReAct makes 10 sequential LLM calls (multiplying tail latency) and re-sends the growing trajectory on every turn (<code>O(N^2)</code> token cost) while lacking a global multi-step plan.</p>
+<summary><strong>Q1: An agent must call 4 independent read APIs (300 ms each) and synthesize an answer. If each LLM call takes 1.0s, how much faster is a parallel DAG planner than sequential single-tool ReAct?</strong></summary>
+<p><strong>Answer:</strong> Sequential ReAct takes <code>4 × (1.0s LLM + 0.3s tool) + 1.0s synthesis = 6.2s</code>. A parallel DAG planner takes <code>1.0s Planner + 0.3s (4 tools in parallel) + 1.0s Synthesizer = 2.3s</code> (nearly <strong>3× faster</strong>).</p>
 </details>
 
 <details>
-<summary><strong>Q2: When does a static Plan-and-Execute agent fail compared to ReAct, and how do production systems fix it?</strong></summary>
-<p><strong>Answer:</strong> Static Plan-and-Execute fails when an early step returns unexpected data or an error that invalidates downstream steps in the upfront plan. Production systems fix this with <strong>Adaptive Re-Planning</strong>: independent DAG waves run automatically, and a Re-Planner LLM is triggered only when a step fails or violates expected post-conditions.</p>
+<summary><strong>Q2: Why does tool-calling accuracy drop when one agent is given 80+ tools, and how do specialist agents fix it?</strong></summary>
+<p><strong>Answer:</strong> Above <code>15–20 tools</code>, overlapping descriptions and large JSON schemas bloat the prompt and confuse attention selection. Scoping each specialist agent to <code>5–10</code> domain tools plus explicit handoff functions keeps prompts lean and tool selection precision above 90%.</p>
 </details>
 
 <details>
-<summary><strong>Q3: An agent needs to call 4 independent read APIs (300 ms each) and synthesize an answer. If each LLM call takes 1.0s, how much faster is a parallel DAG planner than sequential single-tool ReAct?</strong></summary>
-<p><strong>Answer:</strong> Sequential ReAct takes <code>4 × (1.0s LLM + 0.3s tool) + 1.0s synthesis = 6.2 seconds</code>. A parallel DAG planner takes <code>1.0s Planner + max(0.3s across 4 parallel tools) + 1.0s Synthesizer = 2.3 seconds</code> (nearly <strong>3× faster</strong>).</p>
-</details>
-
-<details>
-<summary><strong>Q4: Why does tool-calling accuracy drop when a single agent is given 80+ tools, and how do multi-agent handoffs solve this?</strong></summary>
-<p><strong>Answer:</strong> Above <code>15–20 tools</code>, overlapping tool descriptions and huge JSON schemas bloat the prompt and confuse attention selection. Multi-agent architectures scope each specialist agent to <code>5–10</code> domain tools plus explicit handoff functions, keeping prompts compact and tool selection precision above 90%.</p>
-</details>
-
-<details>
-<summary><strong>Q5: Two parallel sub-agents analyze a customer account: <code>RetentionAgent</code> proposes a $50 credit while <code>FraudAgent</code> flags the account for suspension. How do you prevent conflicting side effects?</strong></summary>
-<p><strong>Answer:</strong> Sub-agents must never execute state-mutating write tools directly during parallel exploration; instead, they emit <strong>typed action proposals</strong> to a shared state blackboard, and a deterministic <strong>Policy Arbiter</strong> resolves conflicts by priority rules (<code>FraudHold &gt; CreditGrant</code>) before committing any side effect.</p>
+<summary><strong>Q3: Two parallel sub-agents inspect an account: <code>RetentionAgent</code> proposes a $50 credit while <code>FraudAgent</code> flags the account for suspension. How do you prevent conflicting side effects?</strong></summary>
+<p><strong>Answer:</strong> Parallel sub-agents emit <strong>typed action proposals</strong> to a shared state blackboard rather than calling write APIs directly; a deterministic <strong>Policy Arbiter</strong> resolves conflicts by priority (<code>FraudHold &gt; CreditGrant</code>) before committing any mutation.</p>
 </details>
 
 ---

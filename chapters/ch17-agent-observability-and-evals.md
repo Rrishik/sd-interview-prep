@@ -1,108 +1,76 @@
-# Chapter 17: Agent Observability (OpenTelemetry), Deterministic Replay Harnesses & Canary Rollouts
+# Chapter 17: Agent Observability (OpenTelemetry), Deterministic Replay & Canary Rollouts
 
-*Part IV · Autonomous Agent Systems · 9 min read*
+*Part III · AI & LLM Engineering Systems · 7 min read*
 
-When a standard REST microservice fails, debugging takes two minutes: you filter logs for `HTTP 500`, read the stack trace, and write a unit test.
+When a REST microservice fails, it throws an `HTTP 500` and a stack trace.
 
-When an **autonomous multi-step agent** fails in production, the HTTP status code is **`200 OK`**! Nothing crashed. Instead, on Step 3 of a 6-step workflow, a subtle prompt edit caused the planner to pass `include_archived=false` to a search tool, which returned 0 records, which convinced the synthesizer to tell an enterprise customer that their warranty had expired.
+When a **multi-step AI agent** fails, the HTTP status is **`200 OK`**! On Step 3 of a 6-step run, a two-word prompt tweak caused the planner to pass `include_archived=false`, which returned `0` rows, which convinced the synthesizer to give the user a plausible-sounding wrong answer.
 
-How do you trace, unit-test, version, and safely deploy software that is **non-deterministic** by nature?
-
-Let us build the **Production Agent Observability, Replay Testing & Canary Rollout Pipeline** shown in the bottom middle of the diagram in Chapter 15 [1, 2, 3].
+Let us look at the bottom middle of the diagram in Chapter 15 to see how production teams trace, unit-test, and safely roll out non-deterministic agents [1, 2, 3].
 
 ---
 
-### 1) Distributed Tracing for Agents with OpenTelemetry (`gen_ai.*` Spans)
+### 1) Distributed Tracing with OpenTelemetry (`gen_ai.*` Spans)
 
-A single agent request is not a flat function call—it is a **tree of nested operations** spanning memory lookups, planner LLM calls, parallel MCP tool waves, and streamed synthesis.
+A single agent run is a **tree of spans** across memory, LLM calls, and parallel tool waves. Using OpenTelemetry (`OTel`) `gen_ai.*` semantic conventions, emit four span levels [1]:
+- **Root Span (`agent.run`):** Captures `trace_id`, `prompt_sha`, `graph_version`, `total_cost_usd`, and `termination_reason` (`COMPLETED` vs. `MAX_STEPS`).
+- **Memory Span (`memory.retrieve`):** Captures `db.system="pgvector"`, `top_k`, and filter latency.
+- **LLM Span (`gen_ai.chat`):** Captures `model`, `input_tokens`, **`cached_input_tokens`** (to catch KV-cache regressions instantly!), `output_tokens`, and `ttft_ms`.
+- **Tool Span (`mcp.tool.execute`):** Captures `tool.name`, `idempotency_key`, `is_error`, and `retry_count`.
+- **Privacy Rule:** Scrub PII in the OTel Collector before spans hit Jaeger/Honeycomb/Phoenix; keep raw encrypted payloads in an access-controlled audit store with a 30-day TTL.
 
-Using **OpenTelemetry (OTel)** with the standard `gen_ai.*` semantic conventions, the orchestrator emits a hierarchical **Trace** [1]:
+---
 
-| Span Level | Span Name Example | Key OTel Attributes Captured on the Span | Why On-Call Engineers Need It |
+### 2) Testing Non-Deterministic Agents: Dependency Injection & Replay Pyramid
+
+How do you run fast, deterministic tests on every Pull Request when live LLMs are slow, costly, and non-deterministic? Combine **Dependency Injection (`LLMClient`, `ToolExecutor` interfaces)** with a 3-tier pyramid [2, 3]:
+
+| Test Tier | What It Runs | Speed & Cost | What It Verifies |
 | :--- | :--- | :--- | :--- |
-| **Root Span** | `agent.run` | `trace_id`, `user_id`, `agent_name`, `prompt_sha`, `graph_version`, `total_cost_usd`, `termination_reason` | Pinpoints which exact version of the prompt/graph ran and whether it succeeded or hit `MAX_STEPS`. |
-| **Child Span (Memory)** | `memory.retrieve` | `db.system="pgvector"`, `top_k=5`, `latency_ms=18`, `filters="user_id,acl"` | Reveals whether slow agent turns are caused by vector DB queries or the LLM. |
-| **Child Span (LLM)** | `gen_ai.chat` | `gen_ai.request.model`, `input_tokens`, `cached_input_tokens`, `output_tokens`, `ttft_ms`, `temperature` | Tracks **KV cache hit ratio**, token burn per tenant, and Time-To-First-Token regressions. |
-| **Child Span (Tool Wave)** | `mcp.tool.execute` | `tool.name`, `tool.idempotency_key`, `tool.is_error`, `retry_count`, `latency_ms` | Identifies flaky upstream MCP servers and schema validation failures. |
-
-**Privacy-Preserving Trace Export:**
-Never dump raw unredacted customer PII into your observability cluster. Run a deterministic **PII Redactor** in the OpenTelemetry Collector pipeline before spans land in Jaeger/Honeycomb/Arize Phoenix, and store raw encrypted prompt/completion payloads in a separate access-controlled audit store with a strict `30-day` retention TTL.
+| **1. Cassette Replay (`VCR` Unit Tests)** | Injects a fake `LLMClient` & `ToolExecutor` that replay recorded JSON fixtures in memory. | **`< 2s`, `$0`** (Every commit) | `100%` of deterministic orchestration logic: DAG wave scheduling, retries, compaction, and policy gates. |
+| **2. Sandboxed Golden Suite (`temp=0`)** | Live LLM against stateful in-memory mock tools (e.g., seeded SQLite DB) across `200` scenarios. | **`~3 min`** (Pre-merge CI) | Grades **Final Sandbox State Match** + **DAG-Valid Tool Call F1** (never brittle ordered string matching!). |
+| **3. Binary Rubric LLM-as-Judge** | Evaluates responses with explicit **`PASS/FAIL` binary checklists** + mandatory evidence quotes. | Async CI & `5%` Kafka prod sample | Avoids noisy `1–10` rating variance; catches faithfulness and tone regressions [2]. |
 
 ---
 
-### 2) Deterministic Test Harnesses & Cassette Replay (Testing Non-Deterministic Agents)
+### 3) Versioning Artifacts & 4-Stage Canary Rollouts
 
-Interviewers love asking:
-> *"LLMs are non-deterministic, slow (`2s/call`), and cost money, and tools mutate external databases. How do you run a fast, deterministic test suite on every Pull Request?"*
-
-The answer combines **Dependency Injection (Inversion of Control)** with a **Three-Tier Testing Pyramid** [2, 3]:
-
-1. **Tier 1 — Deterministic Cassette Replay (`VCR` Mode on Every Commit, `< 2s`, `$0`):**
-   - Because the orchestrator receives `LLMClient` and `ToolExecutor` via **Dependency Injection** (constructor interfaces rather than hardcoded HTTP calls), unit tests inject a **Cassette Replay Harness**.
-   - The harness replays recorded JSON responses from golden production traces deterministically in memory. This tests `100%` of your **deterministic orchestration code**—DAG topological sorting, parallel wave scheduling, error retry backoff, context compaction, and policy guardrails—in milliseconds with zero LLM spend.
-2. **Tier 2 — Sandboxed Golden Trajectory Suite (`temperature = 0` on Pre-Merge CI, `~3 min`):**
-   - Runs a real LLM (`temperature = 0`, fixed `seed`) against **stateful in-memory mock tools** (for example, an in-memory SQLite database pre-seeded with tricky edge-case accounts) across `100–300` golden scenarios [3].
-   - **How to grade trajectories without brittle string matching:** Because an agent can validly call two independent tools `[get_profile, get_orders]` in either order, do **not** assert exact list equality on tool logs. Instead, assert:
-     - **Final Environment State Match:** Did the in-memory database / settings state end up in the exact expected state?
-     - **DAG-Valid Tool Call F1:** Precision and recall of `(tool_name, normalized_args)` against the required set, plus `0` calls to forbidden write tools.
-3. **Tier 3 — Calibrated LLM-as-a-Judge Rubrics:**
-   - Never ask a judge LLM *"Score this answer from 1 to 10"* (which produces noisy, high-variance numbers).
-   - Force the judge to evaluate a **binary (`0/1`) checklist rubric** (*"1. Did the answer cite the exact error code from the tool output? [PASS/FAIL] 2. Did it hallucinate any unsupported policy? [PASS/FAIL]"*) and require a 1-sentence evidence quote before the verdict [2].
-
----
-
-### 3) Versioning Prompts, Tools & Graphs + Progressive Canary Rollouts
-
-In an agentic system, **changing two words in a system prompt or a tool description can break production just as severely as changing Java code**. Treat every prompt, tool JSON schema, and agent graph definition as an **immutable, content-addressed artifact** in Git (`prompt_sha`, `tool_schema_version`).
-
-**The 4-Stage Safe Deployment Pipeline for Agent Changes:**
-1. **Offline CI Gate:** Candidate version `v2.5` must achieve **`>= 90%` precision** on the Golden Trajectory Suite with **zero** security/guardrail regressions.
-2. **Shadow / Dark Traffic Mode (`1%` Live Fork, Dry-Run Writes):** Fork `1%` of live production requests asynchronously to `v2.5` where all state-mutating tools are stubbed in **dry-run mode**. Log any divergence between `v2.5`'s proposed actions and `v2.4`'s actual actions.
-3. **Canary Flighting (`1% -> 10% -> 50% -> 100%`):** Route `1%` of real users to `v2.5`. Monitor real-time OpenTelemetry health signals:
-   - **System Signals:** `tool_error_rate`, `max_steps_exceeded_rate`, `p95_ttft_ms`, `tokens_per_run`.
-   - **Quality Signals:** User explicit undo/thumbs-down rate, immediate re-query rate, and async `5%` Kafka LLM-as-Judge faithfulness scores.
-4. **Instant Feature-Flag Rollback:** If the canary's `tool_error_rate` or hallucination rate spikes past the SLO threshold, automatically flip the routing pointer back to `v2.4` in under `5 seconds`.
+Treat prompts, tool JSON schemas, and agent graphs as immutable Git-versioned artifacts (`prompt_sha`). Roll out changes in four stages:
+1. **Offline CI Gate:** Must pass `>= 90%` precision on the Golden Trajectory Suite with zero safety regressions.
+2. **Shadow (Dark Traffic) Mode (`1%` Live Fork):** Run the new version asynchronously on `1%` of live traffic with all write tools stubbed in **dry-run/no-op mode**, comparing proposed actions against production.
+3. **Progressive Canary (`1% -> 10% -> 50% -> 100%`):** Monitor OTel `tool_error_rate`, `max_steps_exceeded_rate`, `p95_ttft_ms`, user undo/thumbs-down rate, and async `5%` Kafka judge scores.
+4. **Instant Feature-Flag Rollback:** Automatically revert the routing pointer to the prior `prompt_sha` in `< 5s` if any SLO trips.
 
 ---
 
 ### Analogy, Where It Breaks & Real System
 
-- **Real-world analogy:** Deploying an updated AI agent is like deploying new **autopilot flight-control firmware**. You never test new firmware for the first time with 300 passengers in the air. First, you test the wiring with pre-recorded electrical signals (`Cassette Replay`), then you fly 500 stormy landings in a flight simulator (`Sandboxed Golden Evals`), then you run the new computer in "shadow mode" next to the human pilot (`Shadow Traffic`), and finally you enable it on 1% of flights (`Canary`).
-- **Where the analogy breaks:** Physics in a flight simulator obeys fixed differential equations. Real human users invent brand-new slang, paste broken logs, and trigger new failure modes every week—so **every production failure caught in the wild must be anonymized and added back into your Golden Evaluation Dataset** (a continuous eval flywheel) [2].
-- **Real production system:** **Microsoft Edge Assisted Settings** and **Apple Internal Agent Platforms** gate global rollouts on offline precision/recall rubrics (`>90%` precision) followed by progressive Canary telemetry validation.
+- **Real-world analogy:** Rolling out an agent update is like testing **aircraft autopilot firmware**: first test the wiring with pre-recorded signals (`Cassette Replay`), then fly 200 storms in a simulator (`Sandboxed Golden Evals`), then run in passive shadow mode beside the human pilot (`Shadow Traffic`), and finally enable on 1% of flights (`Canary`).
+- **Where the analogy breaks:** Flight simulators obey fixed physics; real users invent new edge cases daily—so every production failure caught in the wild must be anonymized and added back into your **Golden Eval Dataset** [2].
+- **Real production system:** **Sierra, Intercom Fin, and GitHub Copilot** gate every prompt or tool-schema change on replay harnesses, `tau-bench`-style state assertions, and progressive canary telemetry [2, 3].
 
 ---
 
 ### Quick Self-Check
 
 <details>
-<summary><strong>Q1: What span hierarchy should an OpenTelemetry trace capture for an agent run, and why is <code>cached_input_tokens</code> a critical span attribute?</strong></summary>
-<p><strong>Answer:</strong> A root <code>agent.run</code> span with child spans for each <code>memory.retrieve</code>, <code>gen_ai.chat</code> (LLM call), and <code>mcp.tool.execute</code> wave. Tracking <code>cached_input_tokens</code> alongside <code>input_tokens</code> immediately alerts you if a prompt change accidentally broke your KV prefix cache hit rate.</p>
+<summary><strong>Q1: How does Dependency Injection let you test an orchestrator's DAG routing, retry backoff, and guardrails in under 2 seconds at $0 cost?</strong></summary>
+<p><strong>Answer:</strong> By injecting <code>LLMClient</code> and <code>ToolExecutor</code> interfaces via the constructor, unit tests supply a <strong>Deterministic Cassette Replay harness</strong> that returns pre-recorded responses in memory without network or GPU calls.</p>
 </details>
 
 <details>
-<summary><strong>Q2: How does Dependency Injection allow you to test an agent orchestrator's retry, compaction, and DAG routing logic in under 2 seconds at $0 cost?</strong></summary>
-<p><strong>Answer:</strong> By injecting interfaces (<code>LLMClient</code>, <code>ToolRegistry</code>, <code>MemoryStore</code>) via the constructor, unit tests can supply a <strong>Deterministic Cassette Replay client</strong> that returns pre-recorded LLM and tool payloads in memory—verifying all orchestration control flow deterministically without making network or GPU calls.</p>
+<summary><strong>Q2: Why is asserting an exact ordered list of tool calls brittle for multi-step agents, and what should you assert instead?</strong></summary>
+<p><strong>Answer:</strong> Independent read tools (<code>get_user</code>, <code>get_orders</code>) can validly run in any order. Assert (1) <strong>Final Sandbox State Match</strong>, (2) <strong>Unordered/DAG-Valid Tool Call F1</strong>, and (3) <strong>Zero Forbidden Write Calls</strong>.</p>
 </details>
 
 <details>
-<summary><strong>Q3: Why is asserting an exact ordered list of tool calls a brittle metric for evaluating multi-step agents, and what should you assert instead?</strong></summary>
-<p><strong>Answer:</strong> Independent read tools (such as <code>get_user</code> and <code>get_orders</code>) can validly execute in any order or in parallel. Instead, assert (1) <strong>Final Sandbox State Match</strong> (did the mocked database reach the right final state?), (2) <strong>DAG-Valid Tool Call Precision &amp; Recall</strong>, and (3) <strong>Zero Forbidden Write Tool Calls</strong>.</p>
-</details>
-
-<details>
-<summary><strong>Q4: When running a new agent version in Shadow (Dark Traffic) mode on 1% of live requests, how do you prevent the shadow agent from mutating production data?</strong></summary>
-<p><strong>Answer:</strong> Configure the shadow agent's injected <code>ToolExecutor</code> to run all read-only tools normally (or read from the primary agent's cached observations) while intercepting all state-mutating write tools in <strong>dry-run / no-op mode</strong>, logging the proposed write payload for offline comparison.</p>
-</details>
-
-<details>
-<summary><strong>Q5: Why does asking an LLM-as-a-Judge to "rate this response from 1 to 10" fail in production CI gates, and how do you fix it?</strong></summary>
-<p><strong>Answer:</strong> Open-ended `1–10` scales suffer from high variance and central-tendency bias (`7/10` on everything). Fix it by setting <code>temperature = 0</code>, breaking the rubric into explicit <strong>binary (`PASS/FAIL`) checklist items</strong>, requiring an extracted evidence quote before scoring, and calibrating the judge against human-graded examples.</p>
+<summary><strong>Q3: In Shadow (Dark Traffic) mode on 1% of live requests, how do you prevent the candidate agent from mutating production databases?</strong></summary>
+<p><strong>Answer:</strong> Inject a shadow <code>ToolExecutor</code> that executes read-only tools normally (or reads cached observations) while intercepting all state-mutating write tools in <strong>dry-run mode</strong>, logging the proposed payload for comparison.</p>
 </details>
 
 ---
 
 ### Sources & References
-- **[1]** OpenTelemetry Specification, *Semantic Conventions for Generative AI Systems (`gen_ai.*` and Agent Spans)* — [opentelemetry.io/docs/specs/semconv/gen-ai](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
+- **[1]** OpenTelemetry Specification, *Semantic Conventions for Generative AI Systems (`gen_ai.*`)* — [opentelemetry.io/docs/specs/semconv/gen-ai](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
 - **[2]** Hamel Husain & Eugene Yan, *Your AI Product Needs Evals (Applied LLMs)* — [applied-llms.org](https://applied-llms.org/)
-- **[3]** Shunyu Yao, Sierra Engineering et al., *tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains* (2024) — [arxiv.org/abs/2406.12045](https://arxiv.org/abs/2406.12045)
+- **[3]** Shunyu Yao et al., *tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains* (2024) — [arxiv.org/abs/2406.12045](https://arxiv.org/abs/2406.12045)

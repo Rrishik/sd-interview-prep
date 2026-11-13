@@ -81,5 +81,5 @@ Every request misses Redis and hits your database (**cache penetration attack**)
 
 ### Sources & References
 - **[1]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 7: Design Unique ID Generator & Chapter 8: Design a URL Shortener — [ByteByteGo](https://bytebytego.com/)
-- **[2]** Twitter Engineering, *Announcing Snowflake (64-bit Time-Ordered ID Generation)* — [blog.x.com/engineering](https://blog.x.com/engineering/en_us/a/2010/announcing-snowflake)
-- **[3]** Instagram Engineering, *Sharding & IDs at Instagram* — [instagram-engineering.com](https://instagram-engineering.com/sharding-ids-at-instagram-1cf5a71e5a5c)
+- **[2]** Twitter (X) Open Source, *Snowflake: 64-bit Time-Ordered Distributed ID Generation* — [github.com/twitter-archive/snowflake](https://github.com/twitter-archive/snowflake)
+- **[3]** Instagram & Meta Engineering, *Distributed Sharding & IDs at Scale (PostgreSQL & TAO)* — [engineering.fb.com](https://engineering.fb.com/2013/06/25/core-infra/tao-the-power-of-the-graph/)

@@ -77,4 +77,5 @@ To make 2D map lookups `O(1)`, geospatial systems divide the Earth's surface int
 
 ### Sources & References
 - **[1]** Alex Xu, *System Design Interview (Vol. 2)*, Chapter 1: Proximity Service, Chapter 2: Nearby Friends & Chapter 7: Hotel/Ticket Reservation System — [ByteByteGo](https://bytebytego.com/)
-- **[2]** Uber Engineering, *H3: Uber's Hexagonal Hierarchical Spatial Index* — [uber.com/blog/h3](https://www.uber.com/blog/h3/)
+- **[2]** Uber Open Source, *H3: Hexagonal Hierarchical Geospatial Indexing System* — [h3geo.org](https://h3geo.org/)
+- **[3]** Martin Kleppmann, *How to do distributed locking (Leases & Fencing Tokens)* — [martin.kleppmann.com](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)

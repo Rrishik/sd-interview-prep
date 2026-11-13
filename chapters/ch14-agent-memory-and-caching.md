@@ -1,6 +1,6 @@
 # Chapter 14: Agent Memory (Working, Episodic, Semantic) & KV Prompt Caching
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 18 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 18 min with deep dives*
 
 By itself, an LLM has the memory of a goldfish: the microsecond an HTTP response finishes streaming, the model forgets you ever existed.
 
@@ -49,11 +49,11 @@ Suppose an interviewer asks: *"Design a 6-month memory system for an IDE coding 
 
 1. **Scope Isolation (`(user_id, repo_id)`):** Partition memories into **Global User Preferences** (*"prefers concise comments, pytest fixtures over unittest"*) vs. **Repo-Scoped Facts** (*"repo A uses pnpm + Vitest; integration tests need Docker"*), so rules from Repo A never pollute Repo B.
 2. **Token Budget Allocation (`24,000` Active Context Ceiling):**
-   - `3,000` tokens: Static System Prompt + Tool Schemas (**KV-cached**).
-   - `1,500` tokens: Top-5 `is_active` Semantic Repo/User facts + Top-2 matching Episodic debugging postmortems.
-   - `7,500` tokens: On-demand AST/code chunks + triggered **Procedural `SKILL.md`**.
+   - `3,000` tokens: Static System Prompt + Tool Schemas (**KV-cached**) [4, 5].
+   - `1,500` tokens: Top-5 `is_active` Semantic Repo/User facts + Top-2 matching Episodic debugging postmortems [1, 2].
+   - `7,500` tokens: On-demand AST/code chunks + triggered **Procedural `SKILL.md`** [2].
    - `12,000` tokens: Append-only Working Memory (compacted at `75%` fullness into a structured state checkpoint).
-3. **Security & Memory Poisoning Defense:** Scrub `.env` secrets/tokens before consolidation, and **never auto-promote untrusted external text** (e.g., an instruction hidden inside a third-party GitHub Issue) into persistent Semantic or Procedural Memory without explicit user confirmation—blocking persistent "sleeper" prompt injections!
+3. **Security & Memory Poisoning Defense:** Scrub `.env` secrets/tokens before consolidation, and **never auto-promote untrusted external text** (e.g., an instruction hidden inside a third-party GitHub Issue) into persistent Semantic or Procedural Memory without explicit user confirmation—blocking persistent "sleeper" prompt injections [6]!
 
 :::
 
@@ -104,7 +104,9 @@ During prefill, a causal Transformer computes **Key (`K`)** and **Value (`V`)** 
 ---
 
 ### Sources & References
-- **[1]** Joon Sung Park et al., *Generative Agents: Interactive Simulacra of Human Behavior* (UIST 2023) — Recency, Relevance & Importance Memory Scoring
-- **[2]** Theodore Sumers et al., *Cognitive Architectures for Language Agents (CoALA)* (TMLR 2024) — Working, Episodic, Semantic & Procedural Memory
+- **[1]** Joon Sung Park et al., *Generative Agents: Interactive Simulacra of Human Behavior* (UIST 2023) — [arxiv.org/abs/2304.03442](https://arxiv.org/abs/2304.03442)
+- **[2]** Theodore Sumers et al., *Cognitive Architectures for Language Agents (CoALA)* (TMLR 2024) — [arxiv.org/abs/2309.02427](https://arxiv.org/abs/2309.02427)
 - **[3]** Nelson F. Liu et al., *Lost in the Middle: How Language Models Use Long Contexts* (TACL 2024) — [arxiv.org/abs/2307.03172](https://arxiv.org/abs/2307.03172)
-- **[4]** Anthropic & OpenAI Engineering, *Prompt Caching: KV-Cache Prefix Reuse for Multi-Turn Agents* (2024–2026)
+- **[4]** Anthropic Documentation, *Prompt Caching: KV-Cache Prefix Reuse for Multi-Turn Agents* — [platform.claude.com/docs/en/build-with-claude/prompt-caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+- **[5]** Woosuk Kwon et al., *Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM)* (SOSP 2023) — [arxiv.org/abs/2309.06180](https://arxiv.org/abs/2309.06180)
+- **[6]** OWASP GenAI Security Project, *OWASP Top 10 for LLM & Agentic Applications (Memory Poisoning & Indirect Injection)* — [genai.owasp.org/llm-top-10](https://genai.owasp.org/llm-top-10/)

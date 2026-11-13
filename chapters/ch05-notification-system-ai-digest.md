@@ -81,5 +81,5 @@ You wrap the LLM call in a **Circuit Breaker** (`2,000 ms` timeout):
 
 ### Sources & References
 - **[1]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 10: Design a Notification System — [ByteByteGo](https://bytebytego.com/)
-- **[2]** Uber Engineering, *Reliable Push Notifications & Event-Driven Consumer Retries at Scale* — [uber.com/blog/engineering](https://www.uber.com/blog/engineering/)
+- **[2]** AWS Builders' Library, *Timeouts, Retries, and Backoff with Jitter* — [aws.amazon.com/builders-library](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/)
 - **[3]** Chip Huyen, *AI Engineering* (2025) — Latency Fallbacks, Batching & Deterministic Guardrails

@@ -101,6 +101,6 @@ When designing AI-enabled backend systems, there is one more calculation that im
 - **[2]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)*, Chapter 1: Reliability, Scalability, and Maintainability — [dataintensive.net](https://dataintensive.net/)
 - **[3]** Jeff Dean & Colin Scott, *Latency Numbers Every Programmer Should Know* — [Interactive Visualizer](https://colin-scott.github.io/personal_website/research/interactive_latency.html)
 - **[4]** Redis Official Documentation, *Redis Benchmarks & Single-Threaded Event Loop* — [redis.io/docs](https://redis.io/docs/)
-- **[5]** Jay Kreps (LinkedIn), *The Log: What every software engineer should know about real-time data's unifying abstraction* — [engineering.linkedin.com](https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying)
+- **[5]** Jay Kreps, *The Log: What every software engineer should know about real-time data's unifying abstraction* & Apache Kafka Design Docs — [kafka.apache.org/documentation](https://kafka.apache.org/documentation/)
 - **[6]** Chip Huyen, *AI Engineering: Building Applications with Foundation Models* (O'Reilly, 2025) — Latency & Token Economics
 - **[7]** Discord Engineering, *How Discord Stores Trillions of Messages* — [discord.com/blog](https://discord.com/blog/how-discord-stores-trillions-of-messages)

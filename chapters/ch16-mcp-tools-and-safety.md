@@ -1,6 +1,6 @@
 # Chapter 16: Model Context Protocol (MCP), Tool Contracts & Prompt Injection Defense
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 19 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 19 min with deep dives*
 
 Connecting 5 internal AI agents to 10 enterprise microservices used to mean writing **50 bespoke integration wrappers** (`M × N` glue code), each with its own brittle JSON parser and ad-hoc retry logic.
 
@@ -20,7 +20,7 @@ Every MCP Server exposes capabilities through three strictly separated primitive
 | **2. `Resources`** | **The Host App** | `resources/list`, `resources/read` | Read-only URI data streams (`postgres://prod/schema`, `file:///logs/app.log`) without granting execution rights. |
 | **3. `Prompts`** | **The User** | `prompts/list`, `prompts/get` | Parameterized workflow templates (`diagnose-incident`) explicitly invoked via slash commands or UI. |
 
-:::deepdive MCP Architecture (2026-07-28 Spec): 1:1 Host–Client–Server, Transports & Wrapping REST | +5 min
+:::deepdive MCP Architecture: 1:1 Host–Client–Server, Transports & Wrapping REST | +5 min
 
 Interviewers frequently test whether you confuse **MCP** with **LLM function calling** or **REST microservices** [1]:
 
@@ -62,8 +62,8 @@ Remember the core execution invariant: **the LLM only proposes a structured call
 7. Sanitized observation enters context -> Model picks next step or terminates
 ```
 
-- **Why Step 5 (Output Validation) Matters:** Tool outputs from web pages, Jira tickets, or logs are **untrusted input**! Validate output schemas, strip credentials/tokens accidentally returned by internal APIs, cap payload size (`<= 4 KB`), and wrap untrusted text in explicit data delimiters.
-- **Partial Failure & Compensating Sagas:** If an agent executes `reserve_inventory()` (succeeds) followed by `create_shipment()` (fails permanently), there are no distributed 2PC locks across SaaS APIs. Record each mutating step's **compensating action** (`release_inventory(reservation_id)`) in the run journal and run compensations in reverse order on abort.
+- **Why Step 5 (Output Validation) Matters:** Tool outputs from web pages, Jira tickets, or logs are **untrusted input** [4]! Validate output schemas, strip credentials/tokens accidentally returned by internal APIs, cap payload size (`<= 4 KB`), and wrap untrusted text in explicit data delimiters.
+- **Partial Failure & Compensating Sagas:** If an agent executes `reserve_inventory()` (succeeds) followed by `create_shipment()` (fails permanently), there are no distributed 2PC locks across SaaS APIs. Record each mutating step's **compensating action** (`release_inventory(reservation_id)`) in the run journal and run compensations in reverse order on abort [5].
 
 :::
 
@@ -114,6 +114,8 @@ In an LLM, **system instructions and untrusted external data (emails, tickets, w
 ---
 
 ### Sources & References
-- **[1]** Model Context Protocol (MCP) Architecture Specification (`2026-07-28`) — *Host, Client & Server Isolation, Primitives & Transports* — [modelcontextprotocol.io/specification/2026-07-28/architecture](https://modelcontextprotocol.io/specification/2026-07-28/architecture)
-- **[2]** Anthropic Engineering, *Writing Effective Tools for Agents — With Agents* (2025)
+- **[1]** Model Context Protocol (MCP) Documentation, *Core Architecture: Host, Client & Server Isolation, Primitives & Transports* — [modelcontextprotocol.io/docs/learn/architecture](https://modelcontextprotocol.io/docs/learn/architecture)
+- **[2]** Anthropic Engineering, *Writing Effective Tools for AI Agents — Using AI Agents* (2025) — [anthropic.com/engineering/writing-tools-for-agents](https://www.anthropic.com/engineering/writing-tools-for-agents)
 - **[3]** Edoardo Debenedetti et al., *Defeating Prompt Injections by Design (CaMeL)* (Google DeepMind, 2025) — [arxiv.org/abs/2503.18813](https://arxiv.org/abs/2503.18813)
+- **[4]** OWASP GenAI Security Project, *OWASP Top 10 for Large Language Model Applications (Indirect Prompt Injection & Improper Output Handling)* — [genai.owasp.org/llm-top-10](https://genai.owasp.org/llm-top-10/)
+- **[5]** Hector Garcia-Molina & Kenneth Salem, *Sagas* (ACM SIGMOD 1987) — Compensating Transactions for Long-Lived Workflows

@@ -30,8 +30,8 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 
 1. **Why an Agent Is Justified:** Root-causing an unfamiliar stack trace requires dynamic hypothesis testing (`grep -> read caller -> inspect git blame -> reproduce test`), which cannot be hardcoded as a fixed pipeline—paired with a deterministic **Evaluator-Optimizer** inner loop (`Edit -> Compile -> Test -> Lint`) [1].
 2. **Sandbox & Tool Architecture (Top Half of Diagram):**
-   - Provision an **ephemeral Firecracker microVM** mounted to a shallow/CoW **Git worktree** at the failing commit SHA—containing **zero production DB credentials** and a default-deny egress firewall (allowing only the internal package mirror).
-   - Provide **coarse, token-efficient tools**: `symbol_usages(lsp)`, `ripgrep_search`, `git_log_range`, `read_file_lines`, `apply_unified_diff`, and `run_targeted_test(selector)`. Offload verbose compiler logs (`>1,000` tokens) to artifacts, feeding only failing assertion diffs into Working Memory.
+   - Provision an **ephemeral Firecracker microVM** [4] mounted to a shallow/CoW **Git worktree** at the failing commit SHA—containing **zero production DB credentials** and a default-deny egress firewall (allowing only the internal package mirror).
+   - Provide **coarse, token-efficient tools** (*Agent-Computer Interface* [5]): `symbol_usages(lsp)`, `ripgrep_search`, `git_log_range`, `read_file_lines`, `apply_unified_diff`, and `run_targeted_test(selector)`. Offload verbose compiler logs (`>1,000` tokens) to artifacts, feeding only failing assertion diffs into Working Memory.
 3. **Safety & Termination Gates:** Cap the Evaluator-Optimizer repair loop at `max_iterations = 4` and `wall_clock = 8 min`. Block edits to CI/security paths (`.github/`, `CODEOWNERS`). On green tests, push to `bot/fix-<ticket>` and open a **Draft PR** attaching the reproduction test and OTel trace—**never auto-merging to `main`**.
 
 ---
@@ -42,7 +42,7 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 
 1. **MCP `1:1` Isolation & OAuth On-Behalf-Of (`OBO`):**
    - The **Enterprise MCP Host** spawns isolated **`1:1` MCP Clients** to the `Git`, `Ticketing`, and `Analytics` MCP Servers over Streamable HTTP [3].
-   - **Zero Shared Admin Keys:** For every tool call, the Host exchanges the user's SSO JWT via **OAuth 2.0 On-Behalf-Of (`OBO`)** for a short-lived, audience-scoped token (`aud="mcp://ticketing"`). Even under prompt injection, the Ticketing MCP Server physically cannot read tickets outside that user's Jira RBAC, and the Analytics MCP Server connects via a read-only database role with **Row-Level Security (`RLS`)**.
+   - **Zero Shared Admin Keys:** For every tool call, the Host exchanges the user's SSO JWT via **OAuth 2.0 On-Behalf-Of (`OBO`, RFC 8693)** [6] for a short-lived, audience-scoped token (`aud="mcp://ticketing"`). Even under prompt injection, the Ticketing MCP Server physically cannot read tickets outside that user's Jira RBAC, and the Analytics MCP Server connects via a read-only database role with **Row-Level Security (`RLS`)**.
 2. **Orchestration & Consent UX:**
    - Use **Plan-and-Execute** to fan out parallel read-only MCP calls (`git_recent_deploys` + `jira_open_incidents` + ACL-filtered runbook RAG), cutting multi-source latency from `7s` to `~2.2s`.
    - Any mutating tool (`jira_transition_issue`, `git_revert_pr`) pauses the durable run in `WAITING_APPROVAL` and renders a structured **User Consent Diff Card** in the UI before executing with a `SHA-256` idempotency key.
@@ -52,7 +52,7 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 **Prompt:** *Design a customer-support system handling 500,000 tickets/day across order tracking, cancellations, address changes, and complex damaged-shipment disputes.*
 
 - **Step 1 — Don't Over-Agentify (`80 / 20` Split):**
-  - A fast intent classifier (`150 ms`) routes **`~80%` of traffic** (order status, standard within-window returns, FAQ) into **Deterministic Workflows**: fixed code fetches `get_order(session.user_id)`, evaluates exact business rules in Java/Python, and uses a single small-LLM call strictly to phrase a polite response. Cost: `<$0.001`, hallucinated policy risk: **`0%`**.
+  - A fast intent classifier (`150 ms`) routes **`~80%` of traffic** (order status, standard within-window returns, FAQ) into **Deterministic Workflows** [1, 2]: fixed code fetches `get_order(session.user_id)`, evaluates exact business rules in Java/Python, and uses a single small-LLM call strictly to phrase a polite response. Cost: `<$0.001`, hallucinated policy risk: **`0%`**.
 - **Step 2 — Bounded Exception Agent (`20%` Ambiguous Cases):**
   - Multi-item partial damages, carrier delays + loyalty exceptions route to a **Bounded ReAct/Two-Pass Agent** equipped with read tools (`get_order`, `get_carrier_scan`, `search_return_policy`) and policy-gated write tools (`issue_credit`, `reship_item`).
 - **Step 3 — Hard Financial Invariants:**
@@ -66,8 +66,8 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 
 1. **Lead Planner -> Parallel Search Workers (`Map-Reduce` Context Isolation):**
    - If one agent runs 15 sequential searches, `60,000` tokens of noisy snippets flood one context window ("Lost in the Middle").
-   - Instead, a **Lead Planner** decomposes the prompt into `3–5` orthogonal sub-questions and spawns **parallel Sub-Agents** (`Agents-as-Tools`), each with its own isolated `16K` context window, `max_searches = 3`, and ACL-scoped hybrid retriever.
-   - Each worker returns **only compressed, source-tagged evidence cards** (`{claim, quote_span, doc_id, published_at, authority_tier}`)—discarding `90%` of raw HTML/chunk noise before reaching the Synthesizer!
+   - Instead, a **Lead Planner** decomposes the prompt into `3–5` orthogonal sub-questions and spawns **parallel Sub-Agents** (`Agents-as-Tools`), each with its own isolated `16K` context window, `max_searches = 3`, and ACL-scoped hybrid retriever [1, 2].
+   - Each worker returns **only compressed, source-tagged evidence cards** (`{claim, quote_span, doc_id, published_at, authority_tier}`)—discarding `90%` of raw HTML/chunk noise before reaching the Synthesizer [1]!
 2. **Conflict Resolution & Citation Verification:**
    - When an older 2024 doc contradicts a 2026 spec, instruct the Synthesizer to surface the version/date discrepancy explicitly rather than silently picking one.
    - Run a fast **Post-Generation Citation Verifier** (exact quote-span check + lightweight NLI entailment model) confirming every `[doc_id]` supports its sentence; strip or flag any unsupported sentence before marking the durable run `COMPLETED`.
@@ -109,6 +109,9 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 ---
 
 ### Sources & References
-- **[1]** Anthropic Engineering, *Building Effective Agents* & *Multi-Agent Research System Architecture* (2024–2025) — [anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents)
-- **[2]** OpenAI, *A Practical Guide to Building Agents* & *Agents SDK Orchestration* (2025–2026) — [developers.openai.com/api/docs/guides/agents/orchestration](https://developers.openai.com/api/docs/guides/agents/orchestration)
-- **[3]** Model Context Protocol (MCP) Specification (`2026-07-28`), *Authorization, Trust Boundaries & Architecture* — [modelcontextprotocol.io/specification/2026-07-28/architecture](https://modelcontextprotocol.io/specification/2026-07-28/architecture)
+- **[1]** Anthropic Engineering, *Building Effective Agents* & *How We Built Our Multi-Agent Research System* (2024–2025) — [anthropic.com/research/multi-agent-research-system](https://www.anthropic.com/research/multi-agent-research-system)
+- **[2]** OpenAI Developers, *Orchestrating Agents: Workflows, Handoffs & Guardrails* — [developers.openai.com/api/docs/guides/agents/orchestration](https://developers.openai.com/api/docs/guides/agents/orchestration)
+- **[3]** Model Context Protocol (MCP) Documentation, *Core Architecture, Authorization & Trust Boundaries* — [modelcontextprotocol.io/docs/learn/architecture](https://modelcontextprotocol.io/docs/learn/architecture)
+- **[4]** Alexandru Agache et al. (AWS), *Firecracker: Lightweight Virtualization for Serverless Applications* (USENIX NSDI 2020) — [usenix.org/conference/nsdi20/presentation/agache](https://www.usenix.org/conference/nsdi20/presentation/agache)
+- **[5]** John Yang et al., *SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering* (NeurIPS 2024) — [arxiv.org/abs/2405.15793](https://arxiv.org/abs/2405.15793)
+- **[6]** IETF RFC 8693, *OAuth 2.0 Token Exchange (Delegated On-Behalf-Of Security Tokens)* — [datatracker.ietf.org/doc/html/rfc8693](https://datatracker.ietf.org/doc/html/rfc8693)

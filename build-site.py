@@ -143,8 +143,15 @@ def excalidraw_to_svg(ex_path: pathlib.Path) -> str:
 
 
 def inline_md(text: str, ch_slug: str) -> str:
+    code_spans = []
+
+    def save_code(m):
+        code_spans.append(f"<code>{html.escape(m.group(1))}</code>")
+        return f"\x00CODE{len(code_spans) - 1}\x00"
+
+    text = re.sub(r"`([^`]+)`", save_code, text)
     text = html.escape(text)
-    text = re.sub(r"`([^`]+)`", r"<code>\1</code>", text)
+    text = re.sub(r"&lt;br\s*/?&gt;", "<br/>", text, flags=re.I)
     text = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", text)
     text = re.sub(r"\*([^*]+)\*", r"<em>\1</em>", text)
     text = re.sub(
@@ -157,6 +164,8 @@ def inline_md(text: str, ch_slug: str) -> str:
         return f'<a href="#{ch_slug}-refs" class="cite-ref" title="Jump to chapter references">[{inner}]</a>'
 
     text = re.sub(r"\[(\d+(?:,\s*\d+)*)\](?!\()", cite_repl, text)
+    for idx, span in enumerate(code_spans):
+        text = text.replace(f"\x00CODE{idx}\x00", span)
     return text
 
 
@@ -171,7 +180,6 @@ def md_to_chapter_html(md_text: str, ch_slug: str, svg_map: dict) -> str:
     code_buf = []
     block_idx = 0
     deep_idx = 0
-    total_deepdives = sum(1 for r in lines if r.strip().startswith(":::deepdive"))
 
     def next_anchor():
         nonlocal block_idx, deep_idx
@@ -338,19 +346,6 @@ def md_to_chapter_html(md_text: str, ch_slug: str, svg_map: dict) -> str:
         if stripped.startswith("*") and stripped.endswith("*") and "min" in stripped:
             meta_txt = stripped[1:-1]
             out.append(f'<div class="ch-kicker">{html.escape(meta_txt)}</div>')
-            if total_deepdives > 0:
-                out.append(
-                    f'<div class="depth-bar">'
-                    f'<div class="depth-meta">'
-                    f'<span class="depth-pill-tag">Progressive Disclosure</span>'
-                    f'<span class="depth-desc">{total_deepdives} Deep Dives available — read concise core or expand all:</span>'
-                    f'</div>'
-                    f'<div class="depth-switch" role="group" aria-label="Reading depth">'
-                    f'<button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth(\'core\')">Core (~8m)</button>'
-                    f'<button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth(\'deep\')">Deep Dive (~18m)</button>'
-                    f'</div>'
-                    f'</div>'
-                )
             continue
 
         anc = next_anchor()
@@ -634,15 +629,49 @@ body {{
   color: #ffffff;
   border-color: var(--blue);
 }}
+.depth-switch {{
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-Warm);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 2px;
+  gap: 2px;
+}}
+.depth-btn {{
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}}
+.depth-btn:hover:not(.active) {{
+  color: var(--text);
+}}
+.depth-btn.active {{
+  background: var(--blue);
+  color: #ffffff;
+}}
 @media (max-width: 600px) {{
   .masthead {{ padding: 6px 10px; gap: 6px; }}
-  .brand-title {{ font-size: 16.5px; }}
+  .mast-actions {{ gap: 4px; }}
+  .brand-title {{ font-size: 15.5px; }}
   .hide-xs {{ display: none; }}
-  .top-btn, .menu-btn {{ padding: 5px 8px; font-size: 12px; }}
+  .top-btn, .menu-btn {{ padding: 5px 7px; font-size: 12px; }}
+  .depth-btn {{ padding: 4px 7px; font-size: 11.5px; }}
 }}
-@media (max-width: 370px) {{
-  .brand-title {{ font-size: 14.5px; }}
+@media (max-width: 400px) {{
+  .brand-title {{ font-size: 14px; }}
+  .hide-xxs {{ display: none; }}
   .top-btn, .menu-btn {{ padding: 5px 6px; font-size: 11.5px; }}
+  .depth-btn {{ padding: 3px 6px; font-size: 11px; }}
 }}
 .sidebar-backdrop {{
   display: none;
@@ -754,63 +783,6 @@ body {{
   letter-spacing: 0.06em;
   color: var(--accent);
   margin-bottom: 14px;
-}}
-.depth-bar {{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 14px;
-  margin: 0 0 22px;
-  background: var(--bg-Warm);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 13px;
-}}
-.depth-meta {{
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-width: 0;
-}}
-.depth-pill-tag {{
-  background: var(--blue-soft);
-  color: var(--blue);
-  font-weight: 700;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 2px 8px;
-  border-radius: 999px;
-}}
-.depth-desc {{
-  color: var(--text-muted);
-  font-size: 12.5px;
-}}
-.depth-switch {{
-  display: inline-flex;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 2px;
-  gap: 2px;
-}}
-.depth-btn {{
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 700;
-  padding: 5px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-}}
-.depth-btn.active {{
-  background: var(--blue);
-  color: #ffffff;
 }}
 .ch-title {{
   font-family: var(--font-body);
@@ -1245,13 +1217,17 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {{
   <div class="mast-left">
     <button class="menu-btn" onclick="toggleSidebar()" aria-label="Toggle chapter list">☰ <span class="hide-xs">Chapters</span></button>
     <div class="brand">
-      <span class="brand-title">System Design Field Guide</span>
+      <span class="brand-title">System Design<span class="hide-xs"> Field Guide</span></span>
       <span class="brand-sub">First-Principles Stories & Visual Architectures</span>
     </div>
   </div>
   <div class="mast-actions">
+    <div class="depth-switch" role="group" aria-label="Reading depth" title="Global reading depth: concise Core chapters vs expanded Deep Dives">
+      <button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth('core')">Core</button>
+      <button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth('deep')">Deep</button>
+    </div>
     <button class="top-btn" id="toggle-threads-btn" onclick="toggleAllThreads()" title="Expand or collapse all inline Q&A threads">💬 <span class="hide-xs">Threads (</span><span id="thread-total-count">0</span><span class="hide-xs">)</span></button>
-    <button class="top-btn" onclick="openSourceModal()" title="Suggest a new source via GitHub Issue">+ <span class="hide-xs">Suggest </span>Source</button>
+    <button class="top-btn" onclick="openSourceModal()" title="Suggest a new source via GitHub Issue" aria-label="Suggest a new source">+ <span class="hide-xs">Suggest </span><span class="hide-xxs">Source</span></button>
     <button class="top-btn" onclick="openTokenModal()" id="gh-token-btn" title="Connect GitHub token for 1-click issue posting">🔑 <span class="hide-xs" id="gh-token-label">GitHub</span></button>
     <button class="top-btn" onclick="toggleTheme()" title="Toggle light/dark mode" aria-label="Toggle theme">◐</button>
   </div>
@@ -1421,7 +1397,7 @@ document.addEventListener('mouseup', (e) => {{
 }});
 
 document.querySelector('.reader-col').addEventListener('click', (e) => {{
-  if (e.target.closest('a') || e.target.closest('button') || e.target.closest('.inline-thread-box') || e.target.closest('.thread-pill') || e.target.closest('summary') || e.target.closest('.depth-bar')) {{
+  if (e.target.closest('a') || e.target.closest('button') || e.target.closest('.inline-thread-box') || e.target.closest('.thread-pill') || e.target.closest('summary')) {{
     return;
   }}
   const sel = window.getSelection();

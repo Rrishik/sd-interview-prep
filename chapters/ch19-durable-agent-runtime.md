@@ -23,7 +23,7 @@ Instead of blocking inside one synchronous request, expose a **5-endpoint Asynch
 | :--- | :--- | :--- |
 | **`POST /agent/runs`** | Accepts `Idempotency-Key` + goal; returns **`202 Accepted`** + `{run_id, status: "QUEUED"}` in `< 25 ms`. | Inserts `agent_runs` row (`QUEUED`) and publishes `run_id` to `Kafka: agent.runs` via transactional outbox. |
 | **`GET /agent/runs/{id}`** | Returns current state (`QUEUED`, `RUNNING`, `WAITING_APPROVAL`, `COMPLETED`, `FAILED`, `CANCELLED`). | Fast primary-key read from Postgres / Redis state cache for polling or UI hydration. |
-| **`GET /agent/runs/{id}/events`** | Server-Sent Events (`SSE`) accepting **`Last-Event-ID: 42`** header. | Replays any missed events `> 42` from a **Redis Stream (`XREAD`)** before tailing live tokens—surviving mobile Wi-Fi drops seamlessly! |
+| **`GET /agent/runs/{id}/events`** | Server-Sent Events (`SSE`) accepting **`Last-Event-ID: 42`** header [4]. | Replays any missed events `> 42` from a **Redis Stream (`XREAD`)** before tailing live tokens—surviving mobile Wi-Fi drops seamlessly! |
 | **`POST /runs/{id}/approvals`** | Submits `{step_id, decision: "APPROVED" or "REJECTED"}`. | Transitions state `WAITING_APPROVAL -> QUEUED` and re-enqueues `run_id` so *any* stateless worker resumes from the checkpoint! |
 | **`POST /runs/{id}/cancel`** | Sets `cancel_requested = true` + publishes cancel signal on Redis Pub/Sub. | Active worker aborts in-flight LLM/MCP calls at the next token/checkpoint and transitions to `CANCELLED`. |
 
@@ -41,8 +41,8 @@ How do you guarantee a multi-step agent run survives a worker pod crash on Step 
    - Worker claims a run via atomic `UPDATE agent_runs SET lease_owner = :pod, lease_expires_at = now() + 15s, lease_epoch = lease_epoch + 1` and renews every `5s`.
    - Before every LLM call or tool execution, the worker checks if `(run_id, step_idx)` already has a committed `output_json` in `agent_steps`.
 3. **Mid-Step Pod Death Walkthrough:**
-   - Suppose Pod A finishes Steps `1..3` (committed to `agent_steps`), calls `create_jira_ticket()` in Step `4` with `idempotency_key = SHA256(run_id + ":4")`, and OOM-crashes *before* writing Step 4's result to Postgres.
-   - `15 seconds` later, a lease-reaper re-queues `run_id`. Pod B loads Steps `1..3` directly from `agent_steps` (`0` LLM tokens spent!), re-invokes Step `4` with the **exact same deterministic `idempotency_key`**, receives the cached Jira ticket ID from the deduplication layer, commits Step `4` with `lease_epoch`, and finishes the run!
+   - Suppose Pod A finishes Steps `1..3` (committed to `agent_steps`), calls `create_jira_ticket()` in Step `4` with `idempotency_key = SHA256(run_id + ":4")`, and OOM-crashes *before* writing Step 4's result to Postgres [1, 2].
+   - `15 seconds` later, a lease-reaper re-queues `run_id`. Pod B loads Steps `1..3` directly from `agent_steps` (`0` LLM tokens spent!), re-invokes Step `4` with the **exact same deterministic `idempotency_key`**, receives the cached Jira ticket ID from the deduplication layer, commits Step `4` with `lease_epoch`, and finishes the run [1, 3]!
 
 :::
 
@@ -58,7 +58,7 @@ Running `1,000,000` multi-step tasks per day introduces failure modes that ordin
    - Track rolling `30s` windows of `HTTP 429/5xx` and `p95 TTFT` per `(provider, region, model)`. If `us-east` hits a GPU brownout, trip the circuit breaker to `OPEN` and fail over new turns to `eu-west` or a secondary model family via a normalized OpenAI/Spring-AI schema adapter—while keeping healthy runs **sticky by `run_id`** to preserve GPU KV prefix caches!
 3. **Two-Phase Redis Lua Token & Cost Budgets:**
    - Standard request-count rate limiting (`100 req/min`) fails when Request A uses `400` tokens and Request B uses `60,000` tokens.
-   - **Pre-Flight Reserve + Post-Turn Reconcile:** Before calling the LLM, atomically reserve `estimated_input_tokens + max_output_tokens` in a per-tenant Redis Lua token bucket. Once the stream finishes, refund `max_output_tokens - actual_output_tokens` and increment `tenant_daily_spend_usd`—halting runaway tenants before they exceed their contract cap.
+   - **Pre-Flight Reserve + Post-Turn Reconcile:** Before calling the LLM, atomically reserve `estimated_input_tokens + max_output_tokens` in a per-tenant Redis Lua token bucket [5]. Once the stream finishes, refund `max_output_tokens - actual_output_tokens` and increment `tenant_daily_spend_usd`—halting runaway tenants before they exceed their contract cap.
 
 :::deepdive Envelope Capacity Math & Fair Queuing for 1,000,000 Runs/Day | +5 min
 
@@ -71,7 +71,7 @@ Always ground a `1M runs/day` design prompt with 60-second back-of-the-envelope 
   - If an active run takes `6 seconds` on average, Little's Law (`L = λ × W`) gives `60 runs/s × 6s = 360` concurrent active runs—easily served by **`8–12` reactive orchestrator pods**!
 - **Multi-Tenant Noisy-Neighbor Isolation:**
   - Never put interactive user chat runs and `50,000-item` offline batch runs into the same FIFO queue!
-  - Split into **`agent.runs.interactive`** (SLO `< 3s` TTFT, dedicatedTPM reservation) and **`agent.runs.batch`** (spot/provisioned-spillover capacity), using **Weighted Fair Queuing / Deficit Round Robin per `tenant_id`** so Tenant A submitting 10,000 jobs cannot delay Tenant B's single interactive request by more than one scheduling quantum.
+  - Split into **`agent.runs.interactive`** (SLO `< 3s` TTFT, dedicatedTPM reservation) and **`agent.runs.batch`** (spot/provisioned-spillover capacity), using **Weighted Fair Queuing / Deficit Round Robin per `tenant_id`** so Tenant A submitting 10,000 jobs cannot delay Tenant B's single interactive request by more than one scheduling quantum [3, 5].
 
 :::
 
@@ -110,6 +110,8 @@ Always ground a `1M runs/day` design prompt with 60-second back-of-the-envelope 
 ---
 
 ### Sources & References
-- **[1]** Temporal Engineering, *Durable Execution for AI Agents & Human-in-the-Loop Workflows* (2025) — [temporal.io](https://temporal.io/)
-- **[2]** Anthropic & OpenAI API Guides, *Streaming Responses, Background Runs & Rate-Limit Token Buckets* (2025–2026)
-- **[3]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)* — Event-Driven State Machines, Leases & Idempotency
+- **[1]** Temporal Documentation, *Durable Execution for Long-Running Workflows & AI Agents* — [docs.temporal.io](https://docs.temporal.io/)
+- **[2]** LangGraph Documentation, *Durable Execution, Checkpointers & Human-in-the-Loop Interrupts* — [docs.langchain.com/oss/python/langgraph/durable-execution](https://docs.langchain.com/oss/python/langgraph/durable-execution)
+- **[3]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)* & *How to do distributed locking* — [martin.kleppmann.com](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
+- **[4]** WHATWG HTML Living Standard, *Server-Sent Events (`EventSource` & `Last-Event-ID` Reconnection)* — [html.spec.whatwg.org/multipage/server-sent-events.html](https://html.spec.whatwg.org/multipage/server-sent-events.html)
+- **[5]** Stripe Engineering, *Scaling Your API with Rate Limiters & Load Shedders* — [stripe.com/blog/rate-limiters](https://stripe.com/blog/rate-limiters)

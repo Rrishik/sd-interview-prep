@@ -1,6 +1,6 @@
 # Chapter 15: Retrieval Math (Recall@K, MRR, nDCG@K) & Vector Indexes (pgvector vs Milvus)
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 17 min with deep dives*
 
 When an enterprise RAG agent gives a wrong answer, who is at fault?
 Did the **Retriever** fail to pull the right chunk out of 10 million documents, or did the **Generator LLM** misread the chunk sitting at Rank #1?
@@ -41,8 +41,8 @@ Walk through the capacity and latency math step-by-step when asked to design sea
 
 1. **Chunk & Vector Volume:** Average doc = `4 pages (~2,000 tokens)` -> `5` chunks of `450` tokens -> **`50,000,000` total chunks**.
 2. **Memory Sizing (`1,024-dim` embeddings):**
-   - Uncompressed `float32` HNSW: `50M × 1,024 × 4B = 204.8 GB` + `~75 GB` graph overhead = **`~280 GB RAM`**.
-   - **Optimized (`SQ8` 8-bit quantized vectors in RAM + `float16` on NVMe SSD for rescoring):** `50M × 1,024 × 1B ≈ 51 GB` + graph = **`~115 GB RAM`** across 2–3 replicated query nodes!
+   - Uncompressed `float32` HNSW: `50M × 1,024 × 4B = 204.8 GB` + `~75 GB` graph overhead = **`~280 GB RAM`** [2].
+   - **Optimized (`SQ8` 8-bit quantized vectors in RAM + `float16` on NVMe SSD for rescoring):** `50M × 1,024 × 1B ≈ 51 GB` + graph = **`~115 GB RAM`** across 2–3 replicated query nodes [3, 4]!
 3. **Partitioning & Pre-Filter Strategy:** Partition keys by `tenant_id` (or physical shard by hash) so a tenant query touches **1 partition (`< 1M` chunks)** instead of scanning a global 50M-node HNSW graph, keeping Stage-1 `BM25 + HNSW` p99 under **`25 ms`** (`ef_search = 64`) and Stage-2 Cross-Encoder reranking (`Top 40 -> Top 5`) under **`45 ms`**.
 
 :::
@@ -60,7 +60,7 @@ Walk through the capacity and latency math step-by-step when asked to design sea
 :::deepdive Zero-Downtime Embedding Model Upgrades (Dual-Index Cutover) | +4 min
 
 What happens when you upgrade from `embed-v1` (`768-dim`) to `embed-v2` (`1,024-dim`)?
-- **Vector Space Incompatibility:** You **cannot** compare a `v2` query vector against `v1` document vectors—their coordinate spaces are orthogonal!
+- **Vector Space Incompatibility:** You **cannot** compare a `v2` query vector against `v1` document vectors—their coordinate spaces are orthogonal [1, 4]!
 - **Blue/Green Shadow Migration:**
   1. Stamp every vector row/collection with `embedding_model_version`.
   2. Spin up `chunks_index_v2` in the background; run a rate-limited batch worker over object storage + replay live Kafka CDC writes into **both** `v1` and `v2`.
@@ -104,6 +104,7 @@ What happens when you upgrade from `embed-v1` (`768-dim`) to `embed-v2` (`1,024-
 ---
 
 ### Sources & References
-- **[1]** Christopher D. Manning, Prabhakar Raghavan & Hinrich Schütze, *Introduction to Information Retrieval* — Chapter 8: Evaluation (`Recall@K`, `Precision@K`, `MRR`, `nDCG`)
-- **[2]** Yu A. Malkov & D. A. Yashunin, *Efficient and Robust Approximate Nearest Neighbor Search Using HNSW Graphs* (IEEE TPAMI 2020)
+- **[1]** Christopher D. Manning, Prabhakar Raghavan & Hinrich Schütze, *Introduction to Information Retrieval* (Cambridge Univ. Press) — Chapter 8: Evaluation (`Recall@K`, `Precision@K`, `MRR`, `nDCG`)
+- **[2]** Yu A. Malkov & D. A. Yashunin, *Efficient and Robust Approximate Nearest Neighbor Search Using HNSW Graphs* (IEEE TPAMI 2020) — [arxiv.org/abs/1603.09320](https://arxiv.org/abs/1603.09320)
 - **[3]** `pgvector` Documentation — *HNSW, `halfvec` Quantization & Iterative Filtered Scans* — [github.com/pgvector/pgvector](https://github.com/pgvector/pgvector)
+- **[4]** Hugging Face & Cohere Engineering, *Binary and Scalar Embedding Quantization for Significantly Faster & Cheaper Retrieval* (2024) — [huggingface.co/blog/embedding-quantization](https://huggingface.co/blog/embedding-quantization)

@@ -1,6 +1,6 @@
 # Chapter 13: Agent Loop Architectures (ReAct, Plan-and-Execute & Multi-Agent DAGs)
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 18 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 18 min with deep dives*
 
 When people first hear **"AI Agent,"** they often picture something mystical—a digital coworker improvising freely inside a GPU.
 
@@ -114,5 +114,5 @@ When orchestrating multiple agents, the first architectural decision is **who ow
 - **[1]** Shunyu Yao et al., *ReAct: Synergizing Reasoning and Acting in Language Models* (ICLR 2023) — [arxiv.org/abs/2210.03629](https://arxiv.org/abs/2210.03629)
 - **[2]** Anthropic Engineering, *Building Effective Agents* (2024) — [anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents)
 - **[3]** Sehoon Kim et al., *An LLM Compiler for Parallel Function Calling* (ICML 2024) — [arxiv.org/abs/2312.04511](https://arxiv.org/abs/2312.04511)
-- **[4]** OpenAI, *A Practical Guide to Building Agents* (2025) — [openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/)
+- **[4]** Anthropic Engineering, *How We Built Our Multi-Agent Research System* (2025) — [anthropic.com/research/multi-agent-research-system](https://www.anthropic.com/research/multi-agent-research-system)
 - **[5]** OpenAI Developers, *Orchestrating Multiple Agents: Handoffs vs. Agents-as-Tools* (2025–2026) — [developers.openai.com/api/docs/guides/agents/orchestration](https://developers.openai.com/api/docs/guides/agents/orchestration)

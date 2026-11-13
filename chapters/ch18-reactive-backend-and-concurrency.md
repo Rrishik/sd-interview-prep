@@ -1,6 +1,6 @@
 # Chapter 18: Reactive Agent Backends (Spring WebFlux), High-Contention Concurrency & Keyset Pagination
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 17 min with deep dives*
 
 An LLM is only 20% of a production agent platform. The other 80% is high-concurrency backend systems engineering:
 1. Holding **50,000 open streaming connections** for 10 seconds each without exhausting OS threads.
@@ -27,10 +27,10 @@ Now replace that with an **AI Agent stream** that runs for **`10 seconds`**: eac
 What happens when a user closes their browser tab `2 seconds` into a `15-second` multi-tool agent run? Without explicit **cancellation propagation**, your backend keeps burning GPU tokens and executing downstream tools for a nobody!
 
 1. **Cooperative Cancellation Chain:**
-   - Netty detects TCP `FIN/RST` on the SSE socket -> triggers Reactor `.doOnCancel()` (or `AbortSignal` / `Context` cancellation).
+   - Netty detects TCP `FIN/RST` on the SSE socket -> triggers Reactor `.doOnCancel()` (or `AbortSignal` / `Context` cancellation) [1, 4].
    - The orchestrator immediately aborts the upstream HTTP stream to the LLM provider (stopping token generation & billing mid-sentence) and sends JSON-RPC `notifications/cancelled` to any in-flight MCP tool servers.
-2. **Thread/Worker Bulkhead Isolation:** Never share one worker pool across fast API reads, slow PDF parsing, and untrusted tool sandboxes. Isolate into separate bounded pools (**Bulkhead Pattern**) so a spike in slow PDF ingestion can only saturate its own `32`-worker pool while normal chat streams stay sub-second.
-3. **Reactive Backpressure:** If a fast producer (`500 tokens/sec` batch stream or log tail) overwhelms a slow mobile client or DB sink, unbounded memory buffers trigger `OutOfMemoryError`. Enforce bounded ring buffers (`onBackpressureBuffer(256, DROP_OLDEST)` for UI progress events, or TCP window throttling / `429 Retry-After` at ingress).
+2. **Thread/Worker Bulkhead Isolation:** Never share one worker pool across fast API reads, slow PDF parsing, and untrusted tool sandboxes. Isolate into separate bounded pools (**Bulkhead Pattern**) so a spike in slow PDF ingestion can only saturate its own `32`-worker pool while normal chat streams stay sub-second [1].
+3. **Reactive Backpressure:** If a fast producer (`500 tokens/sec` batch stream or log tail) overwhelms a slow mobile client or DB sink, unbounded memory buffers trigger `OutOfMemoryError`. Enforce bounded ring buffers (`onBackpressureBuffer(256, DROP_OLDEST)` for UI progress events, or TCP window throttling / `429 Retry-After` at ingress) [4].
 
 :::
 
@@ -109,5 +109,6 @@ When interviewers ask how to fix a high-throughput shared counter (like a global
 
 ### Sources & References
 - **[1]** Spring AI & Spring WebFlux Reference — *Reactive `ChatClient`, `Flux` SSE Streaming & `Schedulers.boundedElastic()`* — [docs.spring.io/spring-ai/reference](https://docs.spring.io/spring-ai/reference/)
-- **[2]** Brian Goetz et al., *Java Concurrency in Practice* & JDK `LongAdder` — CAS Contention vs. Striped Counters
-- **[3]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)*, Chapter 3 (Storage Engines) & Chapter 8 (Fencing Tokens & Distributed Locks)
+- **[2]** Brian Goetz et al., *Java Concurrency in Practice* & JDK `java.util.concurrent.atomic.LongAdder` — CAS Contention vs. Striped Counters
+- **[3]** Martin Kleppmann, *How to do distributed locking (Fencing Tokens)* & *Designing Data-Intensive Applications (DDIA)* — [martin.kleppmann.com](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
+- **[4]** Project Reactor Reference Guide, *Reactive Streams Backpressure, Cancellation & Schedulers* — [projectreactor.io/docs/core/release/reference](https://projectreactor.io/docs/core/release/reference/)

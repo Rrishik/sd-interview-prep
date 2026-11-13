@@ -92,5 +92,5 @@ Because Kafka never lets two workers in the same Consumer Group read the same Pa
 
 ### Sources & References
 - **[1]** Neha Narkhede, Gwen Shapira & Todd Palino, *Kafka: The Definitive Guide* (O'Reilly) — Partitions, Consumer Groups & Delivery Guarantees
-- **[2]** Jay Kreps, *The Log: What every software engineer should know about real-time data's unifying abstraction* — [LinkedIn Engineering](https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying)
+- **[2]** Jay Kreps, *The Log: What every software engineer should know about real-time data's unifying abstraction* & Apache Kafka Design Docs — [kafka.apache.org/documentation](https://kafka.apache.org/documentation/)
 - **[3]** Alex Xu, *System Design Interview (Vol. 1 & 2)*, Notification Service & Message Queues — [ByteByteGo](https://bytebytego.com/)

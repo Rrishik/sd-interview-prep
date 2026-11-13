@@ -40,7 +40,7 @@ If Bob is in a Slack workspace with `5,000 coworkers`, and every time Bob's netw
 
 How do WhatsApp and Slack avoid the **presence storm**? [1]
 1. **Heartbeat TTL in Redis:** Bob's client sends a tiny heartbeat every `10 seconds`, refreshing `SET presence:Bob "online" EX 30`. If Bob disconnects, the key simply expires after 30 seconds—no explicit "offline" database write needed!
-2. **Lazy / Scoped Subscription:** Only push live presence updates for the **5–10 people currently visible on Alice's screen** (or inside small groups `< 50` members). For giant 10,000-person channels, fetch online counts lazily on demand.
+2. **Lazy / Scoped Subscription:** Only push live presence updates for the **5–10 people currently visible on Alice's screen** (or inside small groups `< 50` members). For giant 10,000-person channels, fetch online counts lazily on demand or via edge caches [3].
 
 ---
 

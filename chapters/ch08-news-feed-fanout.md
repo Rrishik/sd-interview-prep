@@ -37,7 +37,7 @@ Never pick pure Push or pure Pull—always combine them into the **Hybrid Fan-Ou
 
 1. **Normal Users (`< 10,000 followers`):** Use **Fan-Out on Write (Push)** via Kafka workers into followers' Redis `ZSET` / `List` caches (storing only lightweight `(post_id, author_id, timestamp)` tuples, never full post JSON!).
 2. **Celebrities / Hot Accounts (`>= 10,000 followers`):** Use **Fan-Out on Read (Pull)**. Write once to the celebrity's cache; when an active follower loads their feed, merge the celebrity's recent posts at read time.
-3. **Hydration via Two-Tier Cache:** Once the Feed Service has the final sorted list of 20 `post_id`s, it batch-fetches (`MGET`) the full post text, image CDN URLs, and like counts from a **Post & User Cache** [1].
+3. **Hydration via Two-Tier Cache:** Once the Feed Service has the final sorted list of 20 `post_id`s, it batch-fetches (`MGET`) the full post text, image CDN URLs, and like counts from a **Post & User Cache** [1, 3].
 
 ---
 

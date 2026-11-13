@@ -1,6 +1,6 @@
 # Chapter 15: Retrieval Math (Recall@K, MRR, nDCG@K) & Vector Indexes (pgvector vs Milvus)
 
-*Part III · AI & LLM Engineering Systems · 8 min read*
+*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
 
 When an enterprise RAG agent gives a wrong answer, who is at fault?
 Did the **Retriever** fail to pull the right chunk out of 10 million documents, or did the **Generator LLM** misread the chunk sitting at Rank #1?
@@ -35,6 +35,18 @@ How do you search 10 million `1,536-dim float32` vectors in `5 ms` instead of a 
   - **The RAM Math:** `10M × 1,536 × 4 bytes = 61.4 GB` of raw vectors + `~20 GB` of graph edges = **`~80 GB RAM`**. Switching to `float16` (`halfvec`) or 8-bit Scalar Quantization (`SQ8`) cuts RAM by **`2×` to `4×`** (`20–40 GB`) with `< 1%` recall loss [3].
 - **`IVF-PQ` (Inverted File + Product Quantization):** Partitions space into `C` K-means centroids and compresses sub-vectors into codebooks, scanning only the closest `nprobe` buckets. Uses a fraction of the RAM at slightly lower recall.
 
+:::deepdive Design Drill: Sizing Retrieval for a 10-Million-Document Enterprise Corpus | +5 min
+
+Walk through the capacity and latency math step-by-step when asked to design search over **10,000,000 enterprise documents**:
+
+1. **Chunk & Vector Volume:** Average doc = `4 pages (~2,000 tokens)` -> `5` chunks of `450` tokens -> **`50,000,000` total chunks**.
+2. **Memory Sizing (`1,024-dim` embeddings):**
+   - Uncompressed `float32` HNSW: `50M × 1,024 × 4B = 204.8 GB` + `~75 GB` graph overhead = **`~280 GB RAM`**.
+   - **Optimized (`SQ8` 8-bit quantized vectors in RAM + `float16` on NVMe SSD for rescoring):** `50M × 1,024 × 1B ≈ 51 GB` + graph = **`~115 GB RAM`** across 2–3 replicated query nodes!
+3. **Partitioning & Pre-Filter Strategy:** Partition keys by `tenant_id` (or physical shard by hash) so a tenant query touches **1 partition (`< 1M` chunks)** instead of scanning a global 50M-node HNSW graph, keeping Stage-1 `BM25 + HNSW` p99 under **`25 ms`** (`ef_search = 64`) and Stage-2 Cross-Encoder reranking (`Top 40 -> Top 5`) under **`45 ms`**.
+
+:::
+
 ---
 
 ### 3) Choosing Between `pgvector` (PostgreSQL) and `Milvus`
@@ -44,6 +56,18 @@ How do you search 10 million `1,536-dim float32` vectors in `5 ms` instead of a 
 | **Scale** | Up to **`10M – 50M` vectors** (with `halfvec` HNSW + iterative filtered scan). | **`100M – 10B+` vectors** across disaggregated query/storage nodes. |
 | **Consistency & Joins** | **Full ACID transactions** in the same table as user state and ACL metadata (zero CDC lag). | Tunable consistency; synced asynchronously from OLTP via Kafka CDC. |
 | **Best Agent Role** | **Episodic & Semantic Agent Memory** (filtered per `user_id` and `is_active = true`). | **Global Enterprise Knowledge Corpus RAG** across billions of chunks. |
+
+:::deepdive Zero-Downtime Embedding Model Upgrades (Dual-Index Cutover) | +4 min
+
+What happens when you upgrade from `embed-v1` (`768-dim`) to `embed-v2` (`1,024-dim`)?
+- **Vector Space Incompatibility:** You **cannot** compare a `v2` query vector against `v1` document vectors—their coordinate spaces are orthogonal!
+- **Blue/Green Shadow Migration:**
+  1. Stamp every vector row/collection with `embedding_model_version`.
+  2. Spin up `chunks_index_v2` in the background; run a rate-limited batch worker over object storage + replay live Kafka CDC writes into **both** `v1` and `v2`.
+  3. Run `1%` shadow reads against `v2` to verify `Recall@50` and `nDCG@5` improve on your golden eval set.
+  4. Flip the query router alias atomically from `chunks_index_v1` to `chunks_index_v2`, keeping `v1` warm for 24 hours for instant rollback before dropping it.
+
+:::
 
 ---
 
@@ -70,6 +94,11 @@ How do you search 10 million `1,536-dim float32` vectors in `5 ms` instead of a 
 <details>
 <summary><strong>Q3: For an agent's Episodic Memory store of 5 million records requiring ACID consistency with PostgreSQL user tables, do you pick <code>pgvector</code> or <code>Milvus</code>?</strong></summary>
 <p><strong>Answer:</strong> Pick <strong><code>pgvector</code></strong>: 5M vectors fit easily in a single Postgres HNSW index with <code>halfvec</code>, allow transactional updates alongside session rows, and avoid distributed cluster overhead and CDC lag.</p>
+</details>
+
+<details>
+<summary><strong>Q4: Why can't you gradually overwrite vectors in-place inside a single HNSW index when upgrading your embedding model?</strong></summary>
+<p><strong>Answer:</strong> Vectors from two different embedding models occupy incompatible geometric spaces, so mixed distances are meaningless and corrupt HNSW graph navigation. Always build a parallel shadow index (<code>v2</code>), dual-write CDC, and flip an alias atomically.</p>
 </details>
 
 ---

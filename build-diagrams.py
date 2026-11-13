@@ -433,6 +433,53 @@ lib_node(els7, "mc_rk", 58, 365, 290, 135, "Retrieval Metrics Suite", "• Recal
 lib_node(els7, "mc_ot", 385, 365, 290, 135, "OpenTelemetry & Replay", "• Trace -> Run -> Step/Tool Spans\n• Token & cost accounting per tenant\n• Deterministic cassette tool replay\n• Canary rollout regression gates", LIB_SW, 1, stroke="#047857", bg="#ecfdf5")
 lib_node(els7, "mc_rx", 712, 365, 290, 135, "Reactive Backend (WebFlux)", "• Flux<ServerSentEvent> non-blocking\n• Event-loop handles 50k open streams\n• LongAdder striped atomic counters\n• Keyset pagination: (ts, id) < cursor", LIB_SD, 23, stroke="#1d4ed8", bg="#eff6ff")
 
+# ==============================================================================
+# DIAGRAM 8: 07-durable-agent-runtime.excalidraw
+# ==============================================================================
+els8 = []
+els8.append(text_el("dr_title", 40, 18, 980, 34, "Durable Agent State Machine, Resumable Run API & 1M Runs/Day Scale", size=22, family=2))
+els8.append(text_el("dr_sub", 40, 52, 980, 22, "Async Run API  •  Checkpointed Step Journal  •  Zero-Thread HITL Pause  •  Model Router & Token Quotas", size=13, family=3, color="#475569"))
+
+container(els8, "dr_c1", 40, 90, 980, 205, "1. ASYNC RUN API & CHECKPOINTED DURABLE EXECUTION (SURVIVES WORKER CRASHES)", stroke="#1d4ed8", dash="solid")
+lib_node(els8, "dr_api", 56, 135, 222, 135, "Async Run API", "POST /runs -> 202\nGET /events (SSE)\nPOST /approvals", LIB_SD, 16, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els8, "dr_q", 300, 135, 212, 135, "Kafka: agent.runs", "Keyed by run_id\nPriority tenant lanes\nBackpressure buffer", LIB_SW, 1, stroke="#047857", bg="#ecfdf5")
+lib_node(els8, "dr_wk", 534, 135, 226, 135, "Stateless Workers", "1. 15s Redis lease\n2. Replay journal\n3. 0 threads on HITL", LIB_SD, 2, stroke="#6d28d9", bg="#f5f3ff")
+lib_node(els8, "dr_db", 782, 135, 220, 135, "Journal & Stream", "Postgres step log\nRedis Last-Event-ID\nIdempotent recovery", LIB_SD, 6, stroke="#b45309", bg="#fffbeb")
+arrow(els8, "adr1", 278, 202, 300, 202)
+arrow(els8, "adr2", 512, 202, 534, 202)
+arrow(els8, "adr3", 760, 202, 782, 202)
+
+container(els8, "dr_c2", 40, 320, 980, 205, "2. SCALING TO 1M TASKS/DAY: TIERED MODEL ROUTING, FALLBACKS & TENANT TOKEN BUDGETS", stroke="#047857", dash="solid")
+lib_node(els8, "dr_rt", 56, 365, 294, 135, "Tiered Model Router", "• 70% tasks -> small fast model\n• 30% hard -> frontier model\n• Sticky run_id KV affinity", LIB_SD, 18, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els8, "dr_cb", 383, 365, 294, 135, "Circuit Breaker", "• Tracks 429/5xx & TTFT SLO\n• Half-open health probes\n• Multi-region / provider failover", LIB_SD, 16, stroke="#dc2626", bg="#fef2f2")
+lib_node(els8, "dr_qt", 710, 365, 292, 135, "Tenant Token Ledger", "• Pre-flight Lua TPM reserve\n• Post-turn delta refund\n• Fair-queue isolation", LIB_SW, 2, stroke="#047857", bg="#ecfdf5")
+
+
+# ==============================================================================
+# DIAGRAM 9: 08-agent-case-studies.excalidraw
+# ==============================================================================
+els9 = []
+els9.append(text_el("cs2_title", 40, 18, 980, 34, "End-to-End Agent System Designs: Coding Agent & Multi-Server Enterprise MCP", size=22, family=2))
+els9.append(text_el("cs2_sub", 40, 52, 980, 22, "Ephemeral MicroVM Sandbox  •  Evaluator-Optimizer Loop  •  OAuth On-Behalf-Of (OBO)  •  Grounded Citations", size=13, family=3, color="#475569"))
+
+container(els9, "cs2_c1", 40, 90, 980, 205, "A. AUTONOMOUS CODING & BUG-INVESTIGATION AGENT (SAFE REPOSITORY MUTATION)", stroke="#1d4ed8", dash="solid")
+lib_node(els9, "cs2_in", 56, 135, 218, 135, "1. Bug Intake", "Stack trace + SHA\nBlame, recent PRs\n& call-graph index", LIB_SD, 9, stroke="#334155", bg="#f8fafc")
+lib_node(els9, "cs2_vm", 296, 135, 224, 135, "2. MicroVM Box", "Git worktree clone\n• 0 prod secrets\n• Deny-all egress\n• rg + LSP tools", LIB_SW, 4, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els9, "cs2_eo", 542, 135, 226, 135, "3. Eval-Optimizer", "Edit -> Build -> Test\n• Max 4 repair loops\n• Structured diff\n  observations", LIB_SD, 18, stroke="#047857", bg="#ecfdf5")
+lib_node(els9, "cs2_pr", 790, 135, 212, 135, "4. Draft PR Gate", "Isolated bot branch\n• Never merges main\n• Attaches test log", LIB_SD, 23, stroke="#6d28d9", bg="#f5f3ff")
+arrow(els9, "acs2_1", 274, 202, 296, 202)
+arrow(els9, "acs2_2", 520, 202, 542, 202)
+arrow(els9, "acs2_3", 768, 202, 790, 202)
+
+container(els9, "cs2_c2", 40, 320, 980, 205, "B. ENTERPRISE MULTI-MCP ASSISTANT & PARALLEL DEEP-RESEARCH SYNTHESIS", stroke="#b45309", dash="solid")
+lib_node(els9, "cs2_mh", 56, 365, 220, 135, "1. MCP Host", "1:1 MCP Clients:\n• Git MCP Server\n• Jira MCP Server\n• SQL Analytics MCP", LIB_SD, 1, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els9, "cs2_ob", 298, 365, 224, 135, "2. OAuth OBO Gate", "Per-server JWT swap\n• Enforces user RLS\n• Blocks confused\n  deputy leaks", LIB_SD, 16, stroke="#dc2626", bg="#fef2f2")
+lib_node(els9, "cs2_prw", 544, 365, 224, 135, "3. Sub-Agent DAG", "Parallel read wave:\n• ACL-filtered RAG\n• Live MCP queries\n• Evidence cards", LIB_SD, 2, stroke="#047857", bg="#ecfdf5")
+lib_node(els9, "cs2_cit", 790, 365, 212, 135, "4. Citation Check", "Verifies [doc:span]\nConsent diff card\nbefore any write", LIB_SW, 6, stroke="#b45309", bg="#fffbeb")
+arrow(els9, "acs2_4", 276, 432, 298, 432)
+arrow(els9, "acs2_5", 522, 432, 544, 432)
+arrow(els9, "acs2_6", 768, 432, 790, 432)
+
 diagrams = {
     "01-kafka-and-redis.excalidraw": els1,
     "02-database-sharding-keys.excalidraw": els2,
@@ -441,6 +488,8 @@ diagrams = {
     "04-rag-and-agents.excalidraw": els5,
     "05-agent-loops-memory.excalidraw": els6,
     "06-mcp-evals-reactive.excalidraw": els7,
+    "07-durable-agent-runtime.excalidraw": els8,
+    "08-agent-case-studies.excalidraw": els9,
     # Keep mock0-notification-system.excalidraw synced so existing links never break
     "mock0-notification-system.excalidraw": els3,
 }

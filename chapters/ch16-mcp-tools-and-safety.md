@@ -1,10 +1,10 @@
 # Chapter 16: Model Context Protocol (MCP), Tool Contracts & Prompt Injection Defense
 
-*Part III · AI & LLM Engineering Systems · 8 min read*
+*Part III · AI & LLM Engineering Systems · 8 min core · 19 min with deep dives*
 
 Connecting 5 internal AI agents to 10 enterprise microservices used to mean writing **50 bespoke integration wrappers** (`M × N` glue code), each with its own brittle JSON parser and ad-hoc retry logic.
 
-**MCP (Model Context Protocol)** solves that the same way LSP solved code editors: a single **JSON-RPC 2.0** protocol (`stdio` locally or **Streamable HTTP + SSE** remotely) that decouples **Agent Orchestrators (MCP Clients)** from **Tool Providers (MCP Servers)** [1].
+**MCP (Model Context Protocol)** solves that the same way LSP solved code editors: a single **JSON-RPC 2.0** protocol (`stdio` locally or **Streamable HTTP** remotely) that decouples **AI Applications (MCP Hosts & Clients)** from **Capability Providers (MCP Servers)** [1].
 
 Let us examine the upper half of the diagram in Chapter 15 to see how MCP primitives, self-healing tool contracts, and **Indirect Prompt Injection** defenses work together [1, 2, 3].
 
@@ -20,6 +20,23 @@ Every MCP Server exposes capabilities through three strictly separated primitive
 | **2. `Resources`** | **The Host App** | `resources/list`, `resources/read` | Read-only URI data streams (`postgres://prod/schema`, `file:///logs/app.log`) without granting execution rights. |
 | **3. `Prompts`** | **The User** | `prompts/list`, `prompts/get` | Parameterized workflow templates (`diagnose-incident`) explicitly invoked via slash commands or UI. |
 
+:::deepdive MCP Architecture (2026-07-28 Spec): 1:1 Host–Client–Server, Transports & Wrapping REST | +5 min
+
+Interviewers frequently test whether you confuse **MCP** with **LLM function calling** or **REST microservices** [1]:
+
+1. **The Strict `1:1` Connection Topology:**
+   - **MCP Host** (the AI application, e.g., IDE or enterprise assistant): Owns user consent UI, credential vaults, context aggregation, and LLM sampling.
+   - **MCP Client** (spawned inside the Host): Maintains a **strictly `1:1` isolated connection** to a single MCP Server, negotiating capabilities (`initialize`) and attaching protocol version metadata to every stateless request [1].
+   - **MCP Server** (local subprocess via **`stdio`** or remote service via **Streamable HTTP**): Exposes domain capabilities without ever seeing the full conversation history or credentials belonging to *other* MCP servers!
+2. **MCP vs. Function Calling vs. REST APIs:**
+   - *Function calling* is the vendor-specific inference format between the **Host and the LLM**.
+   - *MCP* is the standardized discovery and execution wire protocol between the **Client and the Tool/Context Server**.
+   - *REST/gRPC* remains underneath! You **do not rewrite** your core Orders REST microservice into MCP; you build a thin **MCP Server adapter** that aggregates chatty REST endpoints into coarse, token-efficient agent tools (`get_order_diagnostics` instead of 6 low-level REST calls).
+3. **Design Drill — Designing a Safe Git MCP Server:**
+   - Expose **read-only `Resources`** (`git://repo/status`, `git://repo/diff/{sha}`), **bounded `Tools`** (`git_log`, `git_create_branch`, `git_commit_staged`), and **human-gated destructive tools** (omit `push --force` and `reset --hard` entirely, or gate `git_push` on explicit Host user approval), strictly canonicalizing repo paths inside an allowed workspace root.
+
+:::
+
 ---
 
 ### 2) Self-Healing Tool Contracts & Write Idempotency
@@ -30,6 +47,25 @@ In production, a tool wrapper must never crash an agent run with an unhandled st
    - On a **`400 Invalid Argument`** (`expected YYYY-MM-DD, got 'yesterday'`), return `{"isError": true, "retryable_by_model": true, "hint": "Use ISO-8601 YYYY-MM-DD"}` so the LLM self-corrects on its next turn.
    - On a **`503 Downstream Outage`**, retry with exponential backoff + jitter inside the tool client; if still down, trip a **Circuit Breaker** and return `{"isError": true, "retryable_by_model": false}` so the agent stops hammering a dead service.
 3. **Deterministic Write Idempotency:** Compute **`idempotency_key = SHA256(run_id + step_idx + tool_name + canonical_args)`** in the orchestrator and lock `SET idem:<key> result NX EX 86400` in Redis so a retried tool call never issues a duplicate refund or ticket.
+
+:::deepdive The 7-Step Tool Execution Sequence, Output Trust Boundaries & Compensating Sagas | +5 min
+
+Remember the core execution invariant: **the LLM only proposes a structured call; the Host application validates, authorizes, executes, and sanitizes** [2]:
+
+```text
+1. Model emits structured tool call JSON
+2. Host runs RBAC/OPA policy + human-approval check (injecting caller JWT)
+3. Host validates input arguments against JSON Schema + domain bounds
+4. Executor runs tool with per-call timeout, cancellation token & idempotency key
+5. Host validates & truncates OUTPUT (Tool-Result Trust Boundary + secret redaction)
+6. Audit logger records immutable trace span (caller, args_hash, latency, status)
+7. Sanitized observation enters context -> Model picks next step or terminates
+```
+
+- **Why Step 5 (Output Validation) Matters:** Tool outputs from web pages, Jira tickets, or logs are **untrusted input**! Validate output schemas, strip credentials/tokens accidentally returned by internal APIs, cap payload size (`<= 4 KB`), and wrap untrusted text in explicit data delimiters.
+- **Partial Failure & Compensating Sagas:** If an agent executes `reserve_inventory()` (succeeds) followed by `create_shipment()` (fails permanently), there are no distributed 2PC locks across SaaS APIs. Record each mutating step's **compensating action** (`release_inventory(reservation_id)`) in the run journal and run compensations in reverse order on abort.
+
+:::
 
 ---
 
@@ -49,7 +85,7 @@ In an LLM, **system instructions and untrusted external data (emails, tickets, w
 
 - **Real-world analogy:** **Dual-LLM + Policy Gate** works like a browser's **Multi-Process Sandbox**: an untrusted renderer process (Quarantined LLM) cannot touch the OS directly; it can only send a strictly typed struct to the privileged broker process (Policy Gate), which checks permissions before acting.
 - **Where the analogy breaks:** If the Quarantined LLM copies an unvalidated free-form string into the Privileged LLM's prompt, the injection crosses the boundary—so only **enums, booleans, numbers, and verified IDs** may cross between the two models [3].
-- **Real production system:** **Claude, VS Code Copilot, and Spring AI MCP** standardize tool discovery, JSON Schema validation, and human approval gates over MCP [1].
+- **Real production system:** **Claude, VS Code Copilot, and Spring AI MCP** standardize tool discovery, `1:1` isolated client connections, JSON Schema validation, and human approval gates over MCP [1].
 
 ---
 
@@ -70,9 +106,14 @@ In an LLM, **system instructions and untrusted external data (emails, tickets, w
 <p><strong>Answer:</strong> For <code>400 Invalid Date</code>, return <code>isError: true, retryable_by_model: true</code> with a format hint so the LLM self-corrects. For <code>503 Database Down</code>, retry briefly with backoff inside the client, then trip a circuit breaker and return <code>retryable_by_model: false</code> so the agent degrades gracefully.</p>
 </details>
 
+<details>
+<summary><strong>Q4: Why does an MCP Host create a separate <code>1:1</code> MCP Client per MCP Server instead of sharing one global bus across all servers?</strong></summary>
+<p><strong>Answer:</strong> Strict <code>1:1</code> client-to-server isolation enforces independent capability negotiation, per-server credential scoping, fault isolation if one server crashes, and prevents Server A from snooping on prompts or context destined for Server B.</p>
+</details>
+
 ---
 
 ### Sources & References
-- **[1]** Model Context Protocol (MCP) Specification — *JSON-RPC 2.0 Transport, Tools, Resources & Prompts* — [modelcontextprotocol.io/specification](https://modelcontextprotocol.io/specification)
+- **[1]** Model Context Protocol (MCP) Architecture Specification (`2026-07-28`) — *Host, Client & Server Isolation, Primitives & Transports* — [modelcontextprotocol.io/specification/2026-07-28/architecture](https://modelcontextprotocol.io/specification/2026-07-28/architecture)
 - **[2]** Anthropic Engineering, *Writing Effective Tools for Agents — With Agents* (2025)
 - **[3]** Edoardo Debenedetti et al., *Defeating Prompt Injections by Design (CaMeL)* (Google DeepMind, 2025) — [arxiv.org/abs/2503.18813](https://arxiv.org/abs/2503.18813)

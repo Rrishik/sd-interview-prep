@@ -1,6 +1,6 @@
 # Chapter 18: Reactive Agent Backends (Spring WebFlux), High-Contention Concurrency & Keyset Pagination
 
-*Part III · AI & LLM Engineering Systems · 8 min read*
+*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
 
 An LLM is only 20% of a production agent platform. The other 80% is high-concurrency backend systems engineering:
 1. Holding **50,000 open streaming connections** for 10 seconds each without exhausting OS threads.
@@ -22,6 +22,18 @@ Now replace that with an **AI Agent stream** that runs for **`10 seconds`**: eac
 - **`Mono.zip(toolA, toolB, toolC)`:** Dispatches a parallel DAG wave of independent MCP tools concurrently.
 - **Golden Rule:** Never block a Netty event-loop thread! Offload any legacy blocking JDBC or CPU work via **`.subscribeOn(Schedulers.boundedElastic())`**.
 
+:::deepdive End-to-End Cancellation Propagation, Bulkhead Pools & Backpressure | +5 min
+
+What happens when a user closes their browser tab `2 seconds` into a `15-second` multi-tool agent run? Without explicit **cancellation propagation**, your backend keeps burning GPU tokens and executing downstream tools for a nobody!
+
+1. **Cooperative Cancellation Chain:**
+   - Netty detects TCP `FIN/RST` on the SSE socket -> triggers Reactor `.doOnCancel()` (or `AbortSignal` / `Context` cancellation).
+   - The orchestrator immediately aborts the upstream HTTP stream to the LLM provider (stopping token generation & billing mid-sentence) and sends JSON-RPC `notifications/cancelled` to any in-flight MCP tool servers.
+2. **Thread/Worker Bulkhead Isolation:** Never share one worker pool across fast API reads, slow PDF parsing, and untrusted tool sandboxes. Isolate into separate bounded pools (**Bulkhead Pattern**) so a spike in slow PDF ingestion can only saturate its own `32`-worker pool while normal chat streams stay sub-second.
+3. **Reactive Backpressure:** If a fast producer (`500 tokens/sec` batch stream or log tail) overwhelms a slow mobile client or DB sink, unbounded memory buffers trigger `OutOfMemoryError`. Enforce bounded ring buffers (`onBackpressureBuffer(256, DROP_OLDEST)` for UI progress events, or TCP window throttling / `429 Retry-After` at ingress).
+
+:::
+
 ---
 
 ### 2) Concurrency Under the Hood: `counter++`, `AtomicLong` vs. `LongAdder`
@@ -35,6 +47,16 @@ When interviewers ask how to fix a high-throughput shared counter (like a global
 | **1. `synchronized` / `ReentrantLock`** | OS/JVM mutex; losing threads sleep (`~2–5 µs` context switch). | Threads queue and sleep; safe for multi-variable invariants. | Compound state mutations (e.g., `HashMap` + Doubly Linked List in a thread-safe LRU cache). |
 | **2. `AtomicLong` (`CAS` loop)** | Hardware CPU `LOCK CMPXCHG` retry loop on one memory address. | **Cache-line ping-pong!** All 64 cores invalidate the *exact same 64-byte L1/L2 cache line*, wasting CPU cycles on failed CAS retries. | Low/moderate contention (`1–8` threads) or atomic state flags. |
 | **3. `LongAdder` (Striped `Cell[]`)** | Shards the counter across cache-line-padded `Cell[]` slots; `.sum()` adds them on read. | **`8×–10×` higher throughput** than `AtomicLong` at 64 cores! | High-contention telemetry counters & token meters. |
+
+:::deepdive Deadlock Prevention & Distributed Locks with Monotonic Fencing Tokens | +4 min
+
+- **In-Process Deadlocks:** Occur when Thread 1 locks `Account A` then `Account B` while Thread 2 locks `B` then `A`. Eliminate circular wait deterministically by acquiring locks in **strict global ID order** (`first = min(idA, idB), second = max(idA, idB)`).
+- **Distributed Locks & The GC-Pause Trap [3]:** Suppose Worker 1 acquires a Redis lock `SET lock:run_42 w1 NX EX 10`, then hits a `12-second` JVM GC pause. At second `11`, the lock expires and Worker 2 acquires it. At second `12`, Worker 1 wakes up believing it *still* holds the lock and overwrites Postgres!
+  - **The Kleppmann Fix (Monotonic Fencing Tokens):** Every lock acquisition increments a monotonic `lease_epoch` (`1, 2, 3...`). Pass `lease_epoch` into every storage write:
+    `UPDATE agent_runs SET state = :s, epoch = :e WHERE run_id = :id AND epoch <= :e`
+    When stale Worker 1 (`epoch = 1`) wakes up after Worker 2 (`epoch = 2`), Postgres deterministically rejects Worker 1's write!
+
+:::
 
 ---
 
@@ -78,9 +100,14 @@ When interviewers ask how to fix a high-throughput shared counter (like a global
 <p><strong>Answer:</strong> <code>COUNT(*) = 10</code>, <code>COUNT(score) = 7</code>, and <code>AVG(score) = 10.0</code> (dividing <code>70 / 7</code>, ignoring <code>NULL</code> rows).</p>
 </details>
 
+<details>
+<summary><strong>Q4: Why is a Redis TTL lock alone unsafe when two agent workers might mutate the same run state, and what makes it safe?</strong></summary>
+<p><strong>Answer:</strong> A worker can pause (GC/network stall) past its Redis TTL and issue a stale write after a second worker has acquired the lock. Attaching a monotonically increasing <strong>fencing token (<code>lease_epoch</code>)</strong> verified by the database on every write rejects zombie workers deterministically.</p>
+</details>
+
 ---
 
 ### Sources & References
 - **[1]** Spring AI & Spring WebFlux Reference — *Reactive `ChatClient`, `Flux` SSE Streaming & `Schedulers.boundedElastic()`* — [docs.spring.io/spring-ai/reference](https://docs.spring.io/spring-ai/reference/)
 - **[2]** Brian Goetz et al., *Java Concurrency in Practice* & JDK `LongAdder` — CAS Contention vs. Striped Counters
-- **[3]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)*, Chapter 3: B-Trees, Keyset Scans & Column-Oriented OLAP Storage
+- **[3]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)*, Chapter 3 (Storage Engines) & Chapter 8 (Fencing Tokens & Distributed Locks)

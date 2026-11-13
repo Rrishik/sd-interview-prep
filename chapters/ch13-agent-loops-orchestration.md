@@ -1,6 +1,6 @@
 # Chapter 13: Agent Loop Architectures (ReAct, Plan-and-Execute & Multi-Agent DAGs)
 
-*Part III · AI & LLM Engineering Systems · 8 min read*
+*Part III · AI & LLM Engineering Systems · 8 min core · 18 min with deep dives*
 
 When people first hear **"AI Agent,"** they often picture something mystical—a digital coworker improvising freely inside a GPU.
 
@@ -27,6 +27,21 @@ To cut latency without losing adaptability, production orchestrators separate **
 | **2. Plan-and-Execute DAG** | **Planner** emits a dependency DAG upfront; **Executor** runs independent waves in parallel; **Re-Planner** wakes up only on failure. | **2 calls** on happy path | Multi-source workflows (`get_profile`, `get_orders`, `get_policy` in parallel -> `2.3s` total). | Stale plan if Step 1 invalidates Step 3 without a Re-Planner. |
 | **3. Two-Pass Guarded Flow** | **Pass 1** classifies intent and runs read-only probes in parallel; **Pass 2** reasons over sanitized state to propose a verified action. | **Strictly 2 calls** | Diagnostics & system settings where false-positive writes are unacceptable. | Lower recall (`~70%`) if Pass 1 misses an edge-case probe. |
 
+:::deepdive When NOT to Use an Agent: Single LLM vs. Workflow vs. Evaluator-Optimizer vs. Agent | +5 min
+
+Autonomous agents trade away predictability, cost, and latency in exchange for dynamic path discovery. **Always start with the simplest architecture that solves the task [2, 4]:**
+
+| Pattern | Who Owns Control Flow? | Latency & Cost | Choose When... | Avoid When... |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Single LLM Call (+ RAG)** | Application code (`1` turn) | **`~0.8s`**, `$` | Summarization, extraction, classification, single-shot Q&A. | Answering requires conditional multi-system actions. |
+| **2. Deterministic Workflow (Pipeline / Router)** | Application code (`if/else` DAG of fixed prompts/APIs) | **`1.2–2.5s`**, `$` | Known steps: *Classify ticket -> Fetch order -> Apply refund table -> Draft reply*. | You cannot enumerate the needed steps ahead of time. |
+| **3. Evaluator-Optimizer Loop** | Code loop between **Generator** & **Critic/Compiler** (`max 3` retries) | **`2–5s`**, `$$` | Clear verification signal exists: SQL/code generation checked by compiler, or translation checked by rubric. | There is no reliable automated grader (critic just adds latency). |
+| **4. Autonomous Agent** | **The LLM** chooses tools, sequence, and stopping point | **`3–30s+`**, `$$$` | Unpredictable trajectories: investigating a novel prod outage or multi-file bug fix. | Regulatory/financial flows where deterministic code handles `95%` of cases. |
+
+**Interview Rule of Thumb:** In a customer-support system, use a **Deterministic Router + Workflow** for the `80%` structured intents (password reset, shipping status, standard return), and escalate only the `20%` ambiguous multi-policy exceptions to a **Bounded Agent** [2, 4].
+
+:::
+
 ---
 
 ### 2) Multi-Agent Specialization, Handoffs & Conflict Resolution
@@ -38,6 +53,21 @@ Instead, split work across **specialist agents** (`5–8` domain tools each) usi
 - **Supervisor Router:** A lightweight triage agent decomposes the request, dispatches sub-tasks to specialist workers, and merges their structured outputs.
 - **Peer Handoffs:** A specialist invokes an explicit transfer tool (`transfer_to_billing(compacted_state)`), handing control directly to the next specialist without an extra supervisor round-trip.
 - **Blackboard Arbiter (Conflict Resolution):** Parallel sub-agents never execute external writes directly. They post **typed action proposals** to a shared `AgentState` blackboard, and a deterministic **Policy Arbiter** resolves conflicts by priority (`FraudHold > Compliance > CreditGrant`) before any mutation runs.
+
+:::deepdive Agents-as-Tools vs. Handoffs (Centralized vs. Decentralized Reply Ownership) | +5 min
+
+When orchestrating multiple agents, the first architectural decision is **who owns the user-facing conversation** [5]:
+
+| Dimension | `Agents-as-Tools` *(Manager-Worker)* | `Handoffs` *(Decentralized Transfer)* |
+| :--- | :--- | :--- |
+| **Mechanics** | Manager agent stays active and invokes `ask_tax_specialist(query)` like a regular function call, receiving structured JSON back. | Triage agent calls `transfer_to_billing()`, exiting the loop so `BillingAgent` talks directly to the user on subsequent turns. |
+| **Reply Ownership** | **Centralized:** One manager enforces consistent tone, guardrails, and cross-domain synthesis. | **Decentralized:** Active specialist owns both tool execution and the user reply until another handoff occurs. |
+| **Latency & Cost** | Higher (`Manager -> Worker -> Manager -> User` adds an extra synthesis LLM hop). | Lower (`Specialist -> User` directly; avoids double-summarizing follow-up turns). |
+| **Best Use Case** | One question spanning **multiple domains** (*"Compare my AWS spend, open Jira blockers, and Q4 hiring budget"*). | Sequential **multi-turn domain takeover** (*"I want to dispute a charge"* -> 4 back-and-forth turns inside Billing). |
+
+**Preventing Handoff Ping-Pong:** Pass a structured `handoff_context` summary (goal, verified entities, visited agents) and cap `max_handoffs_per_turn = 2` so `BillingAgent` and `TechSupportAgent` can never bounce a user back and forth infinitely [5].
+
+:::
 
 ---
 
@@ -52,7 +82,7 @@ Instead, split work across **specialist agents** (`5–8` domain tools each) usi
 
 - **Real-world analogy:** **ReAct** is a detective opening one door at a time with no floor plan. **Plan-and-Execute** is an architect handing a dependency blueprint (DAG) to an electrician, plumber, and painter so they work on independent rooms in parallel and only call the architect back if they hit an unexpected steel beam.
 - **Where the analogy breaks:** Human tradespeople use common sense if a pipe is an inch off. A DAG executor will pass `null` into Step 3 if Step 1's output schema shifts—requiring a **JSON Schema validator + conditional re-planner** between waves.
-- **Real production system:** **Anthropic Claude Code** and **LLM Compiler** combine upfront task decomposition with parallel read-tool waves and confirmation-gated writes [2, 3].
+- **Real production system:** **Anthropic Claude Code**, **OpenAI Agents SDK**, and **LLM Compiler** combine upfront task decomposition with parallel read-tool waves and confirmation-gated writes [2, 3, 5].
 
 ---
 
@@ -73,9 +103,16 @@ Instead, split work across **specialist agents** (`5–8` domain tools each) usi
 <p><strong>Answer:</strong> Parallel sub-agents emit <strong>typed action proposals</strong> to a shared state blackboard rather than calling write APIs directly; a deterministic <strong>Policy Arbiter</strong> resolves conflicts by priority (<code>FraudHold &gt; CreditGrant</code>) before committing any mutation.</p>
 </details>
 
+<details>
+<summary><strong>Q4: When should you choose <code>Agents-as-Tools</code> over <code>Handoffs</code> in a multi-agent system?</strong></summary>
+<p><strong>Answer:</strong> Choose <strong><code>Agents-as-Tools</code></strong> when a single user request requires synthesizing outputs from multiple specialists under one unified persona and policy gate. Choose <strong><code>Handoffs</code></strong> when a specialist should take over a multi-turn conversation directly without paying extra manager round-trip latency.</p>
+</details>
+
 ---
 
 ### Sources & References
 - **[1]** Shunyu Yao et al., *ReAct: Synergizing Reasoning and Acting in Language Models* (ICLR 2023) — [arxiv.org/abs/2210.03629](https://arxiv.org/abs/2210.03629)
 - **[2]** Anthropic Engineering, *Building Effective Agents* (2024) — [anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents)
 - **[3]** Sehoon Kim et al., *An LLM Compiler for Parallel Function Calling* (ICML 2024) — [arxiv.org/abs/2312.04511](https://arxiv.org/abs/2312.04511)
+- **[4]** OpenAI, *A Practical Guide to Building Agents* (2025) — [openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/)
+- **[5]** OpenAI Developers, *Orchestrating Multiple Agents: Handoffs vs. Agents-as-Tools* (2025–2026) — [developers.openai.com/api/docs/guides/agents/orchestration](https://developers.openai.com/api/docs/guides/agents/orchestration)

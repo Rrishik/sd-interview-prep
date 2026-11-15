@@ -417,6 +417,8 @@ def build():
         ("ch21", "ch21-prompt-decoding-and-lora.md", "Part V · LLM Internals, Harnesses & Multimodal", "21. Prompting, FSM Decoding & LoRA", "Prompt anatomy, grammar masks, streaming tools & QLoRA"),
         ("ch22", "ch22-agent-harnesses-and-skills.md", "Part V · LLM Internals, Harnesses & Multimodal", "22. Agent Harnesses & SKILL.md", "7 workbench surfaces, 3-tier skills & worktree waves"),
         ("ch23", "ch23-multimodal-cua-and-voice-agents.md", "Part V · LLM Internals, Harnesses & Multimodal", "23. Computer-Use & Voice Agents", "Pixel/DOM grounding, untrusted screens & <600ms WebRTC"),
+        ("ch24", "ch24-llm-inference-and-gpu-serving.md", "Part V · LLM Internals, Harnesses & Multimodal", "24. LLM Inference & GPU Serving", "Disaggregated prefill/decode, EAGLE-3, FP8 & break-even"),
+        ("ch25", "ch25-ai-system-design-tradeoffs.md", "Part V · LLM Internals, Harnesses & Multimodal", "25. AI Design Trade-Offs & Traps", "10k-repo AST search, <100ms scoring & 10 wrong answers"),
     ]
 
     chapters_data = []

@@ -554,6 +554,54 @@ arrow(els12, "amm4", 276, 432, 298, 432)
 arrow(els12, "amm5", 520, 432, 542, 432)
 arrow(els12, "amm6", 766, 432, 788, 432, "Interrupt")
 
+
+# ==============================================================================
+# DIAGRAM 13: 12-llm-inference-serving.excalidraw
+# ==============================================================================
+els13 = []
+els13.append(text_el("is_title", 40, 18, 980, 34, "LLM Inference & GPU Serving: Disaggregated Prefill/Decode, EAGLE-3 & Economics", size=22, family=2))
+els13.append(text_el("is_sub", 40, 52, 980, 22, "Compute-Bound Prefill vs HBM-Bound Decode  •  Chunked Prefill  •  RDMA KV Bus  •  Goodput SLOs", size=13, family=3, color="#475569"))
+
+container(els13, "is_c1", 40, 90, 980, 205, "1. DISAGGREGATED PREFILL & DECODE ARCHITECTURE (INDEPENDENT TTFT & TPOT SCALING)", stroke="#1d4ed8", dash="solid")
+lib_node(els13, "is_rt", 56, 135, 218, 135, "1. KV-Aware Router", "Radix prefix affinity\nAdmission queue cap\nGoodput SLO guard", LIB_SD, 16, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els13, "is_pf", 296, 135, 224, 135, "2. Prefill Pool", "Compute-bound GEMMs\nChunked prefill 2k\nOptimizes TTFT SLO", LIB_SD, 2, stroke="#047857", bg="#ecfdf5")
+lib_node(els13, "is_kv", 542, 135, 224, 135, "3. RDMA KV Bus", "NIXL / InfiniBand\nStreams FP8 KV blocks\nDecouples TTFT & ITL", LIB_SW, 2, stroke="#b45309", bg="#fffbeb")
+lib_node(els13, "is_dc", 788, 135, 214, 135, "4. Decode Pool", "HBM-bandwidth bound\nPagedAttention batch\nKeeps TPOT ~7 ms", LIB_SW, 4, stroke="#6d28d9", bg="#f5f3ff")
+arrow(els13, "ais1", 274, 202, 296, 202)
+arrow(els13, "ais2", 520, 202, 542, 202)
+arrow(els13, "ais3", 766, 202, 788, 202)
+
+container(els13, "is_c2", 40, 320, 980, 205, "2. SPECULATIVE DECODING (EAGLE-3), QUANTIZATION & API VS SELF-HOSTED BREAK-EVEN", stroke="#047857", dash="solid")
+lib_node(els13, "is_sp", 56, 365, 294, 135, "EAGLE-3 Speculative Head", "• Draft K=5 -> 1 target verify\n• Speedup ≈ (1 + K*α)/(1 + ε)\n• Net loss if α<0.55 or B>=64!", LIB_SD, 18, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els13, "is_qt", 383, 365, 294, 135, "Weight + KV Quantization", "• FP8: Hopper/Blackwell default\n• AWQ INT4: 35GB 70B weights\n  (pair with FP8 KV cache!)", LIB_SD, 6, stroke="#047857", bg="#ecfdf5")
+lib_node(els13, "is_ec", 710, 365, 292, 135, "Serving Break-Even Math", "• Bursty <35% util -> Token API\n• Steady >45% util -> vLLM/SGLang\n• <200ms voice -> Custom LPU", LIB_SW, 6, stroke="#b45309", bg="#fffbeb")
+arrow(els13, "ais4", 350, 432, 383, 432)
+arrow(els13, "ais5", 677, 432, 710, 432)
+
+
+# ==============================================================================
+# DIAGRAM 14: 13-codebase-rag-and-tradeoffs.excalidraw
+# ==============================================================================
+els14 = []
+els14.append(text_el("ct_title", 40, 18, 980, 34, "AI System Design Trade-Offs: Multi-Repo Code Search, <100ms Scoring & Ship Gates", size=22, family=2))
+els14.append(text_el("ct_sub", 40, 52, 980, 22, "Tree-Sitter AST + Call Graph  •  <60s Webhook Diff  •  Point-in-Time Features  •  Contamination & KL Gates", size=13, family=3, color="#475569"))
+
+container(els14, "ct_c1", 40, 90, 980, 205, "1. MULTI-REPO CODEBASE SEARCH & COPILOT INDEXER (10,000 REPOS, <60S PUSH FRESHNESS)", stroke="#1d4ed8", dash="solid")
+lib_node(els14, "ct_as", 56, 135, 218, 135, "1. AST Diff Hook", "Git push -> Tree-sitter\nFunction/class spans\nRe-embeds <60s diff", LIB_SD, 18, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els14, "ct_ix", 296, 135, 224, 135, "2. 3-Modal + Graph", "Code emb + BM25 (4x sym)\nCached NL summary\nCross-repo call graph", LIB_SD, 9, stroke="#047857", bg="#ecfdf5")
+lib_node(els14, "ct_rr", 542, 135, 224, 135, "3. Rerank + Filter", "Down-weight codegen\nGraph hop expansion\nCross-encode 50 -> 10", LIB_SW, 6, stroke="#b45309", bg="#fffbeb")
+lib_node(els14, "ct_vf", 788, 135, 214, 135, "4. Span Verifier", "Cite repo:file:L10-L28\nCheck span @ commit\nDrop uncited claims", LIB_SD, 16, stroke="#6d28d9", bg="#f5f3ff")
+arrow(els14, "act1", 274, 202, 296, 202)
+arrow(els14, "act2", 520, 202, 542, 202)
+arrow(els14, "act3", 766, 202, 788, 202)
+
+container(els14, "ct_c2", 40, 320, 980, 205, "2. <100MS REAL-TIME SCORING, EXPLORATION HOLDOUTS & CONTENT-ADDRESSED SHIP GATES", stroke="#b45309", dash="solid")
+lib_node(els14, "ct_on", 56, 365, 294, 135, "1. <100ms Online Cascade", "• Little's Law: L = λ * W\n• <5ms Redis point-in-time feat\n• <35ms SLM -> rule fallback", LIB_SW, 2, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els14, "ct_fb", 383, 365, 294, 135, "2. Anti-Poisoning Holdout", "• Blocked items lack labels!\n• 1-2% exploration pass-through\n• Logs serving features (0 skew)", LIB_SW, 1, stroke="#dc2626", bg="#fef2f2")
+lib_node(els14, "ct_sg", 710, 365, 292, 135, "3. Model & Eval Ship Gate", "• Hash-chained stage manifest\n• 13-gram (<0.1%) leak check\n• Regression + KL drift cap", LIB_SD, 6, stroke="#047857", bg="#ecfdf5")
+arrow(els14, "act4", 350, 432, 383, 432)
+arrow(els14, "act5", 677, 432, 710, 432)
+
 diagrams = {
     "01-kafka-and-redis.excalidraw": els1,
     "02-database-sharding-keys.excalidraw": els2,
@@ -567,6 +615,8 @@ diagrams = {
     "09-prompt-decoding-lora.excalidraw": els10,
     "10-agent-harness-and-skills.excalidraw": els11,
     "11-multimodal-cua-and-voice.excalidraw": els12,
+    "12-llm-inference-serving.excalidraw": els13,
+    "13-codebase-rag-and-tradeoffs.excalidraw": els14,
     # Keep mock0-notification-system.excalidraw synced so existing links never break
     "mock0-notification-system.excalidraw": els3,
 }

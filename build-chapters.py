@@ -2516,6 +2516,253 @@ Production voice agents (`Pipecat`, `LiveKit Agents`) hit **`~450–600 ms`** vo
 - **[7]** LiveKit Documentation, *LiveKit Agents: WebRTC Voice Pipelines, Semantic Turn Detection & Barge-In* — [docs.livekit.io/agents](https://docs.livekit.io/agents/)
 """
     ),
+    (
+        "ch24-llm-inference-and-gpu-serving.md",
+        """# Chapter 24: LLM Inference & GPU Serving Internals (Disaggregated Prefill/Decode, EAGLE-3 & Economics)
+
+*Part V · LLM Internals, Harnesses & Multimodal · 9 min core · 19 min with deep dives*
+
+When a backend team boasts *"Our GPU cluster hits 15,000 tokens per second!"* while `40%` of users wait `3.5 seconds` for their first word to appear, they fell into the **Throughput vs. Goodput Trap** [9].
+
+Serving an LLM is nothing like serving a stateless REST microservice—because every single request splits into **two completely different hardware regimes** inside the same GPU: a **compute-bound Prefill phase** followed by an **HBM memory-bandwidth-bound Decode phase** [2, 3, 4].
+
+Understanding how modern engines (`vLLM`, `SGLang`, `TensorRT-LLM`) schedule, disaggregate, speculate, and quantize those two phases is what separates hand-wavy API wrappers from Senior AI Infrastructure design [1, 2, 4, 8].
+
+{{diagram:12-llm-inference-serving.excalidraw}}
+
+---
+
+### 1) Roofline Physics: Compute-Bound Prefill vs. Memory-Bound Decode (`Goodput`)
+
+Follow a `70B`-parameter model quantized to `FP8` (`~70 GB` of weights) on an `H100` (`~3.35 TB/s` HBM3 bandwidth) [4, 9]:
+1. **Prefill (`TTFT` — Compute-Bound):** All `4,096` prompt tokens multiply against the weight matrices in parallel (`Matrix × Matrix` GEMMs). Tensor Cores run near `100%` utilization; latency scales roughly linearly (or super-linearly for attention) with **input prompt length**.
+2. **Decode (`TPOT` / `ITL` — Memory-Bandwidth-Bound):** Autoregressive generation emits **one token at a time** per sequence. At `batch = 1`, generating *one* token still forces the GPU to stream all **`70 GB` of model weights** from HBM into SRAM (`Matrix × Vector`)! Even at theoretical peak bandwidth (`3,350 GB/s ÷ 70 GB`), a single GPU cannot exceed **`~47 tokens/sec` (`~21 ms` per token)** while `98%` of its Tensor Core FLOPs sit idle [4, 6]!
+3. **Continuous Batching (`Orca`) + `PagedAttention` (`vLLM`) [1, 2]:**
+   - Static batching padded every request to the longest sequence and waited for the slowest answer to finish. **Iteration-level Continuous Batching** inserts new requests and evicts finished ones on *every decode step*, amortizing that `70 GB` weight read across `64–128` concurrent sequences [1].
+   - **`PagedAttention`** stores KV tensors in non-contiguous `16-token` virtual-memory blocks (eliminating `60–80%` contiguous KV fragmentation so `3–4×` larger batches fit in HBM) [2], while **`RadixAttention` (`SGLang`)** retains evicted KV blocks in an LRU radix tree for cross-turn prefix reuse [8].
+4. **Optimize for `Goodput`, Never Raw Throughput [3, 4, 9]:**
+   - Define **`Goodput`** as the rate (or share) of requests simultaneously satisfying *every* user SLO—e.g., **`TTFT <= 500 ms` AND `TPOT <= 15 ms` AND `E2E <= 2.5 s`** [4, 9]. Cranking batch size to `512` maximizes aggregate `tokens/sec` while pushing `p99 TPOT` above `60 ms` and collapsing Goodput toward `0%`!
+
+---
+
+### 2) Chunked Prefill vs. Disaggregated Prefill/Decode (`DistServe` / `Dynamo`)
+
+What happens on a co-located GPU when 64 users are smoothly streaming decode tokens (`7 ms` `TPOT`) and User 65 submits a **`32,000-token` RAG prompt**?
+The `32k` prefill monopolizes the GPU for **`~800 ms`**, freezing all 64 active streams mid-sentence (**generation stall**) [3, 4]! Production stacks solve prefill–decode interference in two stages:
+
+| Architecture | How It Works | What It Improves | Cost & Failure Trade-Off |
+| :--- | :--- | :--- | :--- |
+| **1. Chunked Prefill** *(`Sarathi-Serve`)* [3] | Slices the `32k` prompt into fixed `2,048-token` chunks and piggybacks one prefill chunk alongside running decode tokens per step. | Bounds `TPOT` spikes (`~7 ms -> ~15 ms` instead of `800 ms`) on a single unified GPU pool [3]. | Decode tokens still share step time with prefill chunks; long prompts pay slightly higher `TTFT`. |
+| **2. Disaggregated Prefill / Decode** *(`DistServe`, `Dynamo`, `llm-d`)* [4, 9] | Routes prompts to a **Compute-Tuned Prefill Pool**, transfers `FP8` KV blocks over **RDMA / InfiniBand (`NIXL`)**, and streams tokens from a **Bandwidth-Tuned Decode Pool** [4]. | Zero prefill-on-decode stalls; independent autoscaling & parallelism (`TP` for prefill, large batch/`EP` for decode) -> **`2×–4.5×` higher Goodput** under tight SLOs [4]! | **Does NOT magically raise raw single-GPU FLOPs**—costs RDMA bandwidth + KV-transfer failure handling (must configure fallback re-prefill if transfer drops) [9]. |
+
+:::deepdive Speculative Decoding (`EAGLE-3`) Math & Why High Batch Size Kills Speculation | +5 min
+
+1. **How Speculative Decoding Exploits Idle Decode Compute (`Leviathan et al.` & `EAGLE-3`) [5, 6]:**
+   - Because low-batch decode is **memory-bandwidth-bound**, verifying `K + 1` tokens in parallel inside one target forward pass takes almost the same HBM read time as generating `1` token (`70 GB` weights read once!) [5].
+   - A tiny draft mechanism proposes `K` tokens (`e.g., K = 5`); the target model scores all `K` in **one forward pass** via rejection sampling (**100% mathematically lossless** to the target distribution!) [5].
+   - Whereas standalone `1B` draft models achieve low acceptance (`α ≈ 0.4`), **`EAGLE-3`** attaches a lightweight autoregressive head directly to fused multi-layer **target hidden states**, lifting acceptance rate **`α` to `0.65–0.80`** [6].
+2. **The Break-Even Equation & The High-Concurrency Trap [6, 9]:**
+   - Expected tokens emitted per step is `1 + K · α`, giving wall-clock speedup **`Speedup ≈ (1 + K · α) / (1 + ε)`** where `ε` is draft + verification compute overhead [6, 9].
+   - **Critical Interview Trap:** Speculative decoding is **NOT a free universal speedup**! As concurrent batch size climbs (`batch >= 64–128`), `K × batch` verification tokens push the target GPU from *memory-bound* back into the **compute-bound** regime (exploding `ε`), and whenever domain shift drops **`α < 0.55`**, rejected draft tokens waste FLOPs and **degrade `p99` latency** [6, 9]. Gate speculative decoding dynamically on live `queue_depth` and measured domain `α`!
+
+:::
+
+---
+
+### 3) Production Quantization Zoo & Managed API vs. Self-Hosted GPU Break-Even
+
+1. **Matching Quantization Format to Hardware & Workload [7, 9]:**
+   - **`FP8` (`W8A8` + `FP8` KV Cache):** Datacenter default on Hopper (`H100`/`H200`) and Blackwell (`B200`)—halves `70B` weights from `140 GB -> 70 GB` *and* halves KV-cache footprint with near-zero reasoning degradation [9].
+   - **`AWQ` (`INT4` Activation-Aware Weight-Only, Lin et al.) [7]:** Protects the `~1%` most salient activation channels to shrink `70B` weights to **`~35 GB`** (fitting on a single `80 GB` GPU!) with fast `Marlin` CUDA kernels. **Trap:** Weight-only `INT4` leaves the **KV cache in `FP16` (`20–30 GB` at `batch=128`)** unless you *also* enable `FP8`/`INT8` KV quantization—and always calibrate on **in-domain prompts** and re-run your full eval ship-gate post-quantization [7, 9]!
+   - **`GPTQ` (`INT4` + Marlin):** Preferred in `vLLM` when serving **dozens of `LoRA` adapters** atop a `4-bit` base [9].
+   - **`GGUF` (`Q4_K_M` / `Q5_K_M`):** Optimized for **CPU & Apple Silicon (`llama.cpp`)** edge inference—*never* use `GGUF` on datacenter GPUs (`3×–7×` slower than `FP8`/`Marlin-AWQ`) [9].
+
+:::deepdive Managed Token API vs. Self-Hosted GPUs vs. Custom Silicon Break-Even Math | +5 min
+
+When an interviewer asks *"Should we call a Managed Token API, rent Serverless GPUs, or run our own `vLLM`/`SGLang` H100 cluster?"*, compute **effective cost per million goodput tokens** across traffic shapes [9]:
+
+| Serving Tier | Billing Model | Wins When... | Loses When... |
+| :--- | :--- | :--- | :--- |
+| **1. Managed Token API / Batch API** *(OpenAI, Anthropic, Bedrock, Fireworks)* | `$/1M` input & output tokens (`50%` off for `24h` async Batch lane) | **Spiky / bursty traffic (`<35%` avg GPU duty cycle)**, frontier closed models, or small teams avoiding GPU SRE overhead [9]. | Sustained `24/7` high-volume open-weight traffic (`>5B–10B` tokens/day) where token margins exceed raw GPU cost `3×`. |
+| **2. Dedicated `vLLM` / `SGLang` GPU Pool** *(H100 / B200 on K8s)* | `$/GPU-hour` (`~$2–$3/hr` reserved H100) | **Steady `>45–50%` GPU utilization**, strict VPC data residency, custom `S-LoRA` pools, or long-prefix `RadixAttention` workloads [8, 9]. | Diurnal `10×` peak-to-trough swings without autoscaling (idle GPUs burn cash overnight) or slow `5-min` container cold starts [9]. |
+| **3. Custom SRAM Silicon** *(Groq `LPU`, Cerebras `WSE`)* | Premium `$/1M` tokens, weights pinned in on-chip SRAM | **Ultra-low `TPOT` (`<2–5 ms/tok`, `300–800+ tok/s`)** for real-time voice cascades or interactive code autocomplete [9]. | Massive batch offline throughput where HBM GPU clusters deliver lower `$/token`. |
+
+**Worked Break-Even Sanity Check:** Suppose 2 reserved `H100`s (`$5.00/hr` = **`$3,600/month`**) sustain `2,500 output tok/s` at `50%` average daily utilization (`2,500 × 0.50 × 86,400 × 30 ≈ 3.24B tokens/month` -> **`~$1.11 / 1M tokens`**). If a managed API charges `$0.80 / 1M` tokens, **the API is cheaper** (especially once SRE + failover capacity are counted)! Self-hosting only wins when sustained token volume or specialized prefix/LoRA caching pushes effective GPU cost well below API rates [9].
+
+:::
+
+---
+
+### Analogy, Where It Breaks & Real System
+
+- **Real-world analogy:** **Prefill** is loading 50 passengers onto a train at the station (door width / compute bound); **Decode** is driving the entire 200-ton locomotive down the track even if only 1 passenger is aboard (fuel/bandwidth bound—which is why **Continuous Batching** packs 80 passengers per trip!). **Disaggregation** separates busy boarding platforms from express highway lanes.
+- **Where the analogy breaks:** Moving passengers between platforms is free; moving a `32k-token` `KV` cache between a Prefill GPU and a Decode GPU ships **gigabytes of tensors** across the network—without `RDMA`/`InfiniBand` (`NIXL`) or `FP8` KV compression, network transfer stalls erase the disaggregation win [4, 9].
+- **Real production system:** **`vLLM`**, **`SGLang` (`RadixAttention`)**, and **`NVIDIA Dynamo` / `llm-d`** run chunked prefill, `EAGLE-3` speculation, and RDMA prefill–decode disaggregation across production GPU fleets [2, 4, 6, 8, 9].
+
+---
+
+### Quick Self-Check
+
+<details>
+<summary><strong>Q1: Why is LLM Prefill compute-bound while low-batch Decode is HBM memory-bandwidth-bound?</strong></summary>
+<p><strong>Answer:</strong> Prefill processes all prompt tokens in parallel (<code>Matrix × Matrix</code> GEMMs), saturating GPU Tensor Cores. Autoregressive Decode generates one token per sequence per step, forcing the GPU to read the entire model weight footprint from HBM for just a tiny <code>Matrix × Vector</code> step unless amortized across a large continuous batch.</p>
+</details>
+
+<details>
+<summary><strong>Q2: Does disaggregating Prefill and Decode onto separate GPU pools increase raw single-GPU FLOP throughput? Why do production clusters do it?</strong></summary>
+<p><strong>Answer:</strong> No—it adds KV-cache network transfer overhead. Production clusters disaggregate to eliminate long-prefill stalls on active decode streams and independently tune parallelism and batch sizes for <code>TTFT</code> vs. <code>TPOT</code>, multiplying <strong>SLO Goodput</strong>.</p>
+</details>
+
+<details>
+<summary><strong>Q3: Why can turning on <code>EAGLE-3</code> speculative decoding degrade latency when concurrent batch size climbs to 128 or domain acceptance <code>α</code> drops below ~0.55?</strong></summary>
+<p><strong>Answer:</strong> Speculative decoding relies on spare compute during memory-bound decode. At large batch sizes (<code>K × 128</code> tokens), verification pushes the target GPU into the compute-bound regime, and low acceptance <code>α</code> wastes forward-pass FLOPs on rejected draft tokens.</p>
+</details>
+
+<details>
+<summary><strong>Q4: A team quantizes a 70B model's weights to 4-bit AWQ (~35 GB) for an 80 GB GPU, yet still OOMs at 128 concurrent 4k-token users. What did they forget?</strong></summary>
+<p><strong>Answer:</strong> Weight-only <code>INT4</code> quantization does not shrink the <strong>KV cache</strong>! At 128 concurrent sequences, an unquantized <code>FP16</code> KV cache plus activation workspaces consumes <code>30–45+ GB</code>—requiring PagedAttention admission caps and <code>FP8</code> KV-cache quantization.</p>
+</details>
+
+---
+
+### Sources & References
+- **[1]** Gyeong-In Yu et al., *Orca: A Distributed Serving System for Transformer-Based Generative Models (Continuous Batching)* (USENIX OSDI 2022) — [usenix.org/conference/osdi22/presentation/yu](https://www.usenix.org/conference/osdi22/presentation/yu)
+- **[2]** Woosuk Kwon et al., *Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM)* (ACM SOSP 2023) — [arxiv.org/abs/2309.06180](https://arxiv.org/abs/2309.06180)
+- **[3]** Amey Agrawal et al., *Taming Throughput-Latency Tradeoff in LLM Inference with Sarathi-Serve (Chunked Prefill)* (USENIX OSDI 2024) — [arxiv.org/abs/2403.02310](https://arxiv.org/abs/2403.02310)
+- **[4]** Yinmin Zhong et al., *DistServe: Disaggregating Prefill and Decoding for Goodput-Optimized Large Language Model Serving* (USENIX OSDI 2024) — [arxiv.org/abs/2401.09670](https://arxiv.org/abs/2401.09670)
+- **[5]** Yaniv Leviathan, Matan Kalman & Yossi Matias, *Fast Inference from Transformers via Speculative Decoding* (ICML 2023) — [arxiv.org/abs/2211.17192](https://arxiv.org/abs/2211.17192)
+- **[6]** Yuhui Li et al., *EAGLE-3: Scaling up Inference Acceleration of Large Language Models via Training-Time Test* (2025) — [arxiv.org/abs/2503.01840](https://arxiv.org/abs/2503.01840)
+- **[7]** Ji Lin et al., *AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration* (MLSys 2024) — [arxiv.org/abs/2306.00978](https://arxiv.org/abs/2306.00978)
+- **[8]** Lianmin Zheng et al., *SGLang: Efficient Execution of Structured Language Model Programs (RadixAttention)* (NeurIPS 2024) — [arxiv.org/abs/2312.07104](https://arxiv.org/abs/2312.07104)
+- **[9]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 17 & Inference Serving Interview Bank* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
+"""
+    ),
+    (
+        "ch25-ai-system-design-tradeoffs.md",
+        """# Chapter 25: AI System Design Brainstorming — Multi-Repo Code Search, <100ms Scoring & Interview Traps
+
+*Part V · LLM Internals, Harnesses & Multimodal · 9 min core · 20 min with deep dives*
+
+In a Senior/Staff AI System Design round, jumping straight to *"We'll put `vLLM` + `Milvus` + `LangGraph` behind an API Gateway"* is a yellow flag.
+
+Strong candidates **brainstorm options out loud (`Option A -> Option B -> Option C`)**, anchor every box to an explicit **latency, freshness, and dollar budget**, name **what they would cut if the budget halved**, and steer clear of plausible-sounding **production traps** [1].
+
+Let us walk through three real-world design drills—**Multi-Repo Codebase Search (`10,000` repos)**, **`<100 ms` Inline Risk/Safety Scoring**, and **Model/Prompt Ship-Gates**—followed by the **10 "Wrong Answers"** interviewers use to test production depth [1, 2, 3, 4].
+
+{{diagram:13-codebase-rag-and-tradeoffs.excalidraw}}
+
+---
+
+### 1) Case Study 1: Cited Search & Copilot Indexing Over 10,000 Code Repositories
+
+**Prompt:** *Design code Q&A across `10,000` internal repos (`~200M` lines of code, `10k QPS` peak) where answers must cite exact `repo:path:Lstart-Lend` spans and reflect new `git push` commits within **`<60 seconds`** [1].*
+
+**Brainstorming the Options (`Naive -> Better -> Production`):**
+
+| Design Option | How It Works | Why It Fails or Wins at `200M` LOC |
+| :--- | :--- | :--- |
+| **Option A: Giant `1M`-Token Context** | Stuff repo files directly into a long-context model. | **Fails:** `200M` LOC is `~1.5B` tokens (`1,500×` window), costs `$5+`/query, and has no cross-repo ranking [1]. |
+| **Option B: Fixed `500`-Token Vector RAG** | Slice code every `500` tokens + cosine HNSW search. | **Fails:** Slices functions in half, misses exact symbol names (`check_acl_v2`), and gets **poisoned by `20%` generated protobuf/lockfile boilerplate** crowding Top-K [1]! |
+| **Option C: AST + 3-Modality Index + Call Graph** | **Tree-sitter AST** spans + **Dense + Weighted BM25 + Cached NL Summary** + **Cross-Repo Symbol Graph** + **`<60s` AST diff webhook** [1, 2]. | **Wins:** Coherent symbol units, bridges NL intent (`"auth check"`) to terse code (`chk_perm()`), traverses cross-repo imports, and re-indexes only mutated functions [1, 2]! |
+
+**Four Load-Bearing Details of Option C [1, 2]:**
+1. **Syntax-Aware Ingestion (`Tree-sitter` [2]):** Parse files into function/class/method AST nodes (`repo`, `commit_sha`, `path`, `symbol`, `start_line`, `end_line`), flagging generated files (`*.pb.go`, `dist/`, lockfiles) in metadata so ranking down-weights boilerplate [1].
+2. **Three Retrievable Modalities + Cross-Repo Graph:** Index each AST node as (a) **dense code embedding**, (b) **field-weighted sparse BM25** (`symbol_name ×4`, `summary ×2`, `body ×1`), and (c) **1-sentence natural-language summary** generated once by a small model (with cached system preamble) to bridge vocabulary mismatch—plus a **symbol graph** (`imports`, `calls`, `inherits`) to expand Top-50 candidates `1` hop across repo boundaries before cross-encoder reranking (`50 -> 10`) [1].
+3. **`<60s` Incremental Freshness on `git push`:** Never re-embed a whole repository on push! Compute a content hash per AST node on changed files; re-embed + re-summarize **only modified/new functions**, update changed call-graph edges, and tombstone deleted symbols across all stores within `60 seconds` [1].
+4. **Deterministic Span Verification & Half-Budget Cut:** Parse every `[repo:path:L10-L28]` citation against the indexed commit tree—dropping or re-asking any claim with a missing or unsupported span. *If budget halves:* drop LLM-generated summaries on cold/archived repos first (keep AST + weighted BM25 + dense code embeddings on active branches) [1].
+
+---
+
+### 2) Case Study 2: `<100 ms` Inline Real-Time Scoring & Content-Addressed Ship-Gates
+
+**A. Designing `<100 ms` `p99` Inline Scoring (Fraud, Abuse, or Prompt-Safety Gate at `5,000 QPS`) [1, 3]:**
+- **Why Frontier LLMs Are Disqualified Inline:** A `500 ms` LLM call blows a `100 ms` `p99` checkout/chat budget by `5×`. Size concurrency with **Little's Law (`L = λ × W`)**: at `5,000 QPS` and `40 ms` mean service time, `L = 5,000 × 0.04 = 200` requests are in flight—easily served by a small pool of stateless replicas calling:
+  1. **Online Feature Store (`<5 ms` Redis / DynamoDB):** Pre-materialized entity counters synced from an offline store via **point-in-time joins** (logging exact serving-time feature vectors to Kafka so retraining never suffers **training–serving skew**!) [1, 3].
+  2. **Distilled Encoder / Small Classifier (`<25 ms` ONNX / TensorRT):** Emits calibrated risk score split by two thresholds into `ALLOW`, `STEP_UP_REVIEW`, or `BLOCK`—falling back deterministically to fast heuristic rules if the model times out at `60 ms` [1].
+- **The Two Silent Post-Launch Killers [1, 3]:**
+  1. **Censored-Label Feedback Loop:** Blocked transactions/messages *never execute*, so they never generate chargebacks or user reports—causing the next retrained model to falsely learn that blocked patterns are "safe"! Fix: allow a strictly capped **`1%` exploration holdout** (or human-labeled audit sample of blocks) with explicit propensity weights [1, 3].
+  2. **Silent Concept Drift:** Input feature distributions look `100%` green while adversarial behavior shifts—caught only by **delayed-outcome monitors** and shadow canaries [1].
+
+**B. Designing the Model & Prompt Release Ship-Gate (`Eval & Alignment Pipeline`) [1, 4]:**
+- Every candidate model/prompt run produces an immutable, **hash-chained manifest** (`seed`, `git_sha`, stage `input_hash -> output_hash`, `eval_dataset_hash`) so any engineer can deterministically replay why a release shipped [1].
+- **Three Non-Negotiable Numeric Gates:** (1) **`13-gram` Train–Eval De-Contamination Gate (`<0.1%` overlap)** *before* SFT starts, (2) **Stage-by-Stage Ablation Gate (`Base -> SFT -> SFT+DPO -> Quantized`)** proving preference tuning didn't regress core tasks, and (3) **KL-Divergence Budget Gate** [4] ensuring RLHF/DPO alignment did not overcook the policy into sycophancy or mode collapse [1, 4].
+
+:::deepdive Prompt & Semantic Cache Break-Even Math + Multi-Provider Outage Failover | +5 min
+
+1. **Exact Prefix-Cache Break-Even Math [1, 5]:**
+   - Suppose a provider charges **`1.25×`** base input price to write a `5-minute` KV prefix cache and **`0.10×`** to read it (`2.0×` write for a `1-hour` TTL cache) [5]:
+     - **`5-min` TTL (`1` write + `1` read):** `(1.25 + 0.10) / 2 = 0.675×` normal price (**`32.5%` savings on the very first reuse!**; `1` write + `10` reads = `0.205×` -> **`80%` saved**).
+     - **`1-hour` TTL (`2.0×` write):** `1` write + `1` read averages `(2.0 + 0.10) / 2 = 1.05×` (net loss!), breaking even at **`>= 2` reads** (`(2.0 + 0.20) / 3 = 0.73×`) [1].
+     - **Three Production Cache Traps:** (a) Blocks shorter than the provider's `1,024-token` minimum silently skip caching, (b) `50` parallel cold requests arriving *before* the first write commits all pay `1.25×` (**cache stampede**—coalesce cold writes or warm prefixes on deploy!), and (c) never run semantic caching at `temperature > 0` for creative diversity or without `(tenant_id, acl_hash)` key isolation [1, 5].
+2. **Regional Provider Outage Degradation Ladder [1]:**
+   - `Primary Model (bounded timeout, zero blind retries on 529 overload)` -> `Cross-Provider Fallback Model (normalized via Gateway schema adapter)` -> `Tenant-Scoped Semantic/Exact Cache for hot queries` -> `Graceful Deterministic Fallback UI` (all tracked per-step on a single cost/latency trace) [1].
+
+:::
+
+:::deepdive 10 "Tempting Wrong Answers" Interviewers Bait Candidates Into | +5 min
+
+Memorize why these plausible-sounding answers fail in Senior/Staff interviews [1]:
+
+| Tempting Wrong Answer | Why It Fails in Production | Senior / Staff Engineering Answer |
+| :--- | :--- | :--- |
+| **1. "A `1M`-token window replaces RAG."** | `O(N)` cost/TTFT per query, cannot hold `200M` LOC, and attention decays in the middle [6]. | Use hybrid retrieval + reranking to select the top `5–15` spans, then reason in context [1]. |
+| **2. "Prefill/decode disaggregation boosts single-GPU FLOPs."** | It adds RDMA KV-transfer cost; total FLOPs don't rise. | It eliminates prefill stalls on decode streams so independent pools maximize **SLO Goodput** [7]. |
+| **3. "Always enable speculative decoding in prod."** | At high batch (`>=64`) or low `α < 0.55`, draft rejections burn compute and hurt `p99` [8]. | Measure `α` on real domain traffic and disable speculation above a dynamic batch threshold [1, 8]. |
+| **4. "Our cluster hits `20k tok/s` so UX is fast."** | High aggregate throughput at `batch=512` often hides `4s` `TTFT` and `60 ms` `TPOT`. | Gate capacity and autoscaling on **multi-SLO Goodput** (`TTFT` + `TPOT` + `E2E` at `p99`) [7]. |
+| **5. "`INT4 AWQ` makes a `70B` model fit any load in `40 GB`."** | Weight-only `INT4` shrinks weights (`35 GB`) while `FP16` KV cache still takes `30+ GB` at scale! | Budget `Weights + Paged KV Pool + Activations`, and pair `AWQ` with `FP8` KV quantization [1]. |
+| **6. "Quantize after evals pass and ship immediately."** | `4-bit` rounding can silently break tool-call JSON schemas or math reasoning on domain edge cases. | Treat quantized weights as a **new artifact** that must pass the full eval & safety ship-gate [1]. |
+| **7. "Disable caches during load tests for fairness."** | Production runs *with* prefix caching (`70%+` hit rate); cold-only tests mis-size prefill pools! | Seed realistic zipfian prefix reuse *and* test cold-cache stampede behavior separately [1]. |
+| **8. "Re-index the repo on every commit for simplicity."** | Re-embedding `2M–200M` LOC per commit blows freshness to hours and burns `$1,000s`/day. | Hash AST symbol nodes and re-embed/tombstone **only the symbol diff** in `<60s` [1, 2]. |
+| **9. "Retrain weekly only on allowed transactions."** | Blocked items lack ground-truth labels (**selection bias**), blinding future models to blocked attacks [3]. | Log serving-time features + maintain a `1%` audited exploration sample with importance weights [1, 3]. |
+| **10. "Scale GPU pods on average CPU/GPU utilization."** | A GPU sits at `95%` memory/compute both when healthy (`batch=32`) and when `500` users are queued! | Autoscale LLM fleets on **scheduler queue depth** and **in-flight KV-cache block utilization** [1]. |
+
+:::
+
+---
+
+### Analogy, Where It Breaks & Real System
+
+- **Real-world analogy:** Brainstorming AI System Design is like **urban transit engineering**: you don't propose a bullet train (`Autonomous Agent / Dedicated H100 Fleet`) before checking passenger volume, station transfer times (`AST diff / <5ms feature store`), and fare box recovery (`Cache & GPU break-even math`) against dedicated bus lanes (`Deterministic Workflow / Hybrid Search`).
+- **Where the analogy breaks:** Concrete bridges degrade over decades; AI systems suffer **silent distribution shift, censored feedback loops, and prompt/model regressions overnight** unless guarded by automated contamination checks, exploration holdouts, and live canary gates [1, 3].
+- **Real production system:** **GitHub Copilot / Cursor Codebase Indexing** (Tree-sitter AST + Merkle/symbol diffs), **Stripe Radar** (`<100 ms` point-in-time feature cascades + exploration holdouts), and **Anthropic / OpenAI Prefix Caching** embody these exact architectures [1, 2, 5].
+
+---
+
+### Quick Self-Check
+
+<details>
+<summary><strong>Q1: Why does chunking source code at Tree-sitter AST function/class boundaries beat fixed 500-token windows, and why add an LLM summary modality?</strong></summary>
+<p><strong>Answer:</strong> AST boundaries keep each function/class intact with stable <code>repo:path:line</code> citations and enable fast per-symbol diff re-indexing on <code>git push</code>. Adding a cached-preamble 1-sentence NL summary bridges vocabulary mismatch between natural-language questions (<em>"how is auth enforced?"</em>) and terse identifiers (<code>chk_acl()</code>).</p>
+</details>
+
+<details>
+<summary><strong>Q2: What is the "censored-label feedback loop" in a &lt;100 ms blocking classifier (fraud, spam, or safety), and how do you prevent it?</strong></summary>
+<p><strong>Answer:</strong> Actions blocked by the model never complete, so you never observe whether they were truly fraudulent or benign—causing retrained models to underestimate risk on previously blocked patterns. Prevent it via a small audited exploration holdout (e.g., 1%) or human-labeled review sample weighted by propensity.</p>
+</details>
+
+<details>
+<summary><strong>Q3: A provider charges 1.25× input price to write a 5-minute prefix cache and 0.10× to read it. How many cache reads are needed to break even?</strong></summary>
+<p><strong>Answer:</strong> Just <strong>1 read</strong>! One write plus one read costs <code>(1.25 + 0.10) / 2 = 0.675×</code> the normal uncached price per call (a <code>32.5%</code> saving immediately), whereas a <code>2.0×</code> 1-hour cache requires at least <strong>2 reads</strong> to beat uncached pricing.</p>
+</details>
+
+<details>
+<summary><strong>Q4: Why should LLM serving fleets autoscale on scheduler queue depth and KV-cache block fullness rather than raw GPU compute utilization?</strong></summary>
+<p><strong>Answer:</strong> Continuous batching keeps GPU utilization high across both healthy latency (<code>batch=24</code>) and severe overload (<code>300</code> queued requests waiting 5 seconds for prefill). Queue depth and KV-block pressure directly lead <code>TTFT</code> and <code>TPOT</code> SLO violations before timeouts cascade.</p>
+</details>
+
+---
+
+### Sources & References
+- **[1]** Rohit Ghumare et al., *AI Engineering from Scratch — AI System Design, Cost/Capacity & Multi-Agent Interview Bank* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
+- **[2]** Max Brunsfeld et al., *Tree-sitter: An Incremental Parsing System for Programming Tools (AST Code Chunking)* — [tree-sitter.github.io/tree-sitter](https://tree-sitter.github.io/tree-sitter/)
+- **[3]** D. Sculley et al. (Google), *Hidden Technical Debt in Machine Learning Systems (Feedback Loops & Training-Serving Skew)* (NeurIPS 2015) — [papers.nips.cc/paper/2015/hidden-technical-debt](https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html)
+- **[4]** Rafael Rafailov et al., *Direct Preference Optimization: Your Language Model is Secretly a Reward Model (KL-Constrained Alignment)* (NeurIPS 2023) — [arxiv.org/abs/2305.18290](https://arxiv.org/abs/2305.18290)
+- **[5]** Anthropic Documentation, *Prompt Caching Pricing, Break-Even & Minimum Token Thresholds* — [platform.claude.com/docs/en/build-with-claude/prompt-caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+- **[6]** Nelson F. Liu et al., *Lost in the Middle: How Language Models Use Long Contexts* (TACL 2024) — [arxiv.org/abs/2307.03172](https://arxiv.org/abs/2307.03172)
+- **[7]** Yinmin Zhong et al., *DistServe: Disaggregating Prefill and Decoding for Goodput-Optimized LLM Serving* (USENIX OSDI 2024) — [arxiv.org/abs/2401.09670](https://arxiv.org/abs/2401.09670)
+- **[8]** Yuhui Li et al., *EAGLE-3: Scaling up Inference Acceleration of Large Language Models* (2025) — [arxiv.org/abs/2503.01840](https://arxiv.org/abs/2503.01840)
+"""
+    ),
 ]
 
 for fname, content in chapters:

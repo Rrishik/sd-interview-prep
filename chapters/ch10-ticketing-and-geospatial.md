@@ -1,6 +1,6 @@
 # Chapter 10: High-Contention Flash Sales (Ticketmaster) & Geospatial Matching (Uber)
 
-*Part II · Classic System Design Stories · 9 min read*
+*Part II · Classic System Design Stories · 9 min core · 18 min with deep dives*
 
 What do **buying a concert seat on Ticketmaster** and **matching a rider with the closest Uber driver** have in common?
 
@@ -31,6 +31,17 @@ You *cannot* keep a PostgreSQL `BEGIN ... SELECT FOR UPDATE` transaction open fo
    `UPDATE seats SET status = 'BOOKED', owner_id = 'Alice' WHERE seat_id = '9A' AND status = 'AVAILABLE';`
    If `rows_updated == 1`, we charge/capture payment and delete the Redis hold key. If Alice closes her browser and never pays, the Redis TTL (`EX 300`) expires automatically at `10:05:00`, freeing the seat with zero cron-job lag [1].
 
+:::deepdive Virtual Waiting Rooms (Edge Queueing) & Stripe-Grade Payment Idempotency | +5 min
+
+1. **Surviving `5 Million` Fans Refreshing at `10:00:00` — The Virtual Waiting Room [1]:**
+   - Even Redis + CDN map caches buckle if `5,000,000` browsers poll interactive seat maps every second!
+   - Place a **Stateless Edge Waiting Room** at CDN/Cloudflare Workers: before `10:00`, authenticated users receive a signed queue position (`Snowflake` / `INCR`); an **Admission Controller** drips **only `2,000` users/sec** into the live seat-map tier by issuing short-lived (`10-min`), HMAC-signed **`Queue-Pass` JWTs** verified at the API Gateway without touching any database!
+2. **Preventing Double-Charges When Hold Timers Race With Slow Payment Gateways [3, 4]:**
+   - *Classic Race:* Alice's `300s` hold is at `299.8s` when she clicks **Pay**; Stripe takes `1.5s`; at `300.0s` the seat expires and Bob grabs it!
+   - Fix: (1) Extend the Redis hold lease (`EXPIRE 120`) **atomically before** calling Stripe, checking a **monotonic hold `version` / fencing token** [3] on DB commit, and (2) pass a deterministic **`Idempotency-Key = hold_id`** to Stripe (`Authorization -> Capture` two-step) so if Bob somehow won the seat, Alice's card authorization is immediately voided rather than captured [4]!
+
+:::
+
 ---
 
 ### Part B: Uber Geospatial Matching (Why `WHERE lat BETWEEN ...` Fails)
@@ -53,6 +64,16 @@ To make 2D map lookups `O(1)`, geospatial systems divide the Earth's surface int
 1. Driver pings `(lat, lon)` every 4s -> server converts `(lat, lon)` to **H3 Hexagon ID (`res 9`)** in nanoseconds.
 2. Update Redis in memory: move driver to `SADD h3:cell_8928308280fffff driver_42` and update `HSET driver_loc:42 lat ... lon ... EX 15`.
 3. When a rider requests a ride, compute the rider's H3 cell + its **6 adjacent hexagon ring (`kRing(cell, 1)`)**, fetch all active drivers in those 7 cells from Redis in `< 2 ms`, and rank by ETA [2].
+
+:::deepdive Why Crow-Flies Distance Lies (`Road-Graph ETA`) & Global Batch Matching | +4 min
+
+1. **Two-Phase ETA Ranking (`H3` Candidate Filter -> Road-Network Routing) [2, 5]:**
+   - Driver A is `200 meters` away in `H3` Euclidean distance—but **on the wrong side of a river or highway median** (`14-minute` U-turn!), while Driver B is `800 meters` away at a green light (`2 minutes` away).
+   - Uber never dispatches on raw `H3` distance! `H3 kRing` acts as a `<2 ms` **Stage-1 spatial filter** narrowing `50,000` city drivers to the **`15–25` closest candidates**, which then pass into a **Contraction Hierarchies / road-segment graph ETA engine** weighted by live traffic speeds [2, 5].
+2. **Greedy First-Come Dispatch vs. Windowed Bipartite Batch Matching [1, 5]:**
+   - Assigning each rider greedily to the single nearest driver can starve a rider `50m` away `1 second` later (*local optimum*). Batching open ride requests and available drivers inside a **`2–5 second` micro-window** per city zone and solving **minimum-total-ETA bipartite matching** (*Hungarian / min-cost flow*) cuts city-wide average pickup wait times by **`15%–25%`** [1]!
+
+:::
 
 ---
 
@@ -79,3 +100,5 @@ To make 2D map lookups `O(1)`, geospatial systems divide the Earth's surface int
 - **[1]** Alex Xu, *System Design Interview (Vol. 2)*, Chapter 1: Proximity Service, Chapter 2: Nearby Friends & Chapter 7: Hotel/Ticket Reservation System — [ByteByteGo](https://bytebytego.com/)
 - **[2]** Uber Open Source, *H3: Hexagonal Hierarchical Geospatial Indexing System* — [h3geo.org](https://h3geo.org/)
 - **[3]** Martin Kleppmann, *How to do distributed locking (Leases & Fencing Tokens)* — [martin.kleppmann.com](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
+- **[4]** Brandur Leach (Stripe), *Designing Robust and Predictable APIs with Idempotency* — [stripe.com/blog/idempotency](https://stripe.com/blog/idempotency)
+- **[5]** Uber Open Source Documentation, *H3 Grid Indexing, k-Ring Traversal & Spatial Hierarchy* — [h3geo.org/docs](https://h3geo.org/docs/)

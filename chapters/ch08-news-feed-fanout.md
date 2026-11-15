@@ -1,6 +1,6 @@
 # Chapter 8: News Feed & The Celebrity Fan-Out Problem (Meta & X)
 
-*Part II · Classic System Design Stories · 8 min core · 13 min with deep dives*
+*Part II · Classic System Design Stories · 8 min core · 17 min with deep dives*
 
 Suppose you are designing the home timeline for X (Twitter), Instagram, or LinkedIn.
 
@@ -54,6 +54,16 @@ No major social feed (`X "For You"`, `Instagram`, `YouTube`, `LinkedIn`) serves 
 
 :::
 
+:::deepdive Meta `TAO` Social Graph Cache (`USENIX ATC`) & Live Cursor Pagination | +4 min
+
+1. **Case Study — Why Meta Replaced Look-Aside Memcache with `TAO` (`1 Billion+` Reads/Sec) [7]:**
+   - Storing social edges (`Alice --follows--> Bob`, `Post --liked_by--> Carol`) in generic Memcache caused **thundering herds on edge-list cache misses** and stale read-after-write bugs across regions.
+   - Meta built **`TAO` (*The Associations and Objects*, `USENIX ATC 2013` [7])**: a geographically distributed **two-tier write-through graph cache** (`Stateless Follower Tier -> Sharded Leader Cache Tier -> MySQL Shards`). All writes route through the shard's **Leader Cache**, which updates MySQL *and* pushes deterministic invalidations/refills to Follower tiers—eliminating look-aside race conditions while serving **`99.8%` of graph reads in RAM** [7]!
+2. **Why `OFFSET 20 LIMIT 20` Breaks Live Timelines:**
+   - If `5` new posts arrive at the top of Alice's feed while she reads Page 1, `OFFSET 20` shifts downward by 5 positions—causing Page 2 to **repeat 5 posts from Page 1**! Always paginate timelines with an opaque **cursor (`WHERE post_id < :last_seen_snowflake_id ORDER BY post_id DESC LIMIT 20`)** [1, 2].
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -82,3 +92,4 @@ No major social feed (`X "For You"`, `Instagram`, `YouTube`, `LinkedIn`) serves 
 - **[4]** Paul Covington, Jay Adams & Emre Sargin (Google), *Deep Neural Networks for YouTube Recommendations (Two-Stage Candidate Generation & Ranking)* (ACM RecSys 2016) — [research.google/pubs/45530](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf)
 - **[5]** X / Twitter Engineering, *The Recommendation Algorithm (`For You` Sourcing, Light Ranker, Heavy Ranker & Visibility Filters)* — [github.com/twitter/the-algorithm](https://github.com/twitter/the-algorithm)
 - **[6]** Maxim Naumov et al. (Meta), *Deep Learning Recommendation Model for Personalization and Recommendation Systems (`DLRM`)* (2019) — [arxiv.org/abs/1906.00091](https://arxiv.org/abs/1906.00091)
+- **[7]** Nathan Bronson et al. (Meta), *TAO: Facebook's Distributed Data Store for the Social Graph* (USENIX ATC 2013) — [usenix.org/conference/atc13/bronson](https://www.usenix.org/conference/atc13/technical-sessions/presentation/bronson)

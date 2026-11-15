@@ -1,6 +1,6 @@
 # Chapter 7: Distributed Rate Limiter (Token Bucket, Redis Lua & LLM Token Caps)
 
-*Part II · Classic System Design Stories · 8 min core · 13 min with deep dives*
+*Part II · Classic System Design Stories · 8 min core · 17 min with deep dives*
 
 Imagine a bug in a customer's retry loop causes their script to call your `POST /checkout` endpoint `50,000 times per second`.
 
@@ -68,6 +68,19 @@ When designing a **Multi-Tenant Enterprise AI Gateway** handling `50,000+` concu
 
 :::
 
+:::deepdive Cloudflare `O(1)` Sliding-Window Counters & AWS Priority Load Shedding | +4 min
+
+1. **Cloudflare's `O(1)` Sliding-Window Counter Approximation [5]:**
+   - How does Cloudflare block DDoS bursts across **millions of domains** without the `2×` boundary spike of Fixed Windows or the `O(N)` RAM explosion of `ZSET` Sliding Logs?
+   - Store **only two integers** per key (`prev_minute_count` and `curr_minute_count`)! If `15 seconds` (`25%`) have elapsed in the current minute, estimate the rolling 60-second count as:
+     `rate ≈ curr_count + prev_count × (1 - 0.25)`
+   - Across `400 million` real requests, Cloudflare measured **`99.997%` accuracy** with just **`16 bytes` of RAM** per key [5]!
+2. **Rate Limiting vs. Adaptive Priority Load Shedding (*AWS / Stripe*) [2, 6]:**
+   - A **Rate Limiter** protects against *one noisy tenant* (`user_42` exceeding their quota), even when the fleet is `80%` idle.
+   - A **Load Shedder** protects the *server itself* when total legitimate traffic or a slow DB pushes fleet latency toward brownout [2, 6]: classify requests into priority tiers (`P0: Checkout/Webhook`, `P1: Interactive Browse`, `P2: Background Sync/Crawlers`) and drop `P2` then `P1` dynamically at the edge when concurrency/CPU crosses `85%`, keeping `P0` `100%` alive [2, 6]!
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -94,3 +107,5 @@ When designing a **Multi-Tenant Enterprise AI Gateway** handling `50,000+` concu
 - **[2]** Paul Tarjan (Stripe), *Scaling your API with rate limiters (Redis Token Bucket + Lua)* — [stripe.com/blog/rate-limiters](https://stripe.com/blog/rate-limiters)
 - **[3]** Cloudflare Engineering, *How we built Cloudflare's Distributed Rate Limiting* — [blog.cloudflare.com](https://blog.cloudflare.com/)
 - **[4]** Rohit Ghumare et al., *AI Engineering from Scratch — LLM Gateway Rate Limits, Cost Attribution & Circuit Breakers* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
+- **[5]** Marek Majkowski (Cloudflare), *How we built rate limiting capable of scaling to millions of domains (Sliding Window Counters)* — [blog.cloudflare.com/counting-things](https://blog.cloudflare.com/counting-things-a-lot-of-different-things/)
+- **[6]** AWS Builders' Library, *Using Load Shedding to Avoid Overload* — [aws.amazon.com/builders-library/load-shedding](https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/)

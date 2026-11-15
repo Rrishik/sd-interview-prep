@@ -1,6 +1,6 @@
 # Chapter 5: Global Notification System + AI Smart Digest (30k QPS)
 
-*Part II · Classic System Design Stories · 10 min core · 15 min with deep dives*
+*Part II · Classic System Design Stories · 10 min core · 19 min with deep dives*
 
 It is 9:00 AM on Black Friday. Within three seconds, 100,000 merchants trigger flash-sale alerts, payment receipts, and security OTP codes across your platform.
 
@@ -75,6 +75,17 @@ When an interviewer pushes deeper on *"How do you design the AI Smart Digest wit
 
 :::
 
+:::deepdive Transactional Outbox (Dual-Write Fix), Invalid Device Tokens & Multi-Provider Failover | +4 min
+
+1. **Eliminating the Dual-Write Bug with a Transactional Outbox [6]:**
+   - What if `OrderService` commits `INSERT INTO orders` in Postgres and crashes `1 ms` *before* publishing `order.created` to Kafka? The customer gets charged and **never receives a receipt**!
+   - Fix: Inside the **exact same ACID database transaction** (`BEGIN ... COMMIT`), insert into `orders` *and* `outbox_events`. A **Debezium WAL CDC** connector (or polling relay) streams `outbox_events` into Kafka with at-least-once delivery, while downstream Redis `SET dedup:<id> NX` guarantees idempotency [6].
+2. **Device-Token Hygiene & Multi-Vendor SMS/Email Failover [1, 7]:**
+   - Users uninstall apps daily: subscribe asynchronously to **APNs (`410 Unregistered`) / FCM feedback streams** to mark dead `device_token`s `inactive`—otherwise millions of dead tokens clog worker pools and get your sender IP throttled [1].
+   - For critical `P0` OTPs, run **active-active health-weighted routing** across two SMS providers (`Twilio` `90%` + `Vonage/SNS` `10%` warm traffic) rather than cold untested fallbacks (*AWS Avoiding Fallback* [7]), shifting weights automatically when delivery receipts drop!
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -102,3 +113,5 @@ When an interviewer pushes deeper on *"How do you design the AI Smart Digest wit
 - **[3]** Chip Huyen, *AI Engineering* (2025) — Latency Fallbacks, Batching & Deterministic Guardrails
 - **[4]** OpenAI Platform Documentation, *Batch API: Asynchronous High-Throughput Workloads at 50% Lower Cost* — [platform.openai.com/docs/guides/batch](https://platform.openai.com/docs/guides/batch)
 - **[5]** Rohit Ghumare et al., *AI Engineering from Scratch — Production LLM Cost, Batching & Guardrail Trade-Offs* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
+- **[6]** Chris Richardson, *Pattern: Transactional Outbox (Reliable Database + Message Broker Publishing)* — [microservices.io/patterns/data/transactional-outbox](https://microservices.io/patterns/data/transactional-outbox.html)
+- **[7]** AWS Builders' Library, *Avoiding Fallback in Distributed Systems (Warm Multi-Provider Routing)* — [aws.amazon.com/builders-library/avoiding-fallback](https://aws.amazon.com/builders-library/avoiding-fallback-in-distributed-systems/)

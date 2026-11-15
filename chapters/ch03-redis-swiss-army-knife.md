@@ -1,6 +1,6 @@
 # Chapter 3: Redis & The Four In-Memory Swiss Army Knives
 
-*Part I · Core Building Blocks · 8 min read*
+*Part I · Core Building Blocks · 8 min core · 18 min with deep dives*
 
 When engineers first hear about **Redis**, they usually hear a three-word summary: *"It's a fast cache."*
 
@@ -56,6 +56,18 @@ Instead, combine a **Redis List** with a **Redis Sorted Set (`ZSET`)** [2]:
    `ZRANGEBYSCORE digest_timers -inf 1711800900 LIMIT 0 100`
 5. Because a `ZSET` keeps members sorted by score in a Skip List, Redis hands back **only the users whose timers just expired**, in `O(log N + M)` time, without ever looking at the 999,900 users whose timers are still in the future!
 
+:::deepdive Meta Memcache Leases: Defending Against Cache Stampedes, Stale Sets & Hot Keys | +5 min
+
+In Meta's landmark *Scaling Memcache at Facebook* (`NSDI 2013` [5]) paper, look-aside caching (`GET cache -> miss -> SELECT DB -> SET cache`) broke in three subtle ways at `billions of QPS`:
+
+| Production Failure | Exact Race / Bottleneck | How Meta's Lease & L1 Pattern Solves It [5] |
+| :--- | :--- | :--- |
+| **1. Thundering Herd (Cache Stampede)** | Popular key `feed:viral` expires; **`5,000` app threads miss simultaneously** and stampede the same MySQL/Postgres row! | **Cache Leases (`SET lock:k NX EX 5` / `singleflight`):** On miss, Redis grants a `64-bit` **lease token** to the *first* client only; the other `4,999` clients wait `10 ms` or serve slightly stale value while 1 query refreshes DB [5]. |
+| **2. Stale-Set Race Condition** | Reader A misses (`v1`), Writer B updates DB (`v2`) and `DEL`s cache, then slow Reader A wakes up and writes **stale `v1` into cache forever**! | When `DEL` runs on a write, Redis **invalidates any active lease token** for that key—so Reader A's delayed `CAS/lease-set` is deterministically rejected [5]! |
+| **3. Single-Shard Hot Key (`500k QPS`)** | Even 1 Redis shard tops out around `~100k–200k ops/s`; `1M` reads/sec on one celebrity key melts the shard's NIC & single CPU core. | **Tiny In-Process L1 LRU Cache (`1–2s` TTL + Redis `RESP3` Client-Side Tracking invalidations)** or **Key Read-Replication** (`key#1..key#10` across 10 shards) absorbs `99%` of hot reads in app RAM [1, 5]. |
+
+:::
+
 ---
 
 ### 4) What If Redis Crashes? (Why RAM Needs a Backup Plan)
@@ -66,6 +78,17 @@ Redis offers two persistence mechanisms, plus replication [1]:
 - **RDB (Snapshotting):** Periodically forks and writes a compact point-in-time snapshot to disk (e.g., every 5 minutes). Fast, but a crash loses up to 5 minutes of writes.
 - **AOF (Append-Only File):** Logs every write command to disk (`appendfsync everysec`). A crash loses at most **1 second** of data, and Redis Sentinel / Cluster fails over to a warm replica in seconds.
 - **The Production Rule:** Never treat Redis as your *only* copy of financial or user-critical data. Keep the raw events durable on disk in **Kafka** (or your database), and use Redis for fast in-memory coordination, timers, and deduplication.
+
+:::deepdive Redis Cluster `16,384` Hash Slots, Async Failover & Why `Redlock` Fails Safety | +5 min
+
+1. **How Redis Cluster Shards RAM (`CRC16(key) mod 16384`) [6]:**
+   - Instead of dynamic token rings, **Redis Cluster** partitions the keyspace into **16,384 fixed hash slots** (`Node A: 0–5460`, `Node B: 5461–10922`, `Node C: 10923–16383`) [6]. Smart clients cache the slot map (`<2 KB`) for **1-hop routing** (`MOVED` redirects update stale maps).
+   - **Multi-Key Hash Tags (`{...}`):** Multi-key commands or Lua scripts (`EVAL`) fail with `CROSSSLOT` unless all keys live on the same shard! Wrapping the shared entity in braces—`{user_42}:profile` and `{user_42}:cart`—forces Redis to hash **only `user_42`**, co-locating related keys on one slot (never put a low-cardinality tag like `{us_east}` or you create a massive hot shard!) [6].
+2. **Async Replication Split-Brain & Kleppmann's `Redlock` Critique [6, 7]:**
+   - Redis replication is **asynchronous** by default: Client 1 acquires `SET lock:99 owner1 NX PX 10000` on Primary A, Primary A crashes *before* replicating `lock:99` to Replica A', Replica A' promotes to Primary, and **Client 2 acquires `lock:99` simultaneously**!
+   - As Martin Kleppmann proved [7], even `Redlock` across 5 Redis nodes relies on wall-clock/pause assumptions that **GC pauses break**: use Redis locks for **efficiency** (preventing duplicate work), never as your sole **correctness** guard—always pair mutations with a **monotonic fencing token** checked by the storage engine (see Chapter 18) [7]!
+
+:::
 
 ---
 
@@ -101,3 +124,6 @@ Redis offers two persistence mechanisms, plus replication [1]:
 - **[2]** Alex Xu, *System Design Interview (Vol. 1 & 2)*, Rate Limiter, Leaderboard & Notification Systems — [ByteByteGo](https://bytebytego.com/)
 - **[3]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)*, Chapter 7: Transactions & Race Conditions
 - **[4]** Brandur Leach (Stripe), *Implementing Stripe-like Idempotency Keys & Rate Limiters with Redis* — [stripe.com/blog/rate-limiters](https://stripe.com/blog/rate-limiters)
+- **[5]** Rajesh Nishtala et al. (Meta), *Scaling Memcache at Facebook (Leases, Thundering Herds & Regional Pools)* (USENIX NSDI 2013) — [usenix.org/conference/nsdi13/nishtala](https://www.usenix.org/conference/nsdi13/technical-sessions/presentation/nishtala)
+- **[6]** Redis Official Specification, *Redis Cluster Specification (16,384 Hash Slots, Hash Tags & Failover)* — [redis.io/docs/cluster-spec](https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/)
+- **[7]** Martin Kleppmann, *How to do distributed locking (Why Redlock Is Unsafe Without Fencing Tokens)* (2016) — [martin.kleppmann.com/distributed-locking](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)

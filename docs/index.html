@@ -757,7 +757,7 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 
   <main class="reader-col" id="reader-col">
     <article id="chap-ch01" class="chapter-article active" data-ch="ch01"><h1 class="ch-title">Chapter 1: Back-of-the-Envelope Math (Or: How Not to Panic at 30,000 QPS)</h1>
-<div class="ch-kicker">Part I · Core Building Blocks · 7 min read</div>
+<div class="ch-kicker">Part I · Core Building Blocks · 7 min core · 17 min with deep dives</div>
 <p class="annotatable" data-anchor="ch01-b01">Imagine you are sitting at a whiteboard. Someone asks you: <em>&quot;Design a notification system for 100 million daily active users.&quot;</em></p>
 <p class="annotatable" data-anchor="ch01-b02">At this exact moment, two different movies can play out in your head.</p>
 <p class="annotatable" data-anchor="ch01-b03">In Movie A, you immediately start drawing boxes labeled &quot;Microservice,&quot; &quot;Load Balancer,&quot; and &quot;NoSQL&quot; while secretly hoping nobody asks how many servers you actually need. In Movie B, you pause for 60 seconds, write four numbers on the board, and realize that <strong>one single number—peak writes per second—already eliminates half the databases on earth.</strong></p>
@@ -844,6 +844,29 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch01-b26"><strong>Single Redis Instance (In-Memory):</strong> <code>100,000+ ops/sec</code> on a single thread <a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[4]</a>.</li>
 <li class="annotatable" data-anchor="ch01-b27"><strong>Single Kafka Broker:</strong> <code>50,000 – 100,000+ messages/sec</code> (<code>100–200 MB/s</code> sequential disk throughput) <a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[5]</a>.</li>
 </ul>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Little&#x27;s Law (<code>L = λ·W</code>), Tail-at-Scale Fan-Out Math &amp; Hedged Requests</span></span><span class="dd-time">+5 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch01-d01"><strong>Sizing Concurrency with Little&#x27;s Law (<code>L = λ × W</code>) <a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[2]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch01-d02">In any steady-state queue, average in-flight requests <strong><code>L</code></strong> equals arrival rate <strong><code>λ</code></strong> (<code>req/s</code>) times mean residency time <strong><code>W</code></strong> (<code>seconds</code>).</li>
+<li class="annotatable" data-anchor="ch01-d03"><em>Example:</em> At <code>λ = 20,000 QPS</code> and <code>W = 25 ms</code> (<code>0.025s</code>), <code>L = 500</code> concurrent requests are in flight. If a downstream DB slows from <code>25 ms</code> to <strong><code>2.5 seconds</code></strong>, <code>L</code> jumps <code>100×</code> to <strong><code>50,000</code> open threads/connections</strong>—exhausting connection pools in <code>2 seconds</code> unless bounded by strict timeouts and load shedding!</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch01-d04">*<em>Tail-Latency Amplification in Microservice Fan-Out (</em>Dean &amp; Barroso<em>) <a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[8]</a>:</em>*</li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch01-d05">Suppose a search aggregator fans out in parallel to <strong><code>N = 50</code> leaf shards</strong>, and each individual shard is healthy with <strong><code>p99 = 200 ms</code></strong> (<code>1%</code> chance of taking <code>&gt;= 200 ms</code>).</li>
+<li class="annotatable" data-anchor="ch01-d06">Because the aggregator must wait for the <em>slowest</em> of all 50 shards, the probability that <strong>at least one shard hits its <code>p99</code> tail</strong> is:</li>
+</ul>
+<p class="annotatable" data-anchor="ch01-d07">     <code>P(slow) = 1 - (0.99)^50 ≈ 1 - 0.605 = 39.5%</code>! (At <code>100</code> shards, <strong><code>63.4%</code></strong> of user requests suffer the <code>p99</code> tail <a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[8]</a>!)</p>
+<ol>
+<li value="3" class="annotatable" data-anchor="ch01-d08"><strong>Crushing Tail Spikes with Hedged (&quot;Backup&quot;) Requests <a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[8]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch01-d09">Instead of waiting <code>200 ms</code> for a GC-stalled replica, fire a <strong>hedged read</strong> to a second replica if the first has not replied by the <strong><code>p95</code> latency (<code>e.g., 15 ms</code>)</strong>, cancelling the slower leg on first response. Google&#x27;s Bigtable benchmarks showed hedging at <code>p95</code> cuts <strong><code>p99.9</code> latency from <code>1,800 ms</code> down to <code>74 ms</code></strong> while adding <strong>only <code>5%</code> extra cluster load</strong> <a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[8]</a>!</li>
+</ul>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch01-b28">4) AI Engineering Math: Tokens, Bandwidth &amp; KV-Cache RAM</h3>
 <p class="annotatable" data-anchor="ch01-b29">When designing AI-enabled backend systems, there is one more calculation that immediately clarifies architecture bottlenecks: <strong>LLM latency and GPU memory math</strong> <a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[6]</a>.</p>
@@ -853,6 +876,21 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch01-b32"><strong>Inter-Token Latency (ITL):</strong> Generating output tokens happens <em>one token at a time</em> (autoregressively), limited by GPU memory bandwidth. A fast production model streams at <strong><code>40 – 80 tokens/sec</code></strong> (<code>12–25 ms</code> per token).</li>
 <li class="annotatable" data-anchor="ch01-b33"><strong>Why a 300-token answer takes 5 seconds:</strong> <code>0.5s (TTFT) + (300 tokens / 60 tokens/sec) = 5.5 seconds</code> total wall-clock time. That is why every interactive AI app <strong>must stream tokens via Server-Sent Events (SSE)</strong> instead of blocking until the entire paragraph is finished <a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[6]</a>.</li>
 </ul>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Availability &quot;Nines&quot; Math, Static Stability &amp; Coordinated Omission</span></span><span class="dd-time">+5 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch01-d10"><strong>Serial vs. Active-Active Redundancy Math <a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[9]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch01-d11"><strong>Serial dependencies multiply availability downward:</strong> Calling <code>Auth (99.9%) -&gt; OrderSvc (99.9%) -&gt; PaymentGW (99.9%)</code> synchronously yields <code>0.999^3 ≈ 99.7%</code> (<strong><code>26.3 hours</code> of downtime/year</strong>—worse than any single service!).</li>
+<li class="annotatable" data-anchor="ch01-d12"><strong>Active-Active parallel replicas multiply unavailability (<code>1 - p^k</code>):</strong> Two independent Availability Zones each at <code>99.9%</code> (<code>0.001</code> failure probability) give <code>1 - (0.001)^2 = 99.9999%</code> <em>in theory</em>—<strong>only if</strong> survivor AZs are <strong>statically over-provisioned</strong> (e.g., <code>3</code> AZs each running at <code>&lt;= 60%</code> CPU so losing 1 AZ jumps survivors to <code>90%</code>, not <code>120%</code> brownout!) and require <strong>zero control-plane autoscaling</strong> during the outage (<em>AWS Static Stability</em> <a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[9]</a>).</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch01-d13"><strong>The Load-Testing Trap — Coordinated Omission <a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[2]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch01-d14">Closed-loop benchmark tools that wait for Response <code>i</code> before sending Request <code>i+1</code> accidentally <strong>pause sending traffic whenever the server freezes for <code>2 seconds</code></strong>—recording only <code>1</code> slow sample instead of the <code>20,000</code> queued requests real users experienced! Always measure latency with <strong>open-loop arrival schedules</strong> (Poisson arrivals independent of server response time) <a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[2]</a>.</li>
+</ul>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch01-b34">Analogy, Where It Breaks &amp; Real System</h3>
 <ul>
@@ -884,8 +922,10 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch01-b47"><strong><a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> Jay Kreps, <em>The Log: What every software engineer should know about real-time data&#x27;s unifying abstraction</em> &amp; Apache Kafka Design Docs — <a href="https://kafka.apache.org/documentation/" target="_blank" rel="noopener">kafka.apache.org/documentation</a></li>
 <li class="annotatable" data-anchor="ch01-b48"><strong><a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[6]</a></strong> Chip Huyen, <em>AI Engineering: Building Applications with Foundation Models</em> (O&#x27;Reilly, 2025) — Latency &amp; Token Economics</li>
 <li class="annotatable" data-anchor="ch01-b49"><strong><a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[7]</a></strong> Discord Engineering, <em>How Discord Stores Trillions of Messages</em> — <a href="https://discord.com/blog/how-discord-stores-trillions-of-messages" target="_blank" rel="noopener">discord.com/blog</a></li>
+<li class="annotatable" data-anchor="ch01-b50"><strong><a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[8]</a></strong> Jeffrey Dean &amp; Luiz André Barroso (Google), <em>The Tail at Scale</em> (CACM 2013) — <a href="https://research.google/pubs/the-tail-at-scale/" target="_blank" rel="noopener">research.google/pubs/the-tail-at-scale</a></li>
+<li class="annotatable" data-anchor="ch01-b51"><strong><a href="#ch01-refs" class="cite-ref" title="Jump to chapter references">[9]</a></strong> AWS Builders&#x27; Library, <em>Static Stability Using Availability Zones</em> — <a href="https://aws.amazon.com/builders-library/static-stability-using-availability-zones/" target="_blank" rel="noopener">aws.amazon.com/builders-library/static-stability</a></li>
 </ul><nav class="ch-pager"><div class="pager-spacer"></div><button class="ch-pager-btn next" onclick="openChapter('ch02')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">2. Kafka &amp; Partition Streams</span></button></nav></article><article id="chap-ch02" class="chapter-article" data-ch="ch02"><h1 class="ch-title">Chapter 2: Kafka, Partitions &amp; Why Databases Hate Waiting in Line</h1>
-<div class="ch-kicker">Part I · Core Building Blocks · 9 min read</div>
+<div class="ch-kicker">Part I · Core Building Blocks · 9 min core · 18 min with deep dives</div>
 <p class="annotatable" data-anchor="ch02-b01">Suppose 1,000 hungry customers walk into a bakery at 9:00 AM.</p>
 <p class="annotatable" data-anchor="ch02-b02">If you put all 1,000 orders into a standard relational database table (<code>SELECT * FROM orders WHERE status = &#x27;PENDING&#x27; LIMIT 1 FOR UPDATE</code>), here is what happens: 50 bakers all rush to the same clipboard, fight over who gets row #1, lock each other out, and spend 90% of their time arguing over the lock instead of baking bread.</p>
 <p class="annotatable" data-anchor="ch02-b03">Now imagine a different design. You install <strong>three conveyor belts</strong> (<code>Partition 0</code>, <code>Partition 1</code>, <code>Partition 2</code>). Every time an order arrives, the cashier stamps it at the end of one belt. And you make one strict rule: <strong>only one baker is allowed to stand at the end of each belt.</strong></p>
@@ -1015,6 +1055,23 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <p class="annotatable" data-anchor="ch02-b18"><strong>The Rule:</strong> Kafka guarantees strict time ordering <strong>only within a single partition</strong>, never across different partitions <a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[1]</a>. To keep Alice&#x27;s events in order, the producer hashes her <code>user_id</code>:</p>
 <p class="annotatable" data-anchor="ch02-b19"><code>partition = MurmurHash2(user_id) % num_partitions</code></p>
 <p class="annotatable" data-anchor="ch02-b20">Because <code>Hash(&quot;Alice&quot;)</code> always produces the exact same number, every event for Alice lands on the exact same conveyor belt (<code>Partition 0</code>), in the exact order she clicked <a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</p>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Broker Durability (<code>acks=all</code> + <code>ISR</code>) &amp; <code>KIP-98</code> Exactly-Once Producers</span></span><span class="dd-time">+5 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch02-d01"><strong>Why <code>acks=1</code> Loses Committed Financial Events <a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch02-d02">Each Kafka partition has <strong>1 Leader</strong> and <code>R - 1</code> <strong>Follower replicas</strong> (typically <code>replication.factor = 3</code>). Followers continuously fetch the Leader&#x27;s log; replicas caught up within <code>replica.lag.time.max.ms</code> form the <strong>In-Sync Replica set (<code>ISR</code>)</strong> <a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[2]</a>.</li>
+<li class="annotatable" data-anchor="ch02-d03">With <code>acks=1</code>, the Leader replies <code>OK</code> the instant bytes hit its local page cache—if that broker loses power <code>2 ms</code> later before Followers replicate offset <code>900</code>, the newly elected Leader <strong>truncates offset <code>900</code> forever</strong>!</li>
+<li class="annotatable" data-anchor="ch02-d04">For zero data loss on payments/orders, enforce <strong><code>acks=all</code> (<code>-1</code>) + <code>min.insync.replicas = 2</code> + <code>unclean.leader.election.enable = false</code></strong>: writes succeed only after at least <strong>2 ISR brokers</strong> acknowledge, trading availability (<code>NotEnoughReplicasException</code> if 2 of 3 brokers die) over silent data loss <a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>.</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch02-d05"><strong><code>KIP-98</code> Idempotent &amp; Transactional Producers <a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[4]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch02-d06">What if a producer sends <code>Charge $50</code>, the Leader appends it, and the network drops the <code>ACK</code> so the producer retries? With <strong><code>enable.idempotence = true</code> (<code>KIP-98</code>)</strong>, each producer receives a <code>ProducerID (PID)</code> and tags every batch with a monotonically increasing <strong><code>SequenceNumber</code></strong> per partition—the broker deduplicates <code>Seq #42</code> in <code>O(1)</code> memory without writing twice <a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[4]</a>!</li>
+<li class="annotatable" data-anchor="ch02-d07">For Kafka-to-Kafka <code>consume -&gt; transform -&gt; produce</code> pipelines, <strong>Kafka Transactions (<code>transactional.id</code>)</strong> run a 2-phase commit Coordinator that atomically commits output records <em>and</em> input consumer offsets together (<code>isolation.level = read_committed</code>)—though side effects to <strong>external</strong> REST/SQL systems still require idempotency keys or a Transactional Outbox <a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[4]</a>!</li>
+</ul>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch02-b21">3) What If Celebrity &quot;User X&quot; Floods Partition 0? (Hot-Key Salting)</h3>
 <p class="annotatable" data-anchor="ch02-b22">Hashing by <code>user_id</code> works great until a celebrity account or viral merchant triggers 50,000 events per second. Now <code>Hash(&quot;Celebrity_X&quot;) % 30</code> routes all 50,000 events to <code>Partition 0</code>, melting Broker 1 while <code>Partitions 1..29</code> sit idle.</p>
@@ -1028,6 +1085,21 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <p class="annotatable" data-anchor="ch02-b27">Suppose your <code>notifications</code> topic has <strong>12 Partitions</strong>, and your 12 worker servers are at 95% CPU during a holiday spike. In a rush, you auto-scale your Kubernetes worker deployment from <code>12 pods</code> to <code>24 pods</code>.</p>
 <p class="annotatable" data-anchor="ch02-b28">What happens to the 12 new pods? <strong>They sit at 0% CPU doing nothing.</strong></p>
 <p class="annotatable" data-anchor="ch02-b29">Because Kafka never lets two workers in the same Consumer Group read the same Partition (otherwise both workers would process offset #42 and send duplicate emails), <strong>your maximum worker parallelism is strictly capped by the number of partitions</strong> <a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[1]</a>. That is why production teams over-provision partition counts upfront (e.g., <code>30</code> to <code>64</code> partitions) or decouple slow external HTTP calls onto an async worker pool after reading.</p>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Surviving Rebalance Storms (<code>CooperativeSticky</code>), Log Compaction &amp; Tiered Retries</span></span><span class="dd-time">+4 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch02-d08"><strong>Why Stop-the-World Consumer Rebalances Cause Production Outages <a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch02-d09">Under legacy <strong>Eager Rebalancing</strong>, whenever 1 pod restarts or a slow LLM/HTTP call exceeds <code>max.poll.interval.ms</code>, <strong>every consumer in the entire group revokes all partitions simultaneously</strong>, freezing consumption across all 64 partitions for seconds!</li>
+<li class="annotatable" data-anchor="ch02-d10">Fix: Enable <strong><code>CooperativeStickyAssignor</code></strong> (incremental rebalancing revokes <em>only</em> the partitions moving to the new pod while the other 62 partitions keep streaming uninterrupted) and decouple slow processing threads from the poll loop with bounded backpressure <a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[2]</a>.</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch02-d11"><strong>Retention vs. Log Compaction (<code>cleanup.policy = compact</code>) <a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[2]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch02-d12">Event streams (<code>clicks</code>) use time/size retention (<code>7 days</code>). Changelog/state topics (<code>user_profiles</code>, CDC snapshots) use <strong>Log Compaction</strong>, where background cleaner threads retain <strong>at least the latest value for every message key</strong> (<code>key -&gt; null</code> acts as a deletion <strong>tombstone</strong>)—letting new services bootstrap local state caches directly from Kafka <a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[2]</a>.</li>
+</ul>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch02-b30">Analogy, Where It Breaks &amp; Real System</h3>
 <ul>
@@ -1055,8 +1127,9 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch02-b39"><strong><a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Neha Narkhede, Gwen Shapira &amp; Todd Palino, <em>Kafka: The Definitive Guide</em> (O&#x27;Reilly) — Partitions, Consumer Groups &amp; Delivery Guarantees</li>
 <li class="annotatable" data-anchor="ch02-b40"><strong><a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Jay Kreps, <em>The Log: What every software engineer should know about real-time data&#x27;s unifying abstraction</em> &amp; Apache Kafka Design Docs — <a href="https://kafka.apache.org/documentation/" target="_blank" rel="noopener">kafka.apache.org/documentation</a></li>
 <li class="annotatable" data-anchor="ch02-b41"><strong><a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Alex Xu, <em>System Design Interview (Vol. 1 &amp; 2)</em>, Notification Service &amp; Message Queues — <a href="https://bytebytego.com/" target="_blank" rel="noopener">ByteByteGo</a></li>
+<li class="annotatable" data-anchor="ch02-b42"><strong><a href="#ch02-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Apache Kafka KIP-98, <em>Exactly Once Delivery and Transactional Messaging</em> — <a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging" target="_blank" rel="noopener">cwiki.apache.org/confluence/display/KAFKA/KIP-98</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch01')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">1. Back-of-the-Envelope Math</span></button><button class="ch-pager-btn next" onclick="openChapter('ch03')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">3. Redis &amp; In-Memory Primitives</span></button></nav></article><article id="chap-ch03" class="chapter-article" data-ch="ch03"><h1 class="ch-title">Chapter 3: Redis &amp; The Four In-Memory Swiss Army Knives</h1>
-<div class="ch-kicker">Part I · Core Building Blocks · 8 min read</div>
+<div class="ch-kicker">Part I · Core Building Blocks · 8 min core · 18 min with deep dives</div>
 <p class="annotatable" data-anchor="ch03-b01">When engineers first hear about <strong>Redis</strong>, they usually hear a three-word summary: <em>&quot;It&#x27;s a fast cache.&quot;</em></p>
 <p class="annotatable" data-anchor="ch03-b02">Calling Redis &quot;just a cache&quot; is like calling a Swiss Army knife &quot;a toothpick.&quot; Yes, it has a toothpick—but the reason Redis powers so many distributed architectures is that it gives you <strong>shared, atomic data structures in RAM</strong> (<code>Strings</code>, <code>Lists</code>, <code>Sorted Sets</code>, and <code>Hashes</code>) that execute one command at a time on a <strong>single-threaded event loop</strong> <a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>.</p>
 <p class="annotatable" data-anchor="ch03-b03">Let us unpack why that single thread is a superpower.</p>
@@ -1124,6 +1197,30 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <ol>
 <li value="5" class="annotatable" data-anchor="ch03-b29">Because a <code>ZSET</code> keeps members sorted by score in a Skip List, Redis hands back <strong>only the users whose timers just expired</strong>, in <code>O(log N + M)</code> time, without ever looking at the 999,900 users whose timers are still in the future!</li>
 </ol>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Meta Memcache Leases: Defending Against Cache Stampedes, Stale Sets &amp; Hot Keys</span></span><span class="dd-time">+5 min</span></summary><div class="deep-dive-body">
+<p class="annotatable" data-anchor="ch03-d01">In Meta&#x27;s landmark <em>Scaling Memcache at Facebook</em> (<code>NSDI 2013</code> <a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[5]</a>) paper, look-aside caching (<code>GET cache -&gt; miss -&gt; SELECT DB -&gt; SET cache</code>) broke in three subtle ways at <code>billions of QPS</code>:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Production Failure</th>
+<th>Exact Race / Bottleneck</th>
+<th>How Meta&#x27;s Lease &amp; L1 Pattern Solves It <a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[5]</a></th>
+</tr></thead><tbody>
+<tr class="annotatable" data-anchor="ch03-d02">
+<td><strong>1. Thundering Herd (Cache Stampede)</strong></td>
+<td>Popular key <code>feed:viral</code> expires; <strong><code>5,000</code> app threads miss simultaneously</strong> and stampede the same MySQL/Postgres row!</td>
+<td><strong>Cache Leases (<code>SET lock:k NX EX 5</code> / <code>singleflight</code>):</strong> On miss, Redis grants a <code>64-bit</code> <strong>lease token</strong> to the <em>first</em> client only; the other <code>4,999</code> clients wait <code>10 ms</code> or serve slightly stale value while 1 query refreshes DB <a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[5]</a>.</td>
+</tr>
+<tr class="annotatable" data-anchor="ch03-d03">
+<td><strong>2. Stale-Set Race Condition</strong></td>
+<td>Reader A misses (<code>v1</code>), Writer B updates DB (<code>v2</code>) and <code>DEL</code>s cache, then slow Reader A wakes up and writes <strong>stale <code>v1</code> into cache forever</strong>!</td>
+<td>When <code>DEL</code> runs on a write, Redis <strong>invalidates any active lease token</strong> for that key—so Reader A&#x27;s delayed <code>CAS/lease-set</code> is deterministically rejected <a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[5]</a>!</td>
+</tr>
+<tr class="annotatable" data-anchor="ch03-d04">
+<td><strong>3. Single-Shard Hot Key (<code>500k QPS</code>)</strong></td>
+<td>Even 1 Redis shard tops out around <code>~100k–200k ops/s</code>; <code>1M</code> reads/sec on one celebrity key melts the shard&#x27;s NIC &amp; single CPU core.</td>
+<td><strong>Tiny In-Process L1 LRU Cache (<code>1–2s</code> TTL + Redis <code>RESP3</code> Client-Side Tracking invalidations)</strong> or <strong>Key Read-Replication</strong> (<code>key#1..key#10</code> across 10 shards) absorbs <code>99%</code> of hot reads in app RAM <a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[1, 5]</a>.</td>
+</tr>
+</tbody></table></div>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch03-b30">4) What If Redis Crashes? (Why RAM Needs a Backup Plan)</h3>
 <p class="annotatable" data-anchor="ch03-b31">Redis lives in volatile RAM. What happens if your Redis node reboots at <code>10:14</code>, one minute before Alice&#x27;s 15-minute AI digest fires?</p>
@@ -1133,6 +1230,22 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch03-b34"><strong>AOF (Append-Only File):</strong> Logs every write command to disk (<code>appendfsync everysec</code>). A crash loses at most <strong>1 second</strong> of data, and Redis Sentinel / Cluster fails over to a warm replica in seconds.</li>
 <li class="annotatable" data-anchor="ch03-b35"><strong>The Production Rule:</strong> Never treat Redis as your <em>only</em> copy of financial or user-critical data. Keep the raw events durable on disk in <strong>Kafka</strong> (or your database), and use Redis for fast in-memory coordination, timers, and deduplication.</li>
 </ul>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Redis Cluster <code>16,384</code> Hash Slots, Async Failover &amp; Why <code>Redlock</code> Fails Safety</span></span><span class="dd-time">+5 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch03-d05"><strong>How Redis Cluster Shards RAM (<code>CRC16(key) mod 16384</code>) <a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[6]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch03-d06">Instead of dynamic token rings, <strong>Redis Cluster</strong> partitions the keyspace into <strong>16,384 fixed hash slots</strong> (<code>Node A: 0–5460</code>, <code>Node B: 5461–10922</code>, <code>Node C: 10923–16383</code>) <a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[6]</a>. Smart clients cache the slot map (<code>&lt;2 KB</code>) for <strong>1-hop routing</strong> (<code>MOVED</code> redirects update stale maps).</li>
+<li class="annotatable" data-anchor="ch03-d07"><strong>Multi-Key Hash Tags (<code>{...}</code>):</strong> Multi-key commands or Lua scripts (<code>EVAL</code>) fail with <code>CROSSSLOT</code> unless all keys live on the same shard! Wrapping the shared entity in braces—<code>{user_42}:profile</code> and <code>{user_42}:cart</code>—forces Redis to hash <strong>only <code>user_42</code></strong>, co-locating related keys on one slot (never put a low-cardinality tag like <code>{us_east}</code> or you create a massive hot shard!) <a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[6]</a>.</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch03-d08"><strong>Async Replication Split-Brain &amp; Kleppmann&#x27;s <code>Redlock</code> Critique <a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[6, 7]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch03-d09">Redis replication is <strong>asynchronous</strong> by default: Client 1 acquires <code>SET lock:99 owner1 NX PX 10000</code> on Primary A, Primary A crashes <em>before</em> replicating <code>lock:99</code> to Replica A&#x27;, Replica A&#x27; promotes to Primary, and <strong>Client 2 acquires <code>lock:99</code> simultaneously</strong>!</li>
+<li class="annotatable" data-anchor="ch03-d10">As Martin Kleppmann proved <a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[7]</a>, even <code>Redlock</code> across 5 Redis nodes relies on wall-clock/pause assumptions that <strong>GC pauses break</strong>: use Redis locks for <strong>efficiency</strong> (preventing duplicate work), never as your sole <strong>correctness</strong> guard—always pair mutations with a <strong>monotonic fencing token</strong> checked by the storage engine (see Chapter 18) <a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[7]</a>!</li>
+</ul>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch03-b36">Analogy, Where It Breaks &amp; Real System</h3>
 <ul>
@@ -1161,8 +1274,11 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch03-b46"><strong><a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Alex Xu, <em>System Design Interview (Vol. 1 &amp; 2)</em>, Rate Limiter, Leaderboard &amp; Notification Systems — <a href="https://bytebytego.com/" target="_blank" rel="noopener">ByteByteGo</a></li>
 <li class="annotatable" data-anchor="ch03-b47"><strong><a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Martin Kleppmann, <em>Designing Data-Intensive Applications (DDIA)</em>, Chapter 7: Transactions &amp; Race Conditions</li>
 <li class="annotatable" data-anchor="ch03-b48"><strong><a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Brandur Leach (Stripe), <em>Implementing Stripe-like Idempotency Keys &amp; Rate Limiters with Redis</em> — <a href="https://stripe.com/blog/rate-limiters" target="_blank" rel="noopener">stripe.com/blog/rate-limiters</a></li>
+<li class="annotatable" data-anchor="ch03-b49"><strong><a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> Rajesh Nishtala et al. (Meta), <em>Scaling Memcache at Facebook (Leases, Thundering Herds &amp; Regional Pools)</em> (USENIX NSDI 2013) — <a href="https://www.usenix.org/conference/nsdi13/technical-sessions/presentation/nishtala" target="_blank" rel="noopener">usenix.org/conference/nsdi13/nishtala</a></li>
+<li class="annotatable" data-anchor="ch03-b50"><strong><a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[6]</a></strong> Redis Official Specification, <em>Redis Cluster Specification (16,384 Hash Slots, Hash Tags &amp; Failover)</em> — <a href="https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/" target="_blank" rel="noopener">redis.io/docs/cluster-spec</a></li>
+<li class="annotatable" data-anchor="ch03-b51"><strong><a href="#ch03-refs" class="cite-ref" title="Jump to chapter references">[7]</a></strong> Martin Kleppmann, <em>How to do distributed locking (Why Redlock Is Unsafe Without Fencing Tokens)</em> (2016) — <a href="https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html" target="_blank" rel="noopener">martin.kleppmann.com/distributed-locking</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch02')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">2. Kafka &amp; Partition Streams</span></button><button class="ch-pager-btn next" onclick="openChapter('ch04')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">4. Database Keys &amp; Sharding</span></button></nav></article><article id="chap-ch04" class="chapter-article" data-ch="ch04"><h1 class="ch-title">Chapter 4: Database Keys, Sharding &amp; Where Your Data Actually Lives</h1>
-<div class="ch-kicker">Part I · Core Building Blocks · 9 min read</div>
+<div class="ch-kicker">Part I · Core Building Blocks · 9 min core · 18 min with deep dives</div>
 <p class="annotatable" data-anchor="ch04-b01">Every software engineer knows how to write <code>PRIMARY KEY (id)</code> in a SQL migration.</p>
 <p class="annotatable" data-anchor="ch04-b02">Yet when a table grows to 50 billion rows, a simple question changes everything: <em>&quot;Alice opens her Notification Inbox to view her 20 newest alerts out of 50 billion total rows. How does your database find those 20 rows in 3 milliseconds without scanning the whole cluster?&quot;</em></p>
 <p class="annotatable" data-anchor="ch04-b03">If your primary key is just <code>notification_id = UUID()</code>, your database has <strong>no idea which machine holds Alice&#x27;s rows</strong>. It has to send a <strong>&quot;scatter-gather&quot; query to every single database shard in your cluster</strong>, wait for the slowest shard to respond, and merge the results. At 30,000 QPS, scatter-gather kills your cluster <a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</p>
@@ -1277,6 +1393,28 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <td>High-write event logs, chat messages, notification history, IoT time-series.</td>
 </tr>
 </tbody></table></div>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Replication Topologies: Dynamo Leaderless Quorums (<code>W+R&gt;N</code>) vs. Raft/Paxos (<code>Spanner</code> / <code>DynamoDB</code>)</span></span><span class="dd-time">+5 min</span></summary><div class="deep-dive-body">
+<p class="annotatable" data-anchor="ch04-d01">Once your partition lives on 3 replicas (<code>N = 3</code>), <strong>who accepts writes and how do replicas agree?</strong> Interviewers expect you to contrast the two dominant families <a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[1, 3, 5, 6]</a>:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Model</th>
+<th>How Writes &amp; Reads Work</th>
+<th>Trade-Off &amp; Failure Edge Cases</th>
+<th>Real Systems</th>
+</tr></thead><tbody>
+<tr class="annotatable" data-anchor="ch04-d02">
+<td><strong>1. Leaderless Quorum</strong> <em>(Amazon Dynamo 2007)</em> <a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[3]</a></td>
+<td>Coordinator sends writes to all <code>N=3</code> replicas; succeeds when <strong><code>W</code> ack</strong>. Reads query <strong><code>R</code> replicas</strong> in parallel; if <strong><code>W + R &gt; N</code></strong> (<code>e.g., W=2, R=2</code>), read &amp; write sets overlap!</td>
+<td>High write availability (<code>Sloppy Quorums</code> + <code>Hinted Handoff</code>), but concurrent writes create <strong>conflicting sibling versions</strong> (requiring Vector Clocks or perilous <code>Last-Write-Wins</code> wall-clocks!), plus needs <strong>Read Repair</strong> &amp; background <strong>Merkle Tree</strong> anti-entropy <a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[1, 3]</a>.</td>
+<td><code>Cassandra</code>, <code>ScyllaDB</code>, <code>Riak</code>.</td>
+</tr>
+<tr class="annotatable" data-anchor="ch04-d03">
+<td><strong>2. Consensus Per-Shard Leader</strong> <em>(Paxos / Raft)</em> <a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[5, 6]</a></td>
+<td>Each partition elects <strong>1 Leader</strong> via <code>Paxos</code>/<code>Raft</code> (<code>majority = 2 of 3</code>). All strongly consistent writes/reads route through the Leader (or lease-holder).</td>
+<td><strong>Linearizable reads &amp; serializable transactions</strong> with zero sibling conflicts; brief (<code>~1–2s</code>) write pause if the partition leader crashes until Raft elects a new leader <a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[5, 6]</a>.</td>
+<td><strong>Modern AWS <code>DynamoDB</code></strong> <em>(migrated to Paxos per storage replication group!)</em> <a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[5]</a>, <strong>Google <code>Spanner</code></strong> (<code>TrueTime</code> + Paxos) <a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[6]</a>, <code>CockroachDB</code>.</td>
+</tr>
+</tbody></table></div>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch04-b24">3) Consistent Hashing: How to Add a Database Shard Without Moving 99% of Your Data</h3>
 <p class="annotatable" data-anchor="ch04-b25">Earlier we saw how Kafka hashes <code>Hash(key) % N</code>. That works when <code>N</code> is a fixed number of logical partitions.</p>
@@ -1288,6 +1426,25 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li value="2" class="annotatable" data-anchor="ch04-b30">To find which server owns <code>user_42</code>, you hash <code>user_42</code> onto the circle and walk <strong>clockwise</strong> until you hit the first server.</li>
 <li value="3" class="annotatable" data-anchor="ch04-b31">If <strong>1 server out of 10</strong> crashes (or you add an 11th server), only the keys on that immediate arc—<strong><code>1 / N</code> (<code>~10%</code>) of the keys</strong>—move to their clockwise neighbor. The other <strong>90% of keys stay untouched!</strong></li>
 </ol>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Secondary Indexes on Sharded DBs (<code>LSI</code> vs. <code>GSI</code>) &amp; Zero-Downtime Online Re-Sharding</span></span><span class="dd-time">+4 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch04-d04"><strong>Document-Partitioned (<code>Local</code>) vs. Term-Partitioned (<code>Global</code>) Secondary Indexes <a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[1, 5]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch04-d05">Suppose <code>orders</code> is sharded by <code>customer_id</code>, and Support wants <code>SELECT * FROM orders WHERE merchant_id = &#x27;m_99&#x27;</code>.</li>
+<li class="annotatable" data-anchor="ch04-d06"><strong>Local Secondary Index (<code>LSI</code> — Document-Partitioned):</strong> Each shard indexes only its local rows. Writes are fast (1 shard!), but <code>WHERE merchant_id = &#x27;m_99&#x27;</code> must <strong>scatter-gather across all 50 shards</strong> (tail-latency trap!) <a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</li>
+<li class="annotatable" data-anchor="ch04-d07"><strong>Global Secondary Index (<code>GSI</code> — Term-Partitioned, DynamoDB style) <a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[5]</a>:</strong> The index itself is a separate hidden table <strong>sharded by <code>merchant_id</code></strong>, populated asynchronously via CDC/log streams from the base table—giving <strong><code>O(1)</code> single-shard reads</strong> at the cost of <strong>eventual consistency (<code>ms</code> lag)</strong> and extra write amplification <a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[5]</a>.</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch04-d08"><strong>How to Re-Shard a Live Production Database With Zero Downtime (<code>4-Phase Playbook</code>) <a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[1]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch04-d09"><strong>(1) Dual-Write (Old Primary):</strong> App writes to <code>OldDB</code> (source of truth) and best-effort replicates/CDC-streams to <code>NewShardedDB</code>.</li>
+<li class="annotatable" data-anchor="ch04-d10"><strong>(2) Idempotent Historical Backfill:</strong> Scan <code>OldDB</code> snapshots into <code>NewShardedDB</code> using timestamp/version guards so backfill never overwrites newer live CDC writes!</li>
+<li class="annotatable" data-anchor="ch04-d11"><strong>(3) Shadow-Read Verification:</strong> Read <code>OldDB</code> on the live path while asynchronously reading <code>NewShardedDB</code> on <code>5% -&gt; 100%</code> of traffic and alerting on any row diff.</li>
+<li class="annotatable" data-anchor="ch04-d12"><strong>(4) Atomic Cutover + Rollback Window:</strong> Flip reads/primary writes to <code>NewShardedDB</code> via feature flag while keeping reverse-CDC to <code>OldDB</code> warm for <code>48 hours</code> in case an emergency rollback is needed.</li>
+</ul>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch04-b32">Analogy, Where It Breaks &amp; Real System</h3>
 <ul>
@@ -1316,8 +1473,10 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch04-b42"><strong><a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Alex Xu, <em>System Design Interview (Vol. 1)</em>, Chapter 5: Design Consistent Hashing &amp; Chapter 6: Design a Key-Value Store — <a href="https://bytebytego.com/" target="_blank" rel="noopener">ByteByteGo</a></li>
 <li class="annotatable" data-anchor="ch04-b43"><strong><a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Giuseppe DeCandia et al. (Amazon), <em>Dynamo: Amazon&#x27;s Highly Available Key-Value Store</em> (SOSP 2007) — <a href="https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf" target="_blank" rel="noopener">allthingsdistributed.com</a></li>
 <li class="annotatable" data-anchor="ch04-b44"><strong><a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Discord Engineering, <em>How Discord Stores Billions/Trillions of Messages</em> — <a href="https://discord.com/blog/how-discord-stores-trillions-of-messages" target="_blank" rel="noopener">discord.com/blog/how-discord-stores-trillions-of-messages</a></li>
+<li class="annotatable" data-anchor="ch04-b45"><strong><a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> Mostafa Elhemali et al. (AWS), <em>Amazon DynamoDB: A Scalable, Predictably Performant, and Fully Managed NoSQL Database Service</em> (USENIX ATC 2022) — <a href="https://www.usenix.org/conference/atc22/presentation/elhemali" target="_blank" rel="noopener">usenix.org/conference/atc22/elhemali</a></li>
+<li class="annotatable" data-anchor="ch04-b46"><strong><a href="#ch04-refs" class="cite-ref" title="Jump to chapter references">[6]</a></strong> James C. Corbett et al. (Google), <em>Spanner: Google&#x27;s Globally-Distributed Database</em> (OSDI 2012) — <a href="https://research.google/pubs/spanner-googles-globally-distributed-database/" target="_blank" rel="noopener">research.google/pubs/spanner</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch03')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">3. Redis &amp; In-Memory Primitives</span></button><button class="ch-pager-btn next" onclick="openChapter('ch05')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">5. Global Notification + AI Digest</span></button></nav></article><article id="chap-ch05" class="chapter-article" data-ch="ch05"><h1 class="ch-title">Chapter 5: Global Notification System + AI Smart Digest (30k QPS)</h1>
-<div class="ch-kicker">Part II · Classic System Design Stories · 10 min core · 15 min with deep dives</div>
+<div class="ch-kicker">Part II · Classic System Design Stories · 10 min core · 19 min with deep dives</div>
 <p class="annotatable" data-anchor="ch05-b01">It is 9:00 AM on Black Friday. Within three seconds, 100,000 merchants trigger flash-sale alerts, payment receipts, and security OTP codes across your platform.</p>
 <p class="annotatable" data-anchor="ch05-b02">Your notification service is suddenly hit with <strong>30,000 requests per second</strong>. At the same time:</p>
 <ul>
@@ -1493,6 +1652,22 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li value="3" class="annotatable" data-anchor="ch05-d08"><strong>Timezone Quiet Hours &amp; Mute-Rate Feedback Loop:</strong> Schedule <code>ZSET</code> flush scores in the recipient&#x27;s local waking window, and track <strong>notification mute / disable rate</strong> as your primary counter-metric against over-eager urgency promotion <a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[5]</a>.</li>
 </ol>
 </div></details>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Transactional Outbox (Dual-Write Fix), Invalid Device Tokens &amp; Multi-Provider Failover</span></span><span class="dd-time">+4 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch05-d09"><strong>Eliminating the Dual-Write Bug with a Transactional Outbox <a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[6]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch05-d10">What if <code>OrderService</code> commits <code>INSERT INTO orders</code> in Postgres and crashes <code>1 ms</code> <em>before</em> publishing <code>order.created</code> to Kafka? The customer gets charged and <strong>never receives a receipt</strong>!</li>
+<li class="annotatable" data-anchor="ch05-d11">Fix: Inside the <strong>exact same ACID database transaction</strong> (<code>BEGIN ... COMMIT</code>), insert into <code>orders</code> <em>and</em> <code>outbox_events</code>. A <strong>Debezium WAL CDC</strong> connector (or polling relay) streams <code>outbox_events</code> into Kafka with at-least-once delivery, while downstream Redis <code>SET dedup:&lt;id&gt; NX</code> guarantees idempotency <a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[6]</a>.</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch05-d12"><strong>Device-Token Hygiene &amp; Multi-Vendor SMS/Email Failover <a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[1, 7]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch05-d13">Users uninstall apps daily: subscribe asynchronously to <strong>APNs (<code>410 Unregistered</code>) / FCM feedback streams</strong> to mark dead <code>device_token</code>s <code>inactive</code>—otherwise millions of dead tokens clog worker pools and get your sender IP throttled <a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</li>
+<li class="annotatable" data-anchor="ch05-d14">For critical <code>P0</code> OTPs, run <strong>active-active health-weighted routing</strong> across two SMS providers (<code>Twilio</code> <code>90%</code> + <code>Vonage/SNS</code> <code>10%</code> warm traffic) rather than cold untested fallbacks (<em>AWS Avoiding Fallback</em> <a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[7]</a>), shifting weights automatically when delivery receipts drop!</li>
+</ul>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch05-b32">Quick Self-Check</h3>
 <details class="self-check">
@@ -1515,8 +1690,10 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch05-b39"><strong><a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Chip Huyen, <em>AI Engineering</em> (2025) — Latency Fallbacks, Batching &amp; Deterministic Guardrails</li>
 <li class="annotatable" data-anchor="ch05-b40"><strong><a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> OpenAI Platform Documentation, <em>Batch API: Asynchronous High-Throughput Workloads at 50% Lower Cost</em> — <a href="https://platform.openai.com/docs/guides/batch" target="_blank" rel="noopener">platform.openai.com/docs/guides/batch</a></li>
 <li class="annotatable" data-anchor="ch05-b41"><strong><a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> Rohit Ghumare et al., <em>AI Engineering from Scratch — Production LLM Cost, Batching &amp; Guardrail Trade-Offs</em> — <a href="https://aiengineeringfromscratch.com/interviews" target="_blank" rel="noopener">aiengineeringfromscratch.com/interviews</a></li>
+<li class="annotatable" data-anchor="ch05-b42"><strong><a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[6]</a></strong> Chris Richardson, <em>Pattern: Transactional Outbox (Reliable Database + Message Broker Publishing)</em> — <a href="https://microservices.io/patterns/data/transactional-outbox.html" target="_blank" rel="noopener">microservices.io/patterns/data/transactional-outbox</a></li>
+<li class="annotatable" data-anchor="ch05-b43"><strong><a href="#ch05-refs" class="cite-ref" title="Jump to chapter references">[7]</a></strong> AWS Builders&#x27; Library, <em>Avoiding Fallback in Distributed Systems (Warm Multi-Provider Routing)</em> — <a href="https://aws.amazon.com/builders-library/avoiding-fallback-in-distributed-systems/" target="_blank" rel="noopener">aws.amazon.com/builders-library/avoiding-fallback</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch04')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">4. Database Keys &amp; Sharding</span></button><button class="ch-pager-btn next" onclick="openChapter('ch06')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">6. URL Shortener &amp; Snowflake IDs</span></button></nav></article><article id="chap-ch06" class="chapter-article" data-ch="ch06"><h1 class="ch-title">Chapter 6: URL Shortener &amp; Distributed ID Generation (TinyURL &amp; Snowflake)</h1>
-<div class="ch-kicker">Part II · Classic System Design Stories · 7 min read</div>
+<div class="ch-kicker">Part II · Classic System Design Stories · 7 min core · 16 min with deep dives</div>
 <p class="annotatable" data-anchor="ch06-b01">At first glance, a URL shortener (<code>https://tinyurl.com/2b9kLp1</code> -&gt; <code>https://very-long-site.com/...</code>) sounds almost too simple.</p>
 <p class="annotatable" data-anchor="ch06-b02">Then you add two production constraints:</p>
 <ol>
@@ -1554,6 +1731,22 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch06-b22"><strong>Solution B: Range-Allocating Key Generation Service (KGS) / Redis Counter Ranges:</strong></li>
 </ul>
 <p class="annotatable" data-anchor="ch06-b23">  If you strictly require <strong>7 characters (<code>&lt;= 3.5 trillion</code>)</strong>, a central coordinator (ZooKeeper / etcd / Redis <code>INCRBY counter 100000</code>) hands each API server a reserved block of <code>100,000</code> numbers at startup (e.g., Server 1 gets <code>1,000,000–1,099,999</code>). Server 1 hands them out from local RAM in <code>O(1)</code> time and converts each integer to Base62. If Server 1 crashes, you lose at most 100,000 numbers out of 3.5 trillion (<code>0.000003%</code>) <a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</p>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Snowflake Clock-Skew Hazards (<code>NTP</code>) &amp; Why <code>UUIDv7</code> (<code>RFC 9562</code>) Beats <code>UUIDv4</code> in B-Trees</span></span><span class="dd-time">+5 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch06-d01"><strong>The Hidden Achilles&#x27; Heel of Snowflake — Backward <code>NTP</code> Clock Jumps <a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[2]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch06-d02">Snowflake assumes wall-clock milliseconds strictly increase. If <code>NTP</code> steps a server&#x27;s clock <em>backward</em> by <code>12 ms</code>, the server could regenerate the <strong>exact same <code>(timestamp, worker_id, seq=0)</code> primary key</strong>!</li>
+<li class="annotatable" data-anchor="ch06-d03">Production defenses: configure <code>chrony</code> / <code>NTP</code> in <strong>slew mode</strong> (gradually slowing clock rate rather than stepping backward), track <code>last_timestamp</code> in memory, <strong>spin-wait</strong> on tiny backward drifts (<code>&lt;= 5 ms</code>), and refuse ID generation + alert if drift exceeds threshold <a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[2]</a>.</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch06-d04"><strong>Why Random <code>UUIDv4</code> Destroys Relational B-Tree Write Throughput (<code>UUIDv7</code>, <code>RFC 9562</code>) <a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[4]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch06-d05"><code>128-bit</code> random <strong><code>UUIDv4</code></strong> inserts land on completely random <code>16 KB</code> B-Tree leaf pages across a <code>500 GB</code> table—causing <strong>constant page splits, <code>50%</code> page fragmentation, and random SSD cache misses</strong> (<code>3×–5×</code> lower write throughput!).</li>
+<li class="annotatable" data-anchor="ch06-d06"><strong><code>UUIDv7</code> (<code>IETF RFC 9562</code> <a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[4]</a>)</strong> puts a <strong><code>48-bit</code> Unix millisecond timestamp</strong> in the most-significant bits followed by <code>74</code> random bits—giving globally decentralized <code>128-bit</code> uniqueness while keeping all new inserts <strong>append-only on the rightmost hot B-Tree leaf page in RAM</strong> <a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[4]</a>!</li>
+</ul>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch06-b24">3) <code>301</code> vs. <code>302</code> Redirects &amp; Surviving the Read Stampede</h3>
 <p class="annotatable" data-anchor="ch06-b25">When a user clicks <code>https://sho.rt/2b9kLp1</code>, your read path looks up <code>2b9kLp1</code> in <strong>Redis</strong> (<code>99% cache hit rate</code>, <code>&lt; 1 ms</code>), falls back to the database on a miss, and returns an HTTP redirect <a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[1]</a>:</p>
@@ -1563,6 +1756,18 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 </ul>
 <p class="annotatable" data-anchor="ch06-b28"><strong>What if a malicious user requests millions of fake short codes (<code>sho.rt/zzzzzzz</code>) that do not exist?</strong></p>
 <p class="annotatable" data-anchor="ch06-b29">Every request misses Redis and hits your database (<strong>cache penetration attack</strong>). Fix: Keep a <strong>Bloom Filter</strong> in RAM (or cache negative <code>NOT_FOUND</code> entries with a short 60s TTL) so nonexistent codes are rejected before touching the database <a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</p>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">High-Throughput Click Analytics (<code>Kafka -&gt; ClickHouse</code>) &amp; Malicious Link Safety</span></span><span class="dd-time">+4 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch06-d07"><strong>Never <code>UPDATE clicks = clicks + 1</code> Synchronously on Redirect <a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[1, 5]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch06-d08">When a celebrity link gets <code>200,000 clicks/sec</code>, synchronous SQL row updates create catastrophic lock contention!</li>
+<li class="annotatable" data-anchor="ch06-d09">Instead, the redirect handler serves <code>302</code> from Redis/CDN in <code>&lt;2 ms</code> and asynchronously fire-and-forgets <code>{short_code, ts, country, ua_family, referrer}</code> to <strong>Kafka</strong>, where stream consumers micro-batch inserts every <code>1–5 seconds</code> into a <strong>columnar OLAP store (<code>ClickHouse</code>)</strong> <a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[5]</a> using <code>SummingMergeTree</code> / HyperLogLog unique-visitor sketches.</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch06-d10"><strong>Abuse &amp; Phishing Guardrails:</strong> URL shorteners are prime targets for phishing campaigns. Run an async + cached <strong>Safe-Browsing URL reputation check</strong> on creation, enforce rate limits + CAPTCHA on anonymous link creation, and serve an interstitial warning page if a destination domain gets flagged post-creation <a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</li>
+</ol>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch06-b30">Analogy, Where It Breaks &amp; Real System</h3>
 <ul>
@@ -1590,8 +1795,10 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch06-b39"><strong><a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Alex Xu, <em>System Design Interview (Vol. 1)</em>, Chapter 7: Design Unique ID Generator &amp; Chapter 8: Design a URL Shortener — <a href="https://bytebytego.com/" target="_blank" rel="noopener">ByteByteGo</a></li>
 <li class="annotatable" data-anchor="ch06-b40"><strong><a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Twitter (X) Open Source, <em>Snowflake: 64-bit Time-Ordered Distributed ID Generation</em> — <a href="https://github.com/twitter-archive/snowflake" target="_blank" rel="noopener">github.com/twitter-archive/snowflake</a></li>
 <li class="annotatable" data-anchor="ch06-b41"><strong><a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Instagram &amp; Meta Engineering, <em>Distributed Sharding &amp; IDs at Scale (PostgreSQL &amp; TAO)</em> — <a href="https://engineering.fb.com/2013/06/25/core-infra/tao-the-power-of-the-graph/" target="_blank" rel="noopener">engineering.fb.com</a></li>
+<li class="annotatable" data-anchor="ch06-b42"><strong><a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> IETF RFC 9562, <em>Universally Unique IDentifiers (UUIDv7 Time-Ordered Monograph)</em> (2024) — <a href="https://datatracker.ietf.org/doc/html/rfc9562" target="_blank" rel="noopener">datatracker.ietf.org/doc/html/rfc9562</a></li>
+<li class="annotatable" data-anchor="ch06-b43"><strong><a href="#ch06-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> ClickHouse Official Documentation, <em>Columnar OLAP Architecture for Real-Time Event Analytics</em> — <a href="https://clickhouse.com/docs/en/intro" target="_blank" rel="noopener">clickhouse.com/docs/en/intro</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch05')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">5. Global Notification + AI Digest</span></button><button class="ch-pager-btn next" onclick="openChapter('ch07')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">7. Distributed Rate Limiter</span></button></nav></article><article id="chap-ch07" class="chapter-article" data-ch="ch07"><h1 class="ch-title">Chapter 7: Distributed Rate Limiter (Token Bucket, Redis Lua &amp; LLM Token Caps)</h1>
-<div class="ch-kicker">Part II · Classic System Design Stories · 8 min core · 13 min with deep dives</div>
+<div class="ch-kicker">Part II · Classic System Design Stories · 8 min core · 17 min with deep dives</div>
 <p class="annotatable" data-anchor="ch07-b01">Imagine a bug in a customer&#x27;s retry loop causes their script to call your <code>POST /checkout</code> endpoint <code>50,000 times per second</code>.</p>
 <p class="annotatable" data-anchor="ch07-b02">Without a shield at the front door, that single runaway script starves every other customer on your platform. That front-door shield is a <strong>Distributed Rate Limiter</strong> <a href="#ch07-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>.</p>
 <figure class="inline-diag annotatable" data-anchor="ch07-b03"><div class="diag-scroll"><svg class="ex-svg" viewBox="16 -6 1028 555" width="100%" xmlns="http://www.w3.org/2000/svg">
@@ -1773,6 +1980,26 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li value="2" class="annotatable" data-anchor="ch07-d07"><strong>Graceful Quota Degradation Before Hard <code>HTTP 429</code>:</strong> For interactive IDE/chat tiers, hitting <strong><code>80%</code> of the tenant&#x27;s minute/daily budget</strong> triggers a <strong>soft model downgrade</strong> (routing routine turns from a <code>$15/M</code> frontier model to a <code>$0.50/M</code> fast model with a UI badge) and pauses background batch jobs—reserving hard <code>429 Retry-After</code> strictly for <code>100%</code> exhaustion <a href="#ch07-refs" class="cite-ref" title="Jump to chapter references">[4]</a>.</li>
 </ol>
 </div></details>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Cloudflare <code>O(1)</code> Sliding-Window Counters &amp; AWS Priority Load Shedding</span></span><span class="dd-time">+4 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch07-d08"><strong>Cloudflare&#x27;s <code>O(1)</code> Sliding-Window Counter Approximation <a href="#ch07-refs" class="cite-ref" title="Jump to chapter references">[5]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch07-d09">How does Cloudflare block DDoS bursts across <strong>millions of domains</strong> without the <code>2×</code> boundary spike of Fixed Windows or the <code>O(N)</code> RAM explosion of <code>ZSET</code> Sliding Logs?</li>
+<li class="annotatable" data-anchor="ch07-d10">Store <strong>only two integers</strong> per key (<code>prev_minute_count</code> and <code>curr_minute_count</code>)! If <code>15 seconds</code> (<code>25%</code>) have elapsed in the current minute, estimate the rolling 60-second count as:</li>
+</ul>
+<p class="annotatable" data-anchor="ch07-d11">     <code>rate ≈ curr_count + prev_count × (1 - 0.25)</code></p>
+<ul>
+<li class="annotatable" data-anchor="ch07-d12">Across <code>400 million</code> real requests, Cloudflare measured <strong><code>99.997%</code> accuracy</strong> with just <strong><code>16 bytes</code> of RAM</strong> per key <a href="#ch07-refs" class="cite-ref" title="Jump to chapter references">[5]</a>!</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch07-d13">*<em>Rate Limiting vs. Adaptive Priority Load Shedding (</em>AWS / Stripe<em>) <a href="#ch07-refs" class="cite-ref" title="Jump to chapter references">[2, 6]</a>:</em>*</li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch07-d14">A <strong>Rate Limiter</strong> protects against <em>one noisy tenant</em> (<code>user_42</code> exceeding their quota), even when the fleet is <code>80%</code> idle.</li>
+<li class="annotatable" data-anchor="ch07-d15">A <strong>Load Shedder</strong> protects the <em>server itself</em> when total legitimate traffic or a slow DB pushes fleet latency toward brownout <a href="#ch07-refs" class="cite-ref" title="Jump to chapter references">[2, 6]</a>: classify requests into priority tiers (<code>P0: Checkout/Webhook</code>, <code>P1: Interactive Browse</code>, <code>P2: Background Sync/Crawlers</code>) and drop <code>P2</code> then <code>P1</code> dynamically at the edge when concurrency/CPU crosses <code>85%</code>, keeping <code>P0</code> <code>100%</code> alive <a href="#ch07-refs" class="cite-ref" title="Jump to chapter references">[2, 6]</a>!</li>
+</ul>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch07-b28">Quick Self-Check</h3>
 <details class="self-check">
@@ -1794,8 +2021,10 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch07-b34"><strong><a href="#ch07-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Paul Tarjan (Stripe), <em>Scaling your API with rate limiters (Redis Token Bucket + Lua)</em> — <a href="https://stripe.com/blog/rate-limiters" target="_blank" rel="noopener">stripe.com/blog/rate-limiters</a></li>
 <li class="annotatable" data-anchor="ch07-b35"><strong><a href="#ch07-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Cloudflare Engineering, <em>How we built Cloudflare&#x27;s Distributed Rate Limiting</em> — <a href="https://blog.cloudflare.com/" target="_blank" rel="noopener">blog.cloudflare.com</a></li>
 <li class="annotatable" data-anchor="ch07-b36"><strong><a href="#ch07-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Rohit Ghumare et al., <em>AI Engineering from Scratch — LLM Gateway Rate Limits, Cost Attribution &amp; Circuit Breakers</em> — <a href="https://aiengineeringfromscratch.com/interviews" target="_blank" rel="noopener">aiengineeringfromscratch.com/interviews</a></li>
+<li class="annotatable" data-anchor="ch07-b37"><strong><a href="#ch07-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> Marek Majkowski (Cloudflare), <em>How we built rate limiting capable of scaling to millions of domains (Sliding Window Counters)</em> — <a href="https://blog.cloudflare.com/counting-things-a-lot-of-different-things/" target="_blank" rel="noopener">blog.cloudflare.com/counting-things</a></li>
+<li class="annotatable" data-anchor="ch07-b38"><strong><a href="#ch07-refs" class="cite-ref" title="Jump to chapter references">[6]</a></strong> AWS Builders&#x27; Library, <em>Using Load Shedding to Avoid Overload</em> — <a href="https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/" target="_blank" rel="noopener">aws.amazon.com/builders-library/load-shedding</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch06')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">6. URL Shortener &amp; Snowflake IDs</span></button><button class="ch-pager-btn next" onclick="openChapter('ch08')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">8. News Feed &amp; Celebrity Fan-Out</span></button></nav></article><article id="chap-ch08" class="chapter-article" data-ch="ch08"><h1 class="ch-title">Chapter 8: News Feed &amp; The Celebrity Fan-Out Problem (Meta &amp; X)</h1>
-<div class="ch-kicker">Part II · Classic System Design Stories · 8 min core · 13 min with deep dives</div>
+<div class="ch-kicker">Part II · Classic System Design Stories · 8 min core · 17 min with deep dives</div>
 <p class="annotatable" data-anchor="ch08-b01">Suppose you are designing the home timeline for X (Twitter), Instagram, or LinkedIn.</p>
 <p class="annotatable" data-anchor="ch08-b02">Your system has two jobs that look simple on paper:</p>
 <ol>
@@ -1865,6 +2094,21 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 </tbody></table></div>
 <p class="annotatable" data-anchor="ch08-d06"><strong>Why Two-Tower Models Power Stage 1 (<code>100M -&gt; 1,500</code>) <a href="#ch08-refs" class="cite-ref" title="Jump to chapter references">[4]</a>:</strong> Because the <strong>User Tower</strong> <code>u(user_features)</code> and <strong>Item Tower</strong> <code>v(post_features)</code> only interact via a final dot product <code>u · v</code>, item embeddings for millions of posts can be <strong>pre-computed offline/nearline</strong> and indexed in <code>HNSW</code>—whereas the <strong>Heavy Cross-Feature Ranker</strong> (<code>Stage 3</code>) crosses user × author × real-time context features dynamically and can only afford <code>~250</code> items <a href="#ch08-refs" class="cite-ref" title="Jump to chapter references">[4, 6]</a>!</p>
 </div></details>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Meta <code>TAO</code> Social Graph Cache (<code>USENIX ATC</code>) &amp; Live Cursor Pagination</span></span><span class="dd-time">+4 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch08-d07"><strong>Case Study — Why Meta Replaced Look-Aside Memcache with <code>TAO</code> (<code>1 Billion+</code> Reads/Sec) <a href="#ch08-refs" class="cite-ref" title="Jump to chapter references">[7]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch08-d08">Storing social edges (<code>Alice --follows--&gt; Bob</code>, <code>Post --liked_by--&gt; Carol</code>) in generic Memcache caused <strong>thundering herds on edge-list cache misses</strong> and stale read-after-write bugs across regions.</li>
+<li class="annotatable" data-anchor="ch08-d09">Meta built *<em><code>TAO</code> (</em>The Associations and Objects<em>, <code>USENIX ATC 2013</code> <a href="#ch08-refs" class="cite-ref" title="Jump to chapter references">[7]</a>)<strong>: a geographically distributed </strong>two-tier write-through graph cache<strong> (<code>Stateless Follower Tier -&gt; Sharded Leader Cache Tier -&gt; MySQL Shards</code>). All writes route through the shard&#x27;s </strong>Leader Cache</em><em>, which updates MySQL </em>and* pushes deterministic invalidations/refills to Follower tiers—eliminating look-aside race conditions while serving <strong><code>99.8%</code> of graph reads in RAM</strong> <a href="#ch08-refs" class="cite-ref" title="Jump to chapter references">[7]</a>!</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch08-d10"><strong>Why <code>OFFSET 20 LIMIT 20</code> Breaks Live Timelines:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch08-d11">If <code>5</code> new posts arrive at the top of Alice&#x27;s feed while she reads Page 1, <code>OFFSET 20</code> shifts downward by 5 positions—causing Page 2 to <strong>repeat 5 posts from Page 1</strong>! Always paginate timelines with an opaque <strong>cursor (<code>WHERE post_id &lt; :last_seen_snowflake_id ORDER BY post_id DESC LIMIT 20</code>)</strong> <a href="#ch08-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>.</li>
+</ul>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch08-b23">Quick Self-Check</h3>
 <details class="self-check">
@@ -1888,8 +2132,9 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch08-b31"><strong><a href="#ch08-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Paul Covington, Jay Adams &amp; Emre Sargin (Google), <em>Deep Neural Networks for YouTube Recommendations (Two-Stage Candidate Generation &amp; Ranking)</em> (ACM RecSys 2016) — <a href="https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf" target="_blank" rel="noopener">research.google/pubs/45530</a></li>
 <li class="annotatable" data-anchor="ch08-b32"><strong><a href="#ch08-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> X / Twitter Engineering, <em>The Recommendation Algorithm (<code>For You</code> Sourcing, Light Ranker, Heavy Ranker &amp; Visibility Filters)</em> — <a href="https://github.com/twitter/the-algorithm" target="_blank" rel="noopener">github.com/twitter/the-algorithm</a></li>
 <li class="annotatable" data-anchor="ch08-b33"><strong><a href="#ch08-refs" class="cite-ref" title="Jump to chapter references">[6]</a></strong> Maxim Naumov et al. (Meta), <em>Deep Learning Recommendation Model for Personalization and Recommendation Systems (<code>DLRM</code>)</em> (2019) — <a href="https://arxiv.org/abs/1906.00091" target="_blank" rel="noopener">arxiv.org/abs/1906.00091</a></li>
+<li class="annotatable" data-anchor="ch08-b34"><strong><a href="#ch08-refs" class="cite-ref" title="Jump to chapter references">[7]</a></strong> Nathan Bronson et al. (Meta), <em>TAO: Facebook&#x27;s Distributed Data Store for the Social Graph</em> (USENIX ATC 2013) — <a href="https://www.usenix.org/conference/atc13/technical-sessions/presentation/bronson" target="_blank" rel="noopener">usenix.org/conference/atc13/bronson</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch07')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">7. Distributed Rate Limiter</span></button><button class="ch-pager-btn next" onclick="openChapter('ch09')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">9. Real-Time Chat &amp; Presence</span></button></nav></article><article id="chap-ch09" class="chapter-article" data-ch="ch09"><h1 class="ch-title">Chapter 9: Real-Time Chat &amp; Presence (WhatsApp, Slack &amp; Discord)</h1>
-<div class="ch-kicker">Part II · Classic System Design Stories · 8 min core · 13 min with deep dives</div>
+<div class="ch-kicker">Part II · Classic System Design Stories · 8 min core · 17 min with deep dives</div>
 <p class="annotatable" data-anchor="ch09-b01">In most web systems, the client talks first (<code>HTTP GET/POST</code>), and the server answers.</p>
 <p class="annotatable" data-anchor="ch09-b02">In a <strong>Real-Time Chat system</strong> (WhatsApp, Slack, Discord), the problem flips upside down: Alice sends a message from New York, and <strong>100 milliseconds later, Bob&#x27;s phone in Tokyo must light up</strong>—even though Bob&#x27;s phone did not make an HTTP request.</p>
 <p class="annotatable" data-anchor="ch09-b03">Even trickier: you have <strong>10 million users online simultaneously</strong>, connected across <strong>200 stateful Chat Gateway servers</strong>. When Alice&#x27;s message lands on <strong>Gateway #1</strong>, how does Gateway #1 figure out that Bob&#x27;s open TCP wire is sitting on <strong>Gateway #74</strong>? <a href="#ch09-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a></p>
@@ -1948,6 +2193,21 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch09-d08">When Alice invokes <code>@AI summarize project Phoenix</code> inside a <code>50-person</code> public Slack channel, <strong>do NOT run retrieval using Alice&#x27;s personal <code>1:1</code> DM permissions!</strong> Intersect retrieval ACLs strictly with <strong>the channel&#x27;s membership scope</strong> (<code>acl == channel_id OR public</code>), or <code>@AI</code> will leak Alice&#x27;s private executive DMs to all 50 channel members <a href="#ch09-refs" class="cite-ref" title="Jump to chapter references">[5]</a>!</li>
 </ul>
 </div></details>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Discord&#x27;s <code>ScyllaDB</code> Request Coalescing &amp; Multi-Device <code>E2EE</code> (<code>Signal Sesame</code>)</span></span><span class="dd-time">+4 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch09-d09"><strong>Case Study — How Discord Survived Hot-Channel Reads Across Trillions of Messages <a href="#ch09-refs" class="cite-ref" title="Jump to chapter references">[4]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch09-d10">When <code>100,000</code> users in a live-event Discord channel scrolled up simultaneously, Cassandra suffered <code>200 ms+</code> JVM GC pauses and hot-partition disk stalls.</li>
+<li class="annotatable" data-anchor="ch09-d11">Discord migrated to <strong><code>ScyllaDB</code> (C++ thread-per-core LSM)</strong> <em>and</em> inserted a Rust <strong>Data Services layer running <code>singleflight</code> request coalescing</strong> sorted by <code>channel_id</code> via consistent hashing—so <code>5,000</code> concurrent reads for <code>(channel_99, bucket_42)</code> collapse into <strong>1 single ScyllaDB query</strong>, dropping <code>p99</code> read latency from <code>40–125 ms</code> to <strong><code>&lt;15 ms</code></strong> <a href="#ch09-refs" class="cite-ref" title="Jump to chapter references">[4]</a>!</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch09-d12"><strong>Multi-Device Sync &amp; End-to-End Encryption (<code>Signal Sesame</code> / WhatsApp) <a href="#ch09-refs" class="cite-ref" title="Jump to chapter references">[6]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch09-d13">How does Alice see identical chat history across her <strong>Phone, Laptop, and Web tab</strong> when the server cannot read E2EE plaintext? Under <strong><code>Signal Sesame</code></strong> <a href="#ch09-refs" class="cite-ref" title="Jump to chapter references">[6]</a>, each <em>device</em> (not just each user) publishes its own Identity/PreKey bundle; sending a 1-on-1 message encrypts separate pairwise Double-Ratchet envelopes for Bob&#x27;s <code>M</code> active devices <em>plus</em> Alice&#x27;s own <code>N - 1</code> companion devices (or encrypts payload once with a symmetric <strong>Sender Key</strong> in large groups), while each device tracks its own local <code>last_synced_seq_id</code> watermark <a href="#ch09-refs" class="cite-ref" title="Jump to chapter references">[1, 6]</a>.</li>
+</ul>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch09-b24">Quick Self-Check</h3>
 <details class="self-check">
@@ -1970,8 +2230,9 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch09-b31"><strong><a href="#ch09-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Slack Engineering, <em>Flannel: An Application-Level Edge Cache to Make Slack Scale</em> — <a href="https://slack.engineering/" target="_blank" rel="noopener">slack.engineering</a></li>
 <li class="annotatable" data-anchor="ch09-b32"><strong><a href="#ch09-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Discord Engineering, <em>How Discord Stores Trillions of Messages (ScyllaDB Partitioning &amp; Request Coalescing)</em> — <a href="https://discord.com/blog/how-discord-stores-trillions-of-messages" target="_blank" rel="noopener">discord.com/blog/how-discord-stores-trillions-of-messages</a></li>
 <li class="annotatable" data-anchor="ch09-b33"><strong><a href="#ch09-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> Rohit Ghumare et al., <em>AI Engineering from Scratch — Streaming LLM Delivery, Cancellation &amp; Multi-Tenant Safety</em> — <a href="https://aiengineeringfromscratch.com/interviews" target="_blank" rel="noopener">aiengineeringfromscratch.com/interviews</a></li>
+<li class="annotatable" data-anchor="ch09-b34"><strong><a href="#ch09-refs" class="cite-ref" title="Jump to chapter references">[6]</a></strong> Signal Foundation, <em>The Sesame Algorithm: Session Management for Asynchronous Multi-Device Message Encryption</em> — <a href="https://signal.org/docs/specifications/sesame/" target="_blank" rel="noopener">signal.org/docs/specifications/sesame</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch08')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">8. News Feed &amp; Celebrity Fan-Out</span></button><button class="ch-pager-btn next" onclick="openChapter('ch10')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">10. Flash Sales &amp; Uber Geospatial</span></button></nav></article><article id="chap-ch10" class="chapter-article" data-ch="ch10"><h1 class="ch-title">Chapter 10: High-Contention Flash Sales (Ticketmaster) &amp; Geospatial Matching (Uber)</h1>
-<div class="ch-kicker">Part II · Classic System Design Stories · 9 min read</div>
+<div class="ch-kicker">Part II · Classic System Design Stories · 9 min core · 18 min with deep dives</div>
 <p class="annotatable" data-anchor="ch10-b01">What do <strong>buying a concert seat on Ticketmaster</strong> and <strong>matching a rider with the closest Uber driver</strong> have in common?</p>
 <p class="annotatable" data-anchor="ch10-b02">Both are <strong>high-contention coordination problems</strong> where thousands of users are competing for or updating the exact same physical resource in the real world at the exact same second <a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[1, 2]</a>.</p>
 <p class="annotatable" data-anchor="ch10-b03">Let us solve both side by side.</p>
@@ -2001,6 +2262,22 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <p class="annotatable" data-anchor="ch10-b18">   When Alice submits her credit card at <code>10:02:15</code>, the Checkout Service verifies that <code>hold:event_1:seat_9A</code> still belongs to <code>&quot;Alice&quot;</code> and commits the final purchase in PostgreSQL using <strong>Optimistic Concurrency Control</strong>:</p>
 <p class="annotatable" data-anchor="ch10-b19">   <code>UPDATE seats SET status = &#x27;BOOKED&#x27;, owner_id = &#x27;Alice&#x27; WHERE seat_id = &#x27;9A&#x27; AND status = &#x27;AVAILABLE&#x27;;</code></p>
 <p class="annotatable" data-anchor="ch10-b20">   If <code>rows_updated == 1</code>, we charge/capture payment and delete the Redis hold key. If Alice closes her browser and never pays, the Redis TTL (<code>EX 300</code>) expires automatically at <code>10:05:00</code>, freeing the seat with zero cron-job lag <a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[1]</a>.</p>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Virtual Waiting Rooms (Edge Queueing) &amp; Stripe-Grade Payment Idempotency</span></span><span class="dd-time">+5 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch10-d01"><strong>Surviving <code>5 Million</code> Fans Refreshing at <code>10:00:00</code> — The Virtual Waiting Room <a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[1]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch10-d02">Even Redis + CDN map caches buckle if <code>5,000,000</code> browsers poll interactive seat maps every second!</li>
+<li class="annotatable" data-anchor="ch10-d03">Place a <strong>Stateless Edge Waiting Room</strong> at CDN/Cloudflare Workers: before <code>10:00</code>, authenticated users receive a signed queue position (<code>Snowflake</code> / <code>INCR</code>); an <strong>Admission Controller</strong> drips <strong>only <code>2,000</code> users/sec</strong> into the live seat-map tier by issuing short-lived (<code>10-min</code>), HMAC-signed <strong><code>Queue-Pass</code> JWTs</strong> verified at the API Gateway without touching any database!</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch10-d04"><strong>Preventing Double-Charges When Hold Timers Race With Slow Payment Gateways <a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[3, 4]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch10-d05"><em>Classic Race:</em> Alice&#x27;s <code>300s</code> hold is at <code>299.8s</code> when she clicks <strong>Pay</strong>; Stripe takes <code>1.5s</code>; at <code>300.0s</code> the seat expires and Bob grabs it!</li>
+<li class="annotatable" data-anchor="ch10-d06">Fix: (1) Extend the Redis hold lease (<code>EXPIRE 120</code>) <strong>atomically before</strong> calling Stripe, checking a <strong>monotonic hold <code>version</code> / fencing token</strong> <a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[3]</a> on DB commit, and (2) pass a deterministic <strong><code>Idempotency-Key = hold_id</code></strong> to Stripe (<code>Authorization -&gt; Capture</code> two-step) so if Bob somehow won the seat, Alice&#x27;s card authorization is immediately voided rather than captured <a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[4]</a>!</li>
+</ul>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch10-b21">Part B: Uber Geospatial Matching (Why <code>WHERE lat BETWEEN ...</code> Fails)</h3>
 <p class="annotatable" data-anchor="ch10-b22">Now switch to <strong>Uber / DoorDash</strong>: 1 million active drivers send a GPS ping <code>(latitude, longitude)</code> every <strong>4 seconds</strong> (<code>250,000 location writes/sec</code>). When a rider opens the app, how do you find the <strong>10 closest drivers within 2 km</strong> in <code>&lt; 10 ms</code>? <a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[2]</a></p>
@@ -2039,6 +2316,21 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li value="2" class="annotatable" data-anchor="ch10-b32">Update Redis in memory: move driver to <code>SADD h3:cell_8928308280fffff driver_42</code> and update <code>HSET driver_loc:42 lat ... lon ... EX 15</code>.</li>
 <li value="3" class="annotatable" data-anchor="ch10-b33">When a rider requests a ride, compute the rider&#x27;s H3 cell + its <strong>6 adjacent hexagon ring (<code>kRing(cell, 1)</code>)</strong>, fetch all active drivers in those 7 cells from Redis in <code>&lt; 2 ms</code>, and rank by ETA <a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[2]</a>.</li>
 </ol>
+<details class="deep-dive"><summary class="deep-dive-summary"><span class="dd-left"><span class="dd-badge">🔬 Deep Dive</span><span class="dd-title">Why Crow-Flies Distance Lies (<code>Road-Graph ETA</code>) &amp; Global Batch Matching</span></span><span class="dd-time">+4 min</span></summary><div class="deep-dive-body">
+<ol>
+<li value="1" class="annotatable" data-anchor="ch10-d07"><strong>Two-Phase ETA Ranking (<code>H3</code> Candidate Filter -&gt; Road-Network Routing) <a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[2, 5]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch10-d08">Driver A is <code>200 meters</code> away in <code>H3</code> Euclidean distance—but <strong>on the wrong side of a river or highway median</strong> (<code>14-minute</code> U-turn!), while Driver B is <code>800 meters</code> away at a green light (<code>2 minutes</code> away).</li>
+<li class="annotatable" data-anchor="ch10-d09">Uber never dispatches on raw <code>H3</code> distance! <code>H3 kRing</code> acts as a <code>&lt;2 ms</code> <strong>Stage-1 spatial filter</strong> narrowing <code>50,000</code> city drivers to the <strong><code>15–25</code> closest candidates</strong>, which then pass into a <strong>Contraction Hierarchies / road-segment graph ETA engine</strong> weighted by live traffic speeds <a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[2, 5]</a>.</li>
+</ul>
+<ol>
+<li value="2" class="annotatable" data-anchor="ch10-d10"><strong>Greedy First-Come Dispatch vs. Windowed Bipartite Batch Matching <a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[1, 5]</a>:</strong></li>
+</ol>
+<ul>
+<li class="annotatable" data-anchor="ch10-d11">Assigning each rider greedily to the single nearest driver can starve a rider <code>50m</code> away <code>1 second</code> later (<em>local optimum</em>). Batching open ride requests and available drivers inside a <strong><code>2–5 second</code> micro-window</strong> per city zone and solving <strong>minimum-total-ETA bipartite matching</strong> (<em>Hungarian / min-cost flow</em>) cuts city-wide average pickup wait times by <strong><code>15%–25%</code></strong> <a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[1]</a>!</li>
+</ul>
+</div></details>
 <hr class="wbw-divider"/>
 <h3 class="annotatable" data-anchor="ch10-b34">Quick Self-Check</h3>
 <details class="self-check">
@@ -2059,6 +2351,8 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
 <li class="annotatable" data-anchor="ch10-b39"><strong><a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[1]</a></strong> Alex Xu, <em>System Design Interview (Vol. 2)</em>, Chapter 1: Proximity Service, Chapter 2: Nearby Friends &amp; Chapter 7: Hotel/Ticket Reservation System — <a href="https://bytebytego.com/" target="_blank" rel="noopener">ByteByteGo</a></li>
 <li class="annotatable" data-anchor="ch10-b40"><strong><a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[2]</a></strong> Uber Open Source, <em>H3: Hexagonal Hierarchical Geospatial Indexing System</em> — <a href="https://h3geo.org/" target="_blank" rel="noopener">h3geo.org</a></li>
 <li class="annotatable" data-anchor="ch10-b41"><strong><a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[3]</a></strong> Martin Kleppmann, <em>How to do distributed locking (Leases &amp; Fencing Tokens)</em> — <a href="https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html" target="_blank" rel="noopener">martin.kleppmann.com</a></li>
+<li class="annotatable" data-anchor="ch10-b42"><strong><a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[4]</a></strong> Brandur Leach (Stripe), <em>Designing Robust and Predictable APIs with Idempotency</em> — <a href="https://stripe.com/blog/idempotency" target="_blank" rel="noopener">stripe.com/blog/idempotency</a></li>
+<li class="annotatable" data-anchor="ch10-b43"><strong><a href="#ch10-refs" class="cite-ref" title="Jump to chapter references">[5]</a></strong> Uber Open Source Documentation, <em>H3 Grid Indexing, k-Ring Traversal &amp; Spatial Hierarchy</em> — <a href="https://h3geo.org/docs/" target="_blank" rel="noopener">h3geo.org/docs</a></li>
 </ul><nav class="ch-pager"><button class="ch-pager-btn prev" onclick="openChapter('ch09')"><span class="pager-dir">← Previous Chapter</span><span class="pager-title">9. Real-Time Chat &amp; Presence</span></button><button class="ch-pager-btn next" onclick="openChapter('ch11')"><span class="pager-dir">Next Chapter →</span><span class="pager-title">11. Production RAG &amp; ACL Security</span></button></nav></article><article id="chap-ch11" class="chapter-article" data-ch="ch11"><h1 class="ch-title">Chapter 11: Production RAG, Hybrid Search &amp; Enterprise ACL Security</h1>
 <div class="ch-kicker">Part III · AI &amp; LLM Engineering Systems · 8 min core · 22 min with deep dives</div>
 <p class="annotatable" data-anchor="ch11-b01">Every weekend tutorial makes <strong>Retrieval-Augmented Generation (RAG)</strong> look like 10 lines of Python: chop a PDF into 500-word chunks, call an embedding API, dump vectors into a vector database, and pass the top 3 matches to an LLM.</p>

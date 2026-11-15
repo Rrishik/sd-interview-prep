@@ -1,6 +1,6 @@
 # Chapter 9: Real-Time Chat & Presence (WhatsApp, Slack & Discord)
 
-*Part II · Classic System Design Stories · 8 min core · 13 min with deep dives*
+*Part II · Classic System Design Stories · 8 min core · 17 min with deep dives*
 
 In most web systems, the client talks first (`HTTP GET/POST`), and the server answers.
 
@@ -56,6 +56,16 @@ Modern chat interviews (`Slack AI`, `Discord Bots`, `ChatGPT Multi-Device Sync`)
 
 :::
 
+:::deepdive Discord's `ScyllaDB` Request Coalescing & Multi-Device `E2EE` (`Signal Sesame`) | +4 min
+
+1. **Case Study — How Discord Survived Hot-Channel Reads Across Trillions of Messages [4]:**
+   - When `100,000` users in a live-event Discord channel scrolled up simultaneously, Cassandra suffered `200 ms+` JVM GC pauses and hot-partition disk stalls.
+   - Discord migrated to **`ScyllaDB` (C++ thread-per-core LSM)** *and* inserted a Rust **Data Services layer running `singleflight` request coalescing** sorted by `channel_id` via consistent hashing—so `5,000` concurrent reads for `(channel_99, bucket_42)` collapse into **1 single ScyllaDB query**, dropping `p99` read latency from `40–125 ms` to **`<15 ms`** [4]!
+2. **Multi-Device Sync & End-to-End Encryption (`Signal Sesame` / WhatsApp) [6]:**
+   - How does Alice see identical chat history across her **Phone, Laptop, and Web tab** when the server cannot read E2EE plaintext? Under **`Signal Sesame`** [6], each *device* (not just each user) publishes its own Identity/PreKey bundle; sending a 1-on-1 message encrypts separate pairwise Double-Ratchet envelopes for Bob's `M` active devices *plus* Alice's own `N - 1` companion devices (or encrypts payload once with a symmetric **Sender Key** in large groups), while each device tracks its own local `last_synced_seq_id` watermark [1, 6].
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -83,3 +93,4 @@ Modern chat interviews (`Slack AI`, `Discord Bots`, `ChatGPT Multi-Device Sync`)
 - **[3]** Slack Engineering, *Flannel: An Application-Level Edge Cache to Make Slack Scale* — [slack.engineering](https://slack.engineering/)
 - **[4]** Discord Engineering, *How Discord Stores Trillions of Messages (ScyllaDB Partitioning & Request Coalescing)* — [discord.com/blog/how-discord-stores-trillions-of-messages](https://discord.com/blog/how-discord-stores-trillions-of-messages)
 - **[5]** Rohit Ghumare et al., *AI Engineering from Scratch — Streaming LLM Delivery, Cancellation & Multi-Tenant Safety* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
+- **[6]** Signal Foundation, *The Sesame Algorithm: Session Management for Asynchronous Multi-Device Message Encryption* — [signal.org/docs/specifications/sesame](https://signal.org/docs/specifications/sesame/)

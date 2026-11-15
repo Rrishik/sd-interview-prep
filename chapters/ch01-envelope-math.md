@@ -1,6 +1,6 @@
 # Chapter 1: Back-of-the-Envelope Math (Or: How Not to Panic at 30,000 QPS)
 
-*Part I · Core Building Blocks · 7 min read*
+*Part I · Core Building Blocks · 7 min core · 17 min with deep dives*
 
 Imagine you are sitting at a whiteboard. Someone asks you: *"Design a notification system for 100 million daily active users."*
 
@@ -56,6 +56,20 @@ When you calculate `30,000 peak QPS`, how do you know if that is big or small? C
 - **Single Redis Instance (In-Memory):** `100,000+ ops/sec` on a single thread [4].
 - **Single Kafka Broker:** `50,000 – 100,000+ messages/sec` (`100–200 MB/s` sequential disk throughput) [5].
 
+:::deepdive Little's Law (`L = λ·W`), Tail-at-Scale Fan-Out Math & Hedged Requests | +5 min
+
+1. **Sizing Concurrency with Little's Law (`L = λ × W`) [2]:**
+   - In any steady-state queue, average in-flight requests **`L`** equals arrival rate **`λ`** (`req/s`) times mean residency time **`W`** (`seconds`).
+   - *Example:* At `λ = 20,000 QPS` and `W = 25 ms` (`0.025s`), `L = 500` concurrent requests are in flight. If a downstream DB slows from `25 ms` to **`2.5 seconds`**, `L` jumps `100×` to **`50,000` open threads/connections**—exhausting connection pools in `2 seconds` unless bounded by strict timeouts and load shedding!
+2. **Tail-Latency Amplification in Microservice Fan-Out (*Dean & Barroso*) [8]:**
+   - Suppose a search aggregator fans out in parallel to **`N = 50` leaf shards**, and each individual shard is healthy with **`p99 = 200 ms`** (`1%` chance of taking `>= 200 ms`).
+   - Because the aggregator must wait for the *slowest* of all 50 shards, the probability that **at least one shard hits its `p99` tail** is:
+     `P(slow) = 1 - (0.99)^50 ≈ 1 - 0.605 = 39.5%`! (At `100` shards, **`63.4%`** of user requests suffer the `p99` tail [8]!)
+3. **Crushing Tail Spikes with Hedged ("Backup") Requests [8]:**
+   - Instead of waiting `200 ms` for a GC-stalled replica, fire a **hedged read** to a second replica if the first has not replied by the **`p95` latency (`e.g., 15 ms`)**, cancelling the slower leg on first response. Google's Bigtable benchmarks showed hedging at `p95` cuts **`p99.9` latency from `1,800 ms` down to `74 ms`** while adding **only `5%` extra cluster load** [8]!
+
+:::
+
 ---
 
 ### 4) AI Engineering Math: Tokens, Bandwidth & KV-Cache RAM
@@ -66,6 +80,16 @@ When designing AI-enabled backend systems, there is one more calculation that im
 - **Time To First Token (TTFT):** The "prefill" step where the GPU processes your input prompt in parallel. For a `4,000-token` RAG prompt, TTFT is typically **`300 ms – 800 ms`**.
 - **Inter-Token Latency (ITL):** Generating output tokens happens *one token at a time* (autoregressively), limited by GPU memory bandwidth. A fast production model streams at **`40 – 80 tokens/sec`** (`12–25 ms` per token).
 - **Why a 300-token answer takes 5 seconds:** `0.5s (TTFT) + (300 tokens / 60 tokens/sec) = 5.5 seconds` total wall-clock time. That is why every interactive AI app **must stream tokens via Server-Sent Events (SSE)** instead of blocking until the entire paragraph is finished [6].
+
+:::deepdive Availability "Nines" Math, Static Stability & Coordinated Omission | +5 min
+
+1. **Serial vs. Active-Active Redundancy Math [9]:**
+   - **Serial dependencies multiply availability downward:** Calling `Auth (99.9%) -> OrderSvc (99.9%) -> PaymentGW (99.9%)` synchronously yields `0.999^3 ≈ 99.7%` (**`26.3 hours` of downtime/year**—worse than any single service!).
+   - **Active-Active parallel replicas multiply unavailability (`1 - p^k`):** Two independent Availability Zones each at `99.9%` (`0.001` failure probability) give `1 - (0.001)^2 = 99.9999%` *in theory*—**only if** survivor AZs are **statically over-provisioned** (e.g., `3` AZs each running at `<= 60%` CPU so losing 1 AZ jumps survivors to `90%`, not `120%` brownout!) and require **zero control-plane autoscaling** during the outage (*AWS Static Stability* [9]).
+2. **The Load-Testing Trap — Coordinated Omission [2]:**
+   - Closed-loop benchmark tools that wait for Response `i` before sending Request `i+1` accidentally **pause sending traffic whenever the server freezes for `2 seconds`**—recording only `1` slow sample instead of the `20,000` queued requests real users experienced! Always measure latency with **open-loop arrival schedules** (Poisson arrivals independent of server response time) [2].
+
+:::
 
 ---
 
@@ -104,3 +128,5 @@ When designing AI-enabled backend systems, there is one more calculation that im
 - **[5]** Jay Kreps, *The Log: What every software engineer should know about real-time data's unifying abstraction* & Apache Kafka Design Docs — [kafka.apache.org/documentation](https://kafka.apache.org/documentation/)
 - **[6]** Chip Huyen, *AI Engineering: Building Applications with Foundation Models* (O'Reilly, 2025) — Latency & Token Economics
 - **[7]** Discord Engineering, *How Discord Stores Trillions of Messages* — [discord.com/blog](https://discord.com/blog/how-discord-stores-trillions-of-messages)
+- **[8]** Jeffrey Dean & Luiz André Barroso (Google), *The Tail at Scale* (CACM 2013) — [research.google/pubs/the-tail-at-scale](https://research.google/pubs/the-tail-at-scale/)
+- **[9]** AWS Builders' Library, *Static Stability Using Availability Zones* — [aws.amazon.com/builders-library/static-stability](https://aws.amazon.com/builders-library/static-stability-using-availability-zones/)

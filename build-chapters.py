@@ -8,7 +8,7 @@ chapters = [
         "ch01-envelope-math.md",
         """# Chapter 1: Back-of-the-Envelope Math (Or: How Not to Panic at 30,000 QPS)
 
-*Part I · Core Building Blocks · 7 min read*
+*Part I · Core Building Blocks · 7 min core · 17 min with deep dives*
 
 Imagine you are sitting at a whiteboard. Someone asks you: *"Design a notification system for 100 million daily active users."*
 
@@ -64,6 +64,20 @@ When you calculate `30,000 peak QPS`, how do you know if that is big or small? C
 - **Single Redis Instance (In-Memory):** `100,000+ ops/sec` on a single thread [4].
 - **Single Kafka Broker:** `50,000 – 100,000+ messages/sec` (`100–200 MB/s` sequential disk throughput) [5].
 
+:::deepdive Little's Law (`L = λ·W`), Tail-at-Scale Fan-Out Math & Hedged Requests | +5 min
+
+1. **Sizing Concurrency with Little's Law (`L = λ × W`) [2]:**
+   - In any steady-state queue, average in-flight requests **`L`** equals arrival rate **`λ`** (`req/s`) times mean residency time **`W`** (`seconds`).
+   - *Example:* At `λ = 20,000 QPS` and `W = 25 ms` (`0.025s`), `L = 500` concurrent requests are in flight. If a downstream DB slows from `25 ms` to **`2.5 seconds`**, `L` jumps `100×` to **`50,000` open threads/connections**—exhausting connection pools in `2 seconds` unless bounded by strict timeouts and load shedding!
+2. **Tail-Latency Amplification in Microservice Fan-Out (*Dean & Barroso*) [8]:**
+   - Suppose a search aggregator fans out in parallel to **`N = 50` leaf shards**, and each individual shard is healthy with **`p99 = 200 ms`** (`1%` chance of taking `>= 200 ms`).
+   - Because the aggregator must wait for the *slowest* of all 50 shards, the probability that **at least one shard hits its `p99` tail** is:
+     `P(slow) = 1 - (0.99)^50 ≈ 1 - 0.605 = 39.5%`! (At `100` shards, **`63.4%`** of user requests suffer the `p99` tail [8]!)
+3. **Crushing Tail Spikes with Hedged ("Backup") Requests [8]:**
+   - Instead of waiting `200 ms` for a GC-stalled replica, fire a **hedged read** to a second replica if the first has not replied by the **`p95` latency (`e.g., 15 ms`)**, cancelling the slower leg on first response. Google's Bigtable benchmarks showed hedging at `p95` cuts **`p99.9` latency from `1,800 ms` down to `74 ms`** while adding **only `5%` extra cluster load** [8]!
+
+:::
+
 ---
 
 ### 4) AI Engineering Math: Tokens, Bandwidth & KV-Cache RAM
@@ -74,6 +88,16 @@ When designing AI-enabled backend systems, there is one more calculation that im
 - **Time To First Token (TTFT):** The "prefill" step where the GPU processes your input prompt in parallel. For a `4,000-token` RAG prompt, TTFT is typically **`300 ms – 800 ms`**.
 - **Inter-Token Latency (ITL):** Generating output tokens happens *one token at a time* (autoregressively), limited by GPU memory bandwidth. A fast production model streams at **`40 – 80 tokens/sec`** (`12–25 ms` per token).
 - **Why a 300-token answer takes 5 seconds:** `0.5s (TTFT) + (300 tokens / 60 tokens/sec) = 5.5 seconds` total wall-clock time. That is why every interactive AI app **must stream tokens via Server-Sent Events (SSE)** instead of blocking until the entire paragraph is finished [6].
+
+:::deepdive Availability "Nines" Math, Static Stability & Coordinated Omission | +5 min
+
+1. **Serial vs. Active-Active Redundancy Math [9]:**
+   - **Serial dependencies multiply availability downward:** Calling `Auth (99.9%) -> OrderSvc (99.9%) -> PaymentGW (99.9%)` synchronously yields `0.999^3 ≈ 99.7%` (**`26.3 hours` of downtime/year**—worse than any single service!).
+   - **Active-Active parallel replicas multiply unavailability (`1 - p^k`):** Two independent Availability Zones each at `99.9%` (`0.001` failure probability) give `1 - (0.001)^2 = 99.9999%` *in theory*—**only if** survivor AZs are **statically over-provisioned** (e.g., `3` AZs each running at `<= 60%` CPU so losing 1 AZ jumps survivors to `90%`, not `120%` brownout!) and require **zero control-plane autoscaling** during the outage (*AWS Static Stability* [9]).
+2. **The Load-Testing Trap — Coordinated Omission [2]:**
+   - Closed-loop benchmark tools that wait for Response `i` before sending Request `i+1` accidentally **pause sending traffic whenever the server freezes for `2 seconds`**—recording only `1` slow sample instead of the `20,000` queued requests real users experienced! Always measure latency with **open-loop arrival schedules** (Poisson arrivals independent of server response time) [2].
+
+:::
 
 ---
 
@@ -112,13 +136,15 @@ When designing AI-enabled backend systems, there is one more calculation that im
 - **[5]** Jay Kreps, *The Log: What every software engineer should know about real-time data's unifying abstraction* & Apache Kafka Design Docs — [kafka.apache.org/documentation](https://kafka.apache.org/documentation/)
 - **[6]** Chip Huyen, *AI Engineering: Building Applications with Foundation Models* (O'Reilly, 2025) — Latency & Token Economics
 - **[7]** Discord Engineering, *How Discord Stores Trillions of Messages* — [discord.com/blog](https://discord.com/blog/how-discord-stores-trillions-of-messages)
+- **[8]** Jeffrey Dean & Luiz André Barroso (Google), *The Tail at Scale* (CACM 2013) — [research.google/pubs/the-tail-at-scale](https://research.google/pubs/the-tail-at-scale/)
+- **[9]** AWS Builders' Library, *Static Stability Using Availability Zones* — [aws.amazon.com/builders-library/static-stability](https://aws.amazon.com/builders-library/static-stability-using-availability-zones/)
 """
     ),
     (
         "ch02-kafka-streams.md",
         """# Chapter 2: Kafka, Partitions & Why Databases Hate Waiting in Line
 
-*Part I · Core Building Blocks · 9 min read*
+*Part I · Core Building Blocks · 9 min core · 18 min with deep dives*
 
 Suppose 1,000 hungry customers walk into a bakery at 9:00 AM.
 
@@ -159,6 +185,18 @@ Worker 2 finishes *first* (`CANCELLED`), and 150 milliseconds later Worker 1 fin
 
 Because `Hash("Alice")` always produces the exact same number, every event for Alice lands on the exact same conveyor belt (`Partition 0`), in the exact order she clicked [1].
 
+:::deepdive Broker Durability (`acks=all` + `ISR`) & `KIP-98` Exactly-Once Producers | +5 min
+
+1. **Why `acks=1` Loses Committed Financial Events [1, 2]:**
+   - Each Kafka partition has **1 Leader** and `R - 1` **Follower replicas** (typically `replication.factor = 3`). Followers continuously fetch the Leader's log; replicas caught up within `replica.lag.time.max.ms` form the **In-Sync Replica set (`ISR`)** [2].
+   - With `acks=1`, the Leader replies `OK` the instant bytes hit its local page cache—if that broker loses power `2 ms` later before Followers replicate offset `900`, the newly elected Leader **truncates offset `900` forever**!
+   - For zero data loss on payments/orders, enforce **`acks=all` (`-1`) + `min.insync.replicas = 2` + `unclean.leader.election.enable = false`**: writes succeed only after at least **2 ISR brokers** acknowledge, trading availability (`NotEnoughReplicasException` if 2 of 3 brokers die) over silent data loss [1, 2].
+2. **`KIP-98` Idempotent & Transactional Producers [4]:**
+   - What if a producer sends `Charge $50`, the Leader appends it, and the network drops the `ACK` so the producer retries? With **`enable.idempotence = true` (`KIP-98`)**, each producer receives a `ProducerID (PID)` and tags every batch with a monotonically increasing **`SequenceNumber`** per partition—the broker deduplicates `Seq #42` in `O(1)` memory without writing twice [4]!
+   - For Kafka-to-Kafka `consume -> transform -> produce` pipelines, **Kafka Transactions (`transactional.id`)** run a 2-phase commit Coordinator that atomically commits output records *and* input consumer offsets together (`isolation.level = read_committed`)—though side effects to **external** REST/SQL systems still require idempotency keys or a Transactional Outbox [4]!
+
+:::
+
 ---
 
 ### 3) What If Celebrity "User X" Floods Partition 0? (Hot-Key Salting)
@@ -178,6 +216,16 @@ Suppose your `notifications` topic has **12 Partitions**, and your 12 worker ser
 What happens to the 12 new pods? **They sit at 0% CPU doing nothing.**
 
 Because Kafka never lets two workers in the same Consumer Group read the same Partition (otherwise both workers would process offset #42 and send duplicate emails), **your maximum worker parallelism is strictly capped by the number of partitions** [1]. That is why production teams over-provision partition counts upfront (e.g., `30` to `64` partitions) or decouple slow external HTTP calls onto an async worker pool after reading.
+
+:::deepdive Surviving Rebalance Storms (`CooperativeSticky`), Log Compaction & Tiered Retries | +4 min
+
+1. **Why Stop-the-World Consumer Rebalances Cause Production Outages [1, 2]:**
+   - Under legacy **Eager Rebalancing**, whenever 1 pod restarts or a slow LLM/HTTP call exceeds `max.poll.interval.ms`, **every consumer in the entire group revokes all partitions simultaneously**, freezing consumption across all 64 partitions for seconds!
+   - Fix: Enable **`CooperativeStickyAssignor`** (incremental rebalancing revokes *only* the partitions moving to the new pod while the other 62 partitions keep streaming uninterrupted) and decouple slow processing threads from the poll loop with bounded backpressure [2].
+2. **Retention vs. Log Compaction (`cleanup.policy = compact`) [2]:**
+   - Event streams (`clicks`) use time/size retention (`7 days`). Changelog/state topics (`user_profiles`, CDC snapshots) use **Log Compaction**, where background cleaner threads retain **at least the latest value for every message key** (`key -> null` acts as a deletion **tombstone**)—letting new services bootstrap local state caches directly from Kafka [2].
+
+:::
 
 ---
 
@@ -212,13 +260,14 @@ Because Kafka never lets two workers in the same Consumer Group read the same Pa
 - **[1]** Neha Narkhede, Gwen Shapira & Todd Palino, *Kafka: The Definitive Guide* (O'Reilly) — Partitions, Consumer Groups & Delivery Guarantees
 - **[2]** Jay Kreps, *The Log: What every software engineer should know about real-time data's unifying abstraction* & Apache Kafka Design Docs — [kafka.apache.org/documentation](https://kafka.apache.org/documentation/)
 - **[3]** Alex Xu, *System Design Interview (Vol. 1 & 2)*, Notification Service & Message Queues — [ByteByteGo](https://bytebytego.com/)
+- **[4]** Apache Kafka KIP-98, *Exactly Once Delivery and Transactional Messaging* — [cwiki.apache.org/confluence/display/KAFKA/KIP-98](https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging)
 """
     ),
     (
         "ch03-redis-swiss-army-knife.md",
         """# Chapter 3: Redis & The Four In-Memory Swiss Army Knives
 
-*Part I · Core Building Blocks · 8 min read*
+*Part I · Core Building Blocks · 8 min core · 18 min with deep dives*
 
 When engineers first hear about **Redis**, they usually hear a three-word summary: *"It's a fast cache."*
 
@@ -274,6 +323,18 @@ Instead, combine a **Redis List** with a **Redis Sorted Set (`ZSET`)** [2]:
    `ZRANGEBYSCORE digest_timers -inf 1711800900 LIMIT 0 100`
 5. Because a `ZSET` keeps members sorted by score in a Skip List, Redis hands back **only the users whose timers just expired**, in `O(log N + M)` time, without ever looking at the 999,900 users whose timers are still in the future!
 
+:::deepdive Meta Memcache Leases: Defending Against Cache Stampedes, Stale Sets & Hot Keys | +5 min
+
+In Meta's landmark *Scaling Memcache at Facebook* (`NSDI 2013` [5]) paper, look-aside caching (`GET cache -> miss -> SELECT DB -> SET cache`) broke in three subtle ways at `billions of QPS`:
+
+| Production Failure | Exact Race / Bottleneck | How Meta's Lease & L1 Pattern Solves It [5] |
+| :--- | :--- | :--- |
+| **1. Thundering Herd (Cache Stampede)** | Popular key `feed:viral` expires; **`5,000` app threads miss simultaneously** and stampede the same MySQL/Postgres row! | **Cache Leases (`SET lock:k NX EX 5` / `singleflight`):** On miss, Redis grants a `64-bit` **lease token** to the *first* client only; the other `4,999` clients wait `10 ms` or serve slightly stale value while 1 query refreshes DB [5]. |
+| **2. Stale-Set Race Condition** | Reader A misses (`v1`), Writer B updates DB (`v2`) and `DEL`s cache, then slow Reader A wakes up and writes **stale `v1` into cache forever**! | When `DEL` runs on a write, Redis **invalidates any active lease token** for that key—so Reader A's delayed `CAS/lease-set` is deterministically rejected [5]! |
+| **3. Single-Shard Hot Key (`500k QPS`)** | Even 1 Redis shard tops out around `~100k–200k ops/s`; `1M` reads/sec on one celebrity key melts the shard's NIC & single CPU core. | **Tiny In-Process L1 LRU Cache (`1–2s` TTL + Redis `RESP3` Client-Side Tracking invalidations)** or **Key Read-Replication** (`key#1..key#10` across 10 shards) absorbs `99%` of hot reads in app RAM [1, 5]. |
+
+:::
+
 ---
 
 ### 4) What If Redis Crashes? (Why RAM Needs a Backup Plan)
@@ -284,6 +345,17 @@ Redis offers two persistence mechanisms, plus replication [1]:
 - **RDB (Snapshotting):** Periodically forks and writes a compact point-in-time snapshot to disk (e.g., every 5 minutes). Fast, but a crash loses up to 5 minutes of writes.
 - **AOF (Append-Only File):** Logs every write command to disk (`appendfsync everysec`). A crash loses at most **1 second** of data, and Redis Sentinel / Cluster fails over to a warm replica in seconds.
 - **The Production Rule:** Never treat Redis as your *only* copy of financial or user-critical data. Keep the raw events durable on disk in **Kafka** (or your database), and use Redis for fast in-memory coordination, timers, and deduplication.
+
+:::deepdive Redis Cluster `16,384` Hash Slots, Async Failover & Why `Redlock` Fails Safety | +5 min
+
+1. **How Redis Cluster Shards RAM (`CRC16(key) mod 16384`) [6]:**
+   - Instead of dynamic token rings, **Redis Cluster** partitions the keyspace into **16,384 fixed hash slots** (`Node A: 0–5460`, `Node B: 5461–10922`, `Node C: 10923–16383`) [6]. Smart clients cache the slot map (`<2 KB`) for **1-hop routing** (`MOVED` redirects update stale maps).
+   - **Multi-Key Hash Tags (`{...}`):** Multi-key commands or Lua scripts (`EVAL`) fail with `CROSSSLOT` unless all keys live on the same shard! Wrapping the shared entity in braces—`{user_42}:profile` and `{user_42}:cart`—forces Redis to hash **only `user_42`**, co-locating related keys on one slot (never put a low-cardinality tag like `{us_east}` or you create a massive hot shard!) [6].
+2. **Async Replication Split-Brain & Kleppmann's `Redlock` Critique [6, 7]:**
+   - Redis replication is **asynchronous** by default: Client 1 acquires `SET lock:99 owner1 NX PX 10000` on Primary A, Primary A crashes *before* replicating `lock:99` to Replica A', Replica A' promotes to Primary, and **Client 2 acquires `lock:99` simultaneously**!
+   - As Martin Kleppmann proved [7], even `Redlock` across 5 Redis nodes relies on wall-clock/pause assumptions that **GC pauses break**: use Redis locks for **efficiency** (preventing duplicate work), never as your sole **correctness** guard—always pair mutations with a **monotonic fencing token** checked by the storage engine (see Chapter 18) [7]!
+
+:::
 
 ---
 
@@ -319,13 +391,16 @@ Redis offers two persistence mechanisms, plus replication [1]:
 - **[2]** Alex Xu, *System Design Interview (Vol. 1 & 2)*, Rate Limiter, Leaderboard & Notification Systems — [ByteByteGo](https://bytebytego.com/)
 - **[3]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)*, Chapter 7: Transactions & Race Conditions
 - **[4]** Brandur Leach (Stripe), *Implementing Stripe-like Idempotency Keys & Rate Limiters with Redis* — [stripe.com/blog/rate-limiters](https://stripe.com/blog/rate-limiters)
+- **[5]** Rajesh Nishtala et al. (Meta), *Scaling Memcache at Facebook (Leases, Thundering Herds & Regional Pools)* (USENIX NSDI 2013) — [usenix.org/conference/nsdi13/nishtala](https://www.usenix.org/conference/nsdi13/technical-sessions/presentation/nishtala)
+- **[6]** Redis Official Specification, *Redis Cluster Specification (16,384 Hash Slots, Hash Tags & Failover)* — [redis.io/docs/cluster-spec](https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/)
+- **[7]** Martin Kleppmann, *How to do distributed locking (Why Redlock Is Unsafe Without Fencing Tokens)* (2016) — [martin.kleppmann.com/distributed-locking](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
 """
     ),
     (
         "ch04-database-keys-sharding.md",
         """# Chapter 4: Database Keys, Sharding & Where Your Data Actually Lives
 
-*Part I · Core Building Blocks · 9 min read*
+*Part I · Core Building Blocks · 9 min core · 18 min with deep dives*
 
 Every software engineer knows how to write `PRIMARY KEY (id)` in a SQL migration.
 
@@ -370,6 +445,17 @@ Once your request reaches Shard #3, how does the database actually write and rea
 | **Write Speed** | **Good (`~5k–10k/sec` per node)** — limited by random disk I/O, page splits, and row locks. | **Massive (`~50k–100k+/sec` per node)** — every write is a pure sequential append + RAM insert with zero row locks. |
 | **Best Use Case** | User accounts, billing, orders, permissions, ACID transactions. | High-write event logs, chat messages, notification history, IoT time-series. |
 
+:::deepdive Replication Topologies: Dynamo Leaderless Quorums (`W+R>N`) vs. Raft/Paxos (`Spanner` / `DynamoDB`) | +5 min
+
+Once your partition lives on 3 replicas (`N = 3`), **who accepts writes and how do replicas agree?** Interviewers expect you to contrast the two dominant families [1, 3, 5, 6]:
+
+| Model | How Writes & Reads Work | Trade-Off & Failure Edge Cases | Real Systems |
+| :--- | :--- | :--- | :--- |
+| **1. Leaderless Quorum** *(Amazon Dynamo 2007)* [3] | Coordinator sends writes to all `N=3` replicas; succeeds when **`W` ack**. Reads query **`R` replicas** in parallel; if **`W + R > N`** (`e.g., W=2, R=2`), read & write sets overlap! | High write availability (`Sloppy Quorums` + `Hinted Handoff`), but concurrent writes create **conflicting sibling versions** (requiring Vector Clocks or perilous `Last-Write-Wins` wall-clocks!), plus needs **Read Repair** & background **Merkle Tree** anti-entropy [1, 3]. | `Cassandra`, `ScyllaDB`, `Riak`. |
+| **2. Consensus Per-Shard Leader** *(Paxos / Raft)* [5, 6] | Each partition elects **1 Leader** via `Paxos`/`Raft` (`majority = 2 of 3`). All strongly consistent writes/reads route through the Leader (or lease-holder). | **Linearizable reads & serializable transactions** with zero sibling conflicts; brief (`~1–2s`) write pause if the partition leader crashes until Raft elects a new leader [5, 6]. | **Modern AWS `DynamoDB`** *(migrated to Paxos per storage replication group!)* [5], **Google `Spanner`** (`TrueTime` + Paxos) [6], `CockroachDB`. |
+
+:::
+
 ---
 
 ### 3) Consistent Hashing: How to Add a Database Shard Without Moving 99% of Your Data
@@ -383,6 +469,20 @@ If you use `Hash(key) % N`, changing `N` from `10` to `9` changes the remainder 
 1. You place each server at multiple points around the circle (**Virtual Nodes / vnodes**).
 2. To find which server owns `user_42`, you hash `user_42` onto the circle and walk **clockwise** until you hit the first server.
 3. If **1 server out of 10** crashes (or you add an 11th server), only the keys on that immediate arc—**`1 / N` (`~10%`) of the keys**—move to their clockwise neighbor. The other **90% of keys stay untouched!**
+
+:::deepdive Secondary Indexes on Sharded DBs (`LSI` vs. `GSI`) & Zero-Downtime Online Re-Sharding | +4 min
+
+1. **Document-Partitioned (`Local`) vs. Term-Partitioned (`Global`) Secondary Indexes [1, 5]:**
+   - Suppose `orders` is sharded by `customer_id`, and Support wants `SELECT * FROM orders WHERE merchant_id = 'm_99'`.
+   - **Local Secondary Index (`LSI` — Document-Partitioned):** Each shard indexes only its local rows. Writes are fast (1 shard!), but `WHERE merchant_id = 'm_99'` must **scatter-gather across all 50 shards** (tail-latency trap!) [1].
+   - **Global Secondary Index (`GSI` — Term-Partitioned, DynamoDB style) [5]:** The index itself is a separate hidden table **sharded by `merchant_id`**, populated asynchronously via CDC/log streams from the base table—giving **`O(1)` single-shard reads** at the cost of **eventual consistency (`ms` lag)** and extra write amplification [5].
+2. **How to Re-Shard a Live Production Database With Zero Downtime (`4-Phase Playbook`) [1]:**
+   - **(1) Dual-Write (Old Primary):** App writes to `OldDB` (source of truth) and best-effort replicates/CDC-streams to `NewShardedDB`.
+   - **(2) Idempotent Historical Backfill:** Scan `OldDB` snapshots into `NewShardedDB` using timestamp/version guards so backfill never overwrites newer live CDC writes!
+   - **(3) Shadow-Read Verification:** Read `OldDB` on the live path while asynchronously reading `NewShardedDB` on `5% -> 100%` of traffic and alerting on any row diff.
+   - **(4) Atomic Cutover + Rollback Window:** Flip reads/primary writes to `NewShardedDB` via feature flag while keeping reverse-CDC to `OldDB` warm for `48 hours` in case an emergency rollback is needed.
+
+:::
 
 ---
 
@@ -418,13 +518,15 @@ If you use `Hash(key) % N`, changing `N` from `10` to `9` changes the remainder 
 - **[2]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 5: Design Consistent Hashing & Chapter 6: Design a Key-Value Store — [ByteByteGo](https://bytebytego.com/)
 - **[3]** Giuseppe DeCandia et al. (Amazon), *Dynamo: Amazon's Highly Available Key-Value Store* (SOSP 2007) — [allthingsdistributed.com](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf)
 - **[4]** Discord Engineering, *How Discord Stores Billions/Trillions of Messages* — [discord.com/blog/how-discord-stores-trillions-of-messages](https://discord.com/blog/how-discord-stores-trillions-of-messages)
+- **[5]** Mostafa Elhemali et al. (AWS), *Amazon DynamoDB: A Scalable, Predictably Performant, and Fully Managed NoSQL Database Service* (USENIX ATC 2022) — [usenix.org/conference/atc22/elhemali](https://www.usenix.org/conference/atc22/presentation/elhemali)
+- **[6]** James C. Corbett et al. (Google), *Spanner: Google's Globally-Distributed Database* (OSDI 2012) — [research.google/pubs/spanner](https://research.google/pubs/spanner-googles-globally-distributed-database/)
 """
     ),
     (
         "ch05-notification-system-ai-digest.md",
         """# Chapter 5: Global Notification System + AI Smart Digest (30k QPS)
 
-*Part II · Classic System Design Stories · 10 min core · 15 min with deep dives*
+*Part II · Classic System Design Stories · 10 min core · 19 min with deep dives*
 
 It is 9:00 AM on Black Friday. Within three seconds, 100,000 merchants trigger flash-sale alerts, payment receipts, and security OTP codes across your platform.
 
@@ -499,6 +601,17 @@ When an interviewer pushes deeper on *"How do you design the AI Smart Digest wit
 
 :::
 
+:::deepdive Transactional Outbox (Dual-Write Fix), Invalid Device Tokens & Multi-Provider Failover | +4 min
+
+1. **Eliminating the Dual-Write Bug with a Transactional Outbox [6]:**
+   - What if `OrderService` commits `INSERT INTO orders` in Postgres and crashes `1 ms` *before* publishing `order.created` to Kafka? The customer gets charged and **never receives a receipt**!
+   - Fix: Inside the **exact same ACID database transaction** (`BEGIN ... COMMIT`), insert into `orders` *and* `outbox_events`. A **Debezium WAL CDC** connector (or polling relay) streams `outbox_events` into Kafka with at-least-once delivery, while downstream Redis `SET dedup:<id> NX` guarantees idempotency [6].
+2. **Device-Token Hygiene & Multi-Vendor SMS/Email Failover [1, 7]:**
+   - Users uninstall apps daily: subscribe asynchronously to **APNs (`410 Unregistered`) / FCM feedback streams** to mark dead `device_token`s `inactive`—otherwise millions of dead tokens clog worker pools and get your sender IP throttled [1].
+   - For critical `P0` OTPs, run **active-active health-weighted routing** across two SMS providers (`Twilio` `90%` + `Vonage/SNS` `10%` warm traffic) rather than cold untested fallbacks (*AWS Avoiding Fallback* [7]), shifting weights automatically when delivery receipts drop!
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -526,13 +639,15 @@ When an interviewer pushes deeper on *"How do you design the AI Smart Digest wit
 - **[3]** Chip Huyen, *AI Engineering* (2025) — Latency Fallbacks, Batching & Deterministic Guardrails
 - **[4]** OpenAI Platform Documentation, *Batch API: Asynchronous High-Throughput Workloads at 50% Lower Cost* — [platform.openai.com/docs/guides/batch](https://platform.openai.com/docs/guides/batch)
 - **[5]** Rohit Ghumare et al., *AI Engineering from Scratch — Production LLM Cost, Batching & Guardrail Trade-Offs* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
+- **[6]** Chris Richardson, *Pattern: Transactional Outbox (Reliable Database + Message Broker Publishing)* — [microservices.io/patterns/data/transactional-outbox](https://microservices.io/patterns/data/transactional-outbox.html)
+- **[7]** AWS Builders' Library, *Avoiding Fallback in Distributed Systems (Warm Multi-Provider Routing)* — [aws.amazon.com/builders-library/avoiding-fallback](https://aws.amazon.com/builders-library/avoiding-fallback-in-distributed-systems/)
 """
     ),
     (
         "ch06-url-shortener-and-id-gen.md",
         """# Chapter 6: URL Shortener & Distributed ID Generation (TinyURL & Snowflake)
 
-*Part II · Classic System Design Stories · 7 min read*
+*Part II · Classic System Design Stories · 7 min core · 16 min with deep dives*
 
 At first glance, a URL shortener (`https://tinyurl.com/2b9kLp1` -> `https://very-long-site.com/...`) sounds almost too simple.
 
@@ -570,6 +685,17 @@ How do you generate a unique 7-character Base62 string at 10,000 writes/sec with
 - **Solution B: Range-Allocating Key Generation Service (KGS) / Redis Counter Ranges:**
   If you strictly require **7 characters (`<= 3.5 trillion`)**, a central coordinator (ZooKeeper / etcd / Redis `INCRBY counter 100000`) hands each API server a reserved block of `100,000` numbers at startup (e.g., Server 1 gets `1,000,000–1,099,999`). Server 1 hands them out from local RAM in `O(1)` time and converts each integer to Base62. If Server 1 crashes, you lose at most 100,000 numbers out of 3.5 trillion (`0.000003%`) [1].
 
+:::deepdive Snowflake Clock-Skew Hazards (`NTP`) & Why `UUIDv7` (`RFC 9562`) Beats `UUIDv4` in B-Trees | +5 min
+
+1. **The Hidden Achilles' Heel of Snowflake — Backward `NTP` Clock Jumps [2]:**
+   - Snowflake assumes wall-clock milliseconds strictly increase. If `NTP` steps a server's clock *backward* by `12 ms`, the server could regenerate the **exact same `(timestamp, worker_id, seq=0)` primary key**!
+   - Production defenses: configure `chrony` / `NTP` in **slew mode** (gradually slowing clock rate rather than stepping backward), track `last_timestamp` in memory, **spin-wait** on tiny backward drifts (`<= 5 ms`), and refuse ID generation + alert if drift exceeds threshold [2].
+2. **Why Random `UUIDv4` Destroys Relational B-Tree Write Throughput (`UUIDv7`, `RFC 9562`) [4]:**
+   - `128-bit` random **`UUIDv4`** inserts land on completely random `16 KB` B-Tree leaf pages across a `500 GB` table—causing **constant page splits, `50%` page fragmentation, and random SSD cache misses** (`3×–5×` lower write throughput!).
+   - **`UUIDv7` (`IETF RFC 9562` [4])** puts a **`48-bit` Unix millisecond timestamp** in the most-significant bits followed by `74` random bits—giving globally decentralized `128-bit` uniqueness while keeping all new inserts **append-only on the rightmost hot B-Tree leaf page in RAM** [4]!
+
+:::
+
 ---
 
 ### 3) `301` vs. `302` Redirects & Surviving the Read Stampede
@@ -581,6 +707,15 @@ When a user clicks `https://sho.rt/2b9kLp1`, your read path looks up `2b9kLp1` i
 
 **What if a malicious user requests millions of fake short codes (`sho.rt/zzzzzzz`) that do not exist?**
 Every request misses Redis and hits your database (**cache penetration attack**). Fix: Keep a **Bloom Filter** in RAM (or cache negative `NOT_FOUND` entries with a short 60s TTL) so nonexistent codes are rejected before touching the database [1].
+
+:::deepdive High-Throughput Click Analytics (`Kafka -> ClickHouse`) & Malicious Link Safety | +4 min
+
+1. **Never `UPDATE clicks = clicks + 1` Synchronously on Redirect [1, 5]:**
+   - When a celebrity link gets `200,000 clicks/sec`, synchronous SQL row updates create catastrophic lock contention!
+   - Instead, the redirect handler serves `302` from Redis/CDN in `<2 ms` and asynchronously fire-and-forgets `{short_code, ts, country, ua_family, referrer}` to **Kafka**, where stream consumers micro-batch inserts every `1–5 seconds` into a **columnar OLAP store (`ClickHouse`)** [5] using `SummingMergeTree` / HyperLogLog unique-visitor sketches.
+2. **Abuse & Phishing Guardrails:** URL shorteners are prime targets for phishing campaigns. Run an async + cached **Safe-Browsing URL reputation check** on creation, enforce rate limits + CAPTCHA on anonymous link creation, and serve an interstitial warning page if a destination domain gets flagged post-creation [1].
+
+:::
 
 ---
 
@@ -615,13 +750,15 @@ Every request misses Redis and hits your database (**cache penetration attack**)
 - **[1]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 7: Design Unique ID Generator & Chapter 8: Design a URL Shortener — [ByteByteGo](https://bytebytego.com/)
 - **[2]** Twitter (X) Open Source, *Snowflake: 64-bit Time-Ordered Distributed ID Generation* — [github.com/twitter-archive/snowflake](https://github.com/twitter-archive/snowflake)
 - **[3]** Instagram & Meta Engineering, *Distributed Sharding & IDs at Scale (PostgreSQL & TAO)* — [engineering.fb.com](https://engineering.fb.com/2013/06/25/core-infra/tao-the-power-of-the-graph/)
+- **[4]** IETF RFC 9562, *Universally Unique IDentifiers (UUIDv7 Time-Ordered Monograph)* (2024) — [datatracker.ietf.org/doc/html/rfc9562](https://datatracker.ietf.org/doc/html/rfc9562)
+- **[5]** ClickHouse Official Documentation, *Columnar OLAP Architecture for Real-Time Event Analytics* — [clickhouse.com/docs/en/intro](https://clickhouse.com/docs/en/intro)
 """
     ),
     (
         "ch07-rate-limiter.md",
         """# Chapter 7: Distributed Rate Limiter (Token Bucket, Redis Lua & LLM Token Caps)
 
-*Part II · Classic System Design Stories · 8 min core · 13 min with deep dives*
+*Part II · Classic System Design Stories · 8 min core · 17 min with deep dives*
 
 Imagine a bug in a customer's retry loop causes their script to call your `POST /checkout` endpoint `50,000 times per second`.
 
@@ -689,6 +826,19 @@ When designing a **Multi-Tenant Enterprise AI Gateway** handling `50,000+` concu
 
 :::
 
+:::deepdive Cloudflare `O(1)` Sliding-Window Counters & AWS Priority Load Shedding | +4 min
+
+1. **Cloudflare's `O(1)` Sliding-Window Counter Approximation [5]:**
+   - How does Cloudflare block DDoS bursts across **millions of domains** without the `2×` boundary spike of Fixed Windows or the `O(N)` RAM explosion of `ZSET` Sliding Logs?
+   - Store **only two integers** per key (`prev_minute_count` and `curr_minute_count`)! If `15 seconds` (`25%`) have elapsed in the current minute, estimate the rolling 60-second count as:
+     `rate ≈ curr_count + prev_count × (1 - 0.25)`
+   - Across `400 million` real requests, Cloudflare measured **`99.997%` accuracy** with just **`16 bytes` of RAM** per key [5]!
+2. **Rate Limiting vs. Adaptive Priority Load Shedding (*AWS / Stripe*) [2, 6]:**
+   - A **Rate Limiter** protects against *one noisy tenant* (`user_42` exceeding their quota), even when the fleet is `80%` idle.
+   - A **Load Shedder** protects the *server itself* when total legitimate traffic or a slow DB pushes fleet latency toward brownout [2, 6]: classify requests into priority tiers (`P0: Checkout/Webhook`, `P1: Interactive Browse`, `P2: Background Sync/Crawlers`) and drop `P2` then `P1` dynamically at the edge when concurrency/CPU crosses `85%`, keeping `P0` `100%` alive [2, 6]!
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -715,13 +865,15 @@ When designing a **Multi-Tenant Enterprise AI Gateway** handling `50,000+` concu
 - **[2]** Paul Tarjan (Stripe), *Scaling your API with rate limiters (Redis Token Bucket + Lua)* — [stripe.com/blog/rate-limiters](https://stripe.com/blog/rate-limiters)
 - **[3]** Cloudflare Engineering, *How we built Cloudflare's Distributed Rate Limiting* — [blog.cloudflare.com](https://blog.cloudflare.com/)
 - **[4]** Rohit Ghumare et al., *AI Engineering from Scratch — LLM Gateway Rate Limits, Cost Attribution & Circuit Breakers* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
+- **[5]** Marek Majkowski (Cloudflare), *How we built rate limiting capable of scaling to millions of domains (Sliding Window Counters)* — [blog.cloudflare.com/counting-things](https://blog.cloudflare.com/counting-things-a-lot-of-different-things/)
+- **[6]** AWS Builders' Library, *Using Load Shedding to Avoid Overload* — [aws.amazon.com/builders-library/load-shedding](https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/)
 """
     ),
     (
         "ch08-news-feed-fanout.md",
         """# Chapter 8: News Feed & The Celebrity Fan-Out Problem (Meta & X)
 
-*Part II · Classic System Design Stories · 8 min core · 13 min with deep dives*
+*Part II · Classic System Design Stories · 8 min core · 17 min with deep dives*
 
 Suppose you are designing the home timeline for X (Twitter), Instagram, or LinkedIn.
 
@@ -775,6 +927,16 @@ No major social feed (`X "For You"`, `Instagram`, `YouTube`, `LinkedIn`) serves 
 
 :::
 
+:::deepdive Meta `TAO` Social Graph Cache (`USENIX ATC`) & Live Cursor Pagination | +4 min
+
+1. **Case Study — Why Meta Replaced Look-Aside Memcache with `TAO` (`1 Billion+` Reads/Sec) [7]:**
+   - Storing social edges (`Alice --follows--> Bob`, `Post --liked_by--> Carol`) in generic Memcache caused **thundering herds on edge-list cache misses** and stale read-after-write bugs across regions.
+   - Meta built **`TAO` (*The Associations and Objects*, `USENIX ATC 2013` [7])**: a geographically distributed **two-tier write-through graph cache** (`Stateless Follower Tier -> Sharded Leader Cache Tier -> MySQL Shards`). All writes route through the shard's **Leader Cache**, which updates MySQL *and* pushes deterministic invalidations/refills to Follower tiers—eliminating look-aside race conditions while serving **`99.8%` of graph reads in RAM** [7]!
+2. **Why `OFFSET 20 LIMIT 20` Breaks Live Timelines:**
+   - If `5` new posts arrive at the top of Alice's feed while she reads Page 1, `OFFSET 20` shifts downward by 5 positions—causing Page 2 to **repeat 5 posts from Page 1**! Always paginate timelines with an opaque **cursor (`WHERE post_id < :last_seen_snowflake_id ORDER BY post_id DESC LIMIT 20`)** [1, 2].
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -803,13 +965,14 @@ No major social feed (`X "For You"`, `Instagram`, `YouTube`, `LinkedIn`) serves 
 - **[4]** Paul Covington, Jay Adams & Emre Sargin (Google), *Deep Neural Networks for YouTube Recommendations (Two-Stage Candidate Generation & Ranking)* (ACM RecSys 2016) — [research.google/pubs/45530](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf)
 - **[5]** X / Twitter Engineering, *The Recommendation Algorithm (`For You` Sourcing, Light Ranker, Heavy Ranker & Visibility Filters)* — [github.com/twitter/the-algorithm](https://github.com/twitter/the-algorithm)
 - **[6]** Maxim Naumov et al. (Meta), *Deep Learning Recommendation Model for Personalization and Recommendation Systems (`DLRM`)* (2019) — [arxiv.org/abs/1906.00091](https://arxiv.org/abs/1906.00091)
+- **[7]** Nathan Bronson et al. (Meta), *TAO: Facebook's Distributed Data Store for the Social Graph* (USENIX ATC 2013) — [usenix.org/conference/atc13/bronson](https://www.usenix.org/conference/atc13/technical-sessions/presentation/bronson)
 """
     ),
     (
         "ch09-realtime-chat.md",
         """# Chapter 9: Real-Time Chat & Presence (WhatsApp, Slack & Discord)
 
-*Part II · Classic System Design Stories · 8 min core · 13 min with deep dives*
+*Part II · Classic System Design Stories · 8 min core · 17 min with deep dives*
 
 In most web systems, the client talks first (`HTTP GET/POST`), and the server answers.
 
@@ -865,6 +1028,16 @@ Modern chat interviews (`Slack AI`, `Discord Bots`, `ChatGPT Multi-Device Sync`)
 
 :::
 
+:::deepdive Discord's `ScyllaDB` Request Coalescing & Multi-Device `E2EE` (`Signal Sesame`) | +4 min
+
+1. **Case Study — How Discord Survived Hot-Channel Reads Across Trillions of Messages [4]:**
+   - When `100,000` users in a live-event Discord channel scrolled up simultaneously, Cassandra suffered `200 ms+` JVM GC pauses and hot-partition disk stalls.
+   - Discord migrated to **`ScyllaDB` (C++ thread-per-core LSM)** *and* inserted a Rust **Data Services layer running `singleflight` request coalescing** sorted by `channel_id` via consistent hashing—so `5,000` concurrent reads for `(channel_99, bucket_42)` collapse into **1 single ScyllaDB query**, dropping `p99` read latency from `40–125 ms` to **`<15 ms`** [4]!
+2. **Multi-Device Sync & End-to-End Encryption (`Signal Sesame` / WhatsApp) [6]:**
+   - How does Alice see identical chat history across her **Phone, Laptop, and Web tab** when the server cannot read E2EE plaintext? Under **`Signal Sesame`** [6], each *device* (not just each user) publishes its own Identity/PreKey bundle; sending a 1-on-1 message encrypts separate pairwise Double-Ratchet envelopes for Bob's `M` active devices *plus* Alice's own `N - 1` companion devices (or encrypts payload once with a symmetric **Sender Key** in large groups), while each device tracks its own local `last_synced_seq_id` watermark [1, 6].
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -892,13 +1065,14 @@ Modern chat interviews (`Slack AI`, `Discord Bots`, `ChatGPT Multi-Device Sync`)
 - **[3]** Slack Engineering, *Flannel: An Application-Level Edge Cache to Make Slack Scale* — [slack.engineering](https://slack.engineering/)
 - **[4]** Discord Engineering, *How Discord Stores Trillions of Messages (ScyllaDB Partitioning & Request Coalescing)* — [discord.com/blog/how-discord-stores-trillions-of-messages](https://discord.com/blog/how-discord-stores-trillions-of-messages)
 - **[5]** Rohit Ghumare et al., *AI Engineering from Scratch — Streaming LLM Delivery, Cancellation & Multi-Tenant Safety* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
+- **[6]** Signal Foundation, *The Sesame Algorithm: Session Management for Asynchronous Multi-Device Message Encryption* — [signal.org/docs/specifications/sesame](https://signal.org/docs/specifications/sesame/)
 """
     ),
     (
         "ch10-ticketing-and-geospatial.md",
         """# Chapter 10: High-Contention Flash Sales (Ticketmaster) & Geospatial Matching (Uber)
 
-*Part II · Classic System Design Stories · 9 min read*
+*Part II · Classic System Design Stories · 9 min core · 18 min with deep dives*
 
 What do **buying a concert seat on Ticketmaster** and **matching a rider with the closest Uber driver** have in common?
 
@@ -929,6 +1103,17 @@ You *cannot* keep a PostgreSQL `BEGIN ... SELECT FOR UPDATE` transaction open fo
    `UPDATE seats SET status = 'BOOKED', owner_id = 'Alice' WHERE seat_id = '9A' AND status = 'AVAILABLE';`
    If `rows_updated == 1`, we charge/capture payment and delete the Redis hold key. If Alice closes her browser and never pays, the Redis TTL (`EX 300`) expires automatically at `10:05:00`, freeing the seat with zero cron-job lag [1].
 
+:::deepdive Virtual Waiting Rooms (Edge Queueing) & Stripe-Grade Payment Idempotency | +5 min
+
+1. **Surviving `5 Million` Fans Refreshing at `10:00:00` — The Virtual Waiting Room [1]:**
+   - Even Redis + CDN map caches buckle if `5,000,000` browsers poll interactive seat maps every second!
+   - Place a **Stateless Edge Waiting Room** at CDN/Cloudflare Workers: before `10:00`, authenticated users receive a signed queue position (`Snowflake` / `INCR`); an **Admission Controller** drips **only `2,000` users/sec** into the live seat-map tier by issuing short-lived (`10-min`), HMAC-signed **`Queue-Pass` JWTs** verified at the API Gateway without touching any database!
+2. **Preventing Double-Charges When Hold Timers Race With Slow Payment Gateways [3, 4]:**
+   - *Classic Race:* Alice's `300s` hold is at `299.8s` when she clicks **Pay**; Stripe takes `1.5s`; at `300.0s` the seat expires and Bob grabs it!
+   - Fix: (1) Extend the Redis hold lease (`EXPIRE 120`) **atomically before** calling Stripe, checking a **monotonic hold `version` / fencing token** [3] on DB commit, and (2) pass a deterministic **`Idempotency-Key = hold_id`** to Stripe (`Authorization -> Capture` two-step) so if Bob somehow won the seat, Alice's card authorization is immediately voided rather than captured [4]!
+
+:::
+
 ---
 
 ### Part B: Uber Geospatial Matching (Why `WHERE lat BETWEEN ...` Fails)
@@ -951,6 +1136,16 @@ To make 2D map lookups `O(1)`, geospatial systems divide the Earth's surface int
 1. Driver pings `(lat, lon)` every 4s -> server converts `(lat, lon)` to **H3 Hexagon ID (`res 9`)** in nanoseconds.
 2. Update Redis in memory: move driver to `SADD h3:cell_8928308280fffff driver_42` and update `HSET driver_loc:42 lat ... lon ... EX 15`.
 3. When a rider requests a ride, compute the rider's H3 cell + its **6 adjacent hexagon ring (`kRing(cell, 1)`)**, fetch all active drivers in those 7 cells from Redis in `< 2 ms`, and rank by ETA [2].
+
+:::deepdive Why Crow-Flies Distance Lies (`Road-Graph ETA`) & Global Batch Matching | +4 min
+
+1. **Two-Phase ETA Ranking (`H3` Candidate Filter -> Road-Network Routing) [2, 5]:**
+   - Driver A is `200 meters` away in `H3` Euclidean distance—but **on the wrong side of a river or highway median** (`14-minute` U-turn!), while Driver B is `800 meters` away at a green light (`2 minutes` away).
+   - Uber never dispatches on raw `H3` distance! `H3 kRing` acts as a `<2 ms` **Stage-1 spatial filter** narrowing `50,000` city drivers to the **`15–25` closest candidates**, which then pass into a **Contraction Hierarchies / road-segment graph ETA engine** weighted by live traffic speeds [2, 5].
+2. **Greedy First-Come Dispatch vs. Windowed Bipartite Batch Matching [1, 5]:**
+   - Assigning each rider greedily to the single nearest driver can starve a rider `50m` away `1 second` later (*local optimum*). Batching open ride requests and available drivers inside a **`2–5 second` micro-window** per city zone and solving **minimum-total-ETA bipartite matching** (*Hungarian / min-cost flow*) cuts city-wide average pickup wait times by **`15%–25%`** [1]!
+
+:::
 
 ---
 
@@ -977,6 +1172,8 @@ To make 2D map lookups `O(1)`, geospatial systems divide the Earth's surface int
 - **[1]** Alex Xu, *System Design Interview (Vol. 2)*, Chapter 1: Proximity Service, Chapter 2: Nearby Friends & Chapter 7: Hotel/Ticket Reservation System — [ByteByteGo](https://bytebytego.com/)
 - **[2]** Uber Open Source, *H3: Hexagonal Hierarchical Geospatial Indexing System* — [h3geo.org](https://h3geo.org/)
 - **[3]** Martin Kleppmann, *How to do distributed locking (Leases & Fencing Tokens)* — [martin.kleppmann.com](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
+- **[4]** Brandur Leach (Stripe), *Designing Robust and Predictable APIs with Idempotency* — [stripe.com/blog/idempotency](https://stripe.com/blog/idempotency)
+- **[5]** Uber Open Source Documentation, *H3 Grid Indexing, k-Ring Traversal & Spatial Hierarchy* — [h3geo.org/docs](https://h3geo.org/docs/)
 """
     ),
     (

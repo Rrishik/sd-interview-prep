@@ -1,6 +1,6 @@
 # Chapter 6: URL Shortener & Distributed ID Generation (TinyURL & Snowflake)
 
-*Part II · Classic System Design Stories · 7 min read*
+*Part II · Classic System Design Stories · 7 min core · 16 min with deep dives*
 
 At first glance, a URL shortener (`https://tinyurl.com/2b9kLp1` -> `https://very-long-site.com/...`) sounds almost too simple.
 
@@ -38,6 +38,17 @@ How do you generate a unique 7-character Base62 string at 10,000 writes/sec with
 - **Solution B: Range-Allocating Key Generation Service (KGS) / Redis Counter Ranges:**
   If you strictly require **7 characters (`<= 3.5 trillion`)**, a central coordinator (ZooKeeper / etcd / Redis `INCRBY counter 100000`) hands each API server a reserved block of `100,000` numbers at startup (e.g., Server 1 gets `1,000,000–1,099,999`). Server 1 hands them out from local RAM in `O(1)` time and converts each integer to Base62. If Server 1 crashes, you lose at most 100,000 numbers out of 3.5 trillion (`0.000003%`) [1].
 
+:::deepdive Snowflake Clock-Skew Hazards (`NTP`) & Why `UUIDv7` (`RFC 9562`) Beats `UUIDv4` in B-Trees | +5 min
+
+1. **The Hidden Achilles' Heel of Snowflake — Backward `NTP` Clock Jumps [2]:**
+   - Snowflake assumes wall-clock milliseconds strictly increase. If `NTP` steps a server's clock *backward* by `12 ms`, the server could regenerate the **exact same `(timestamp, worker_id, seq=0)` primary key**!
+   - Production defenses: configure `chrony` / `NTP` in **slew mode** (gradually slowing clock rate rather than stepping backward), track `last_timestamp` in memory, **spin-wait** on tiny backward drifts (`<= 5 ms`), and refuse ID generation + alert if drift exceeds threshold [2].
+2. **Why Random `UUIDv4` Destroys Relational B-Tree Write Throughput (`UUIDv7`, `RFC 9562`) [4]:**
+   - `128-bit` random **`UUIDv4`** inserts land on completely random `16 KB` B-Tree leaf pages across a `500 GB` table—causing **constant page splits, `50%` page fragmentation, and random SSD cache misses** (`3×–5×` lower write throughput!).
+   - **`UUIDv7` (`IETF RFC 9562` [4])** puts a **`48-bit` Unix millisecond timestamp** in the most-significant bits followed by `74` random bits—giving globally decentralized `128-bit` uniqueness while keeping all new inserts **append-only on the rightmost hot B-Tree leaf page in RAM** [4]!
+
+:::
+
 ---
 
 ### 3) `301` vs. `302` Redirects & Surviving the Read Stampede
@@ -49,6 +60,15 @@ When a user clicks `https://sho.rt/2b9kLp1`, your read path looks up `2b9kLp1` i
 
 **What if a malicious user requests millions of fake short codes (`sho.rt/zzzzzzz`) that do not exist?**
 Every request misses Redis and hits your database (**cache penetration attack**). Fix: Keep a **Bloom Filter** in RAM (or cache negative `NOT_FOUND` entries with a short 60s TTL) so nonexistent codes are rejected before touching the database [1].
+
+:::deepdive High-Throughput Click Analytics (`Kafka -> ClickHouse`) & Malicious Link Safety | +4 min
+
+1. **Never `UPDATE clicks = clicks + 1` Synchronously on Redirect [1, 5]:**
+   - When a celebrity link gets `200,000 clicks/sec`, synchronous SQL row updates create catastrophic lock contention!
+   - Instead, the redirect handler serves `302` from Redis/CDN in `<2 ms` and asynchronously fire-and-forgets `{short_code, ts, country, ua_family, referrer}` to **Kafka**, where stream consumers micro-batch inserts every `1–5 seconds` into a **columnar OLAP store (`ClickHouse`)** [5] using `SummingMergeTree` / HyperLogLog unique-visitor sketches.
+2. **Abuse & Phishing Guardrails:** URL shorteners are prime targets for phishing campaigns. Run an async + cached **Safe-Browsing URL reputation check** on creation, enforce rate limits + CAPTCHA on anonymous link creation, and serve an interstitial warning page if a destination domain gets flagged post-creation [1].
+
+:::
 
 ---
 
@@ -83,3 +103,5 @@ Every request misses Redis and hits your database (**cache penetration attack**)
 - **[1]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 7: Design Unique ID Generator & Chapter 8: Design a URL Shortener — [ByteByteGo](https://bytebytego.com/)
 - **[2]** Twitter (X) Open Source, *Snowflake: 64-bit Time-Ordered Distributed ID Generation* — [github.com/twitter-archive/snowflake](https://github.com/twitter-archive/snowflake)
 - **[3]** Instagram & Meta Engineering, *Distributed Sharding & IDs at Scale (PostgreSQL & TAO)* — [engineering.fb.com](https://engineering.fb.com/2013/06/25/core-infra/tao-the-power-of-the-graph/)
+- **[4]** IETF RFC 9562, *Universally Unique IDentifiers (UUIDv7 Time-Ordered Monograph)* (2024) — [datatracker.ietf.org/doc/html/rfc9562](https://datatracker.ietf.org/doc/html/rfc9562)
+- **[5]** ClickHouse Official Documentation, *Columnar OLAP Architecture for Real-Time Event Analytics* — [clickhouse.com/docs/en/intro](https://clickhouse.com/docs/en/intro)

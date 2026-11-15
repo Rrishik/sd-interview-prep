@@ -1,6 +1,6 @@
 # Chapter 4: Database Keys, Sharding & Where Your Data Actually Lives
 
-*Part I · Core Building Blocks · 9 min read*
+*Part I · Core Building Blocks · 9 min core · 18 min with deep dives*
 
 Every software engineer knows how to write `PRIMARY KEY (id)` in a SQL migration.
 
@@ -45,6 +45,17 @@ Once your request reaches Shard #3, how does the database actually write and rea
 | **Write Speed** | **Good (`~5k–10k/sec` per node)** — limited by random disk I/O, page splits, and row locks. | **Massive (`~50k–100k+/sec` per node)** — every write is a pure sequential append + RAM insert with zero row locks. |
 | **Best Use Case** | User accounts, billing, orders, permissions, ACID transactions. | High-write event logs, chat messages, notification history, IoT time-series. |
 
+:::deepdive Replication Topologies: Dynamo Leaderless Quorums (`W+R>N`) vs. Raft/Paxos (`Spanner` / `DynamoDB`) | +5 min
+
+Once your partition lives on 3 replicas (`N = 3`), **who accepts writes and how do replicas agree?** Interviewers expect you to contrast the two dominant families [1, 3, 5, 6]:
+
+| Model | How Writes & Reads Work | Trade-Off & Failure Edge Cases | Real Systems |
+| :--- | :--- | :--- | :--- |
+| **1. Leaderless Quorum** *(Amazon Dynamo 2007)* [3] | Coordinator sends writes to all `N=3` replicas; succeeds when **`W` ack**. Reads query **`R` replicas** in parallel; if **`W + R > N`** (`e.g., W=2, R=2`), read & write sets overlap! | High write availability (`Sloppy Quorums` + `Hinted Handoff`), but concurrent writes create **conflicting sibling versions** (requiring Vector Clocks or perilous `Last-Write-Wins` wall-clocks!), plus needs **Read Repair** & background **Merkle Tree** anti-entropy [1, 3]. | `Cassandra`, `ScyllaDB`, `Riak`. |
+| **2. Consensus Per-Shard Leader** *(Paxos / Raft)* [5, 6] | Each partition elects **1 Leader** via `Paxos`/`Raft` (`majority = 2 of 3`). All strongly consistent writes/reads route through the Leader (or lease-holder). | **Linearizable reads & serializable transactions** with zero sibling conflicts; brief (`~1–2s`) write pause if the partition leader crashes until Raft elects a new leader [5, 6]. | **Modern AWS `DynamoDB`** *(migrated to Paxos per storage replication group!)* [5], **Google `Spanner`** (`TrueTime` + Paxos) [6], `CockroachDB`. |
+
+:::
+
 ---
 
 ### 3) Consistent Hashing: How to Add a Database Shard Without Moving 99% of Your Data
@@ -58,6 +69,20 @@ If you use `Hash(key) % N`, changing `N` from `10` to `9` changes the remainder 
 1. You place each server at multiple points around the circle (**Virtual Nodes / vnodes**).
 2. To find which server owns `user_42`, you hash `user_42` onto the circle and walk **clockwise** until you hit the first server.
 3. If **1 server out of 10** crashes (or you add an 11th server), only the keys on that immediate arc—**`1 / N` (`~10%`) of the keys**—move to their clockwise neighbor. The other **90% of keys stay untouched!**
+
+:::deepdive Secondary Indexes on Sharded DBs (`LSI` vs. `GSI`) & Zero-Downtime Online Re-Sharding | +4 min
+
+1. **Document-Partitioned (`Local`) vs. Term-Partitioned (`Global`) Secondary Indexes [1, 5]:**
+   - Suppose `orders` is sharded by `customer_id`, and Support wants `SELECT * FROM orders WHERE merchant_id = 'm_99'`.
+   - **Local Secondary Index (`LSI` — Document-Partitioned):** Each shard indexes only its local rows. Writes are fast (1 shard!), but `WHERE merchant_id = 'm_99'` must **scatter-gather across all 50 shards** (tail-latency trap!) [1].
+   - **Global Secondary Index (`GSI` — Term-Partitioned, DynamoDB style) [5]:** The index itself is a separate hidden table **sharded by `merchant_id`**, populated asynchronously via CDC/log streams from the base table—giving **`O(1)` single-shard reads** at the cost of **eventual consistency (`ms` lag)** and extra write amplification [5].
+2. **How to Re-Shard a Live Production Database With Zero Downtime (`4-Phase Playbook`) [1]:**
+   - **(1) Dual-Write (Old Primary):** App writes to `OldDB` (source of truth) and best-effort replicates/CDC-streams to `NewShardedDB`.
+   - **(2) Idempotent Historical Backfill:** Scan `OldDB` snapshots into `NewShardedDB` using timestamp/version guards so backfill never overwrites newer live CDC writes!
+   - **(3) Shadow-Read Verification:** Read `OldDB` on the live path while asynchronously reading `NewShardedDB` on `5% -> 100%` of traffic and alerting on any row diff.
+   - **(4) Atomic Cutover + Rollback Window:** Flip reads/primary writes to `NewShardedDB` via feature flag while keeping reverse-CDC to `OldDB` warm for `48 hours` in case an emergency rollback is needed.
+
+:::
 
 ---
 
@@ -93,3 +118,5 @@ If you use `Hash(key) % N`, changing `N` from `10` to `9` changes the remainder 
 - **[2]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 5: Design Consistent Hashing & Chapter 6: Design a Key-Value Store — [ByteByteGo](https://bytebytego.com/)
 - **[3]** Giuseppe DeCandia et al. (Amazon), *Dynamo: Amazon's Highly Available Key-Value Store* (SOSP 2007) — [allthingsdistributed.com](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf)
 - **[4]** Discord Engineering, *How Discord Stores Billions/Trillions of Messages* — [discord.com/blog/how-discord-stores-trillions-of-messages](https://discord.com/blog/how-discord-stores-trillions-of-messages)
+- **[5]** Mostafa Elhemali et al. (AWS), *Amazon DynamoDB: A Scalable, Predictably Performant, and Fully Managed NoSQL Database Service* (USENIX ATC 2022) — [usenix.org/conference/atc22/elhemali](https://www.usenix.org/conference/atc22/presentation/elhemali)
+- **[6]** James C. Corbett et al. (Google), *Spanner: Google's Globally-Distributed Database* (OSDI 2012) — [research.google/pubs/spanner](https://research.google/pubs/spanner-googles-globally-distributed-database/)

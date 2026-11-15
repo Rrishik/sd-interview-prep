@@ -1,6 +1,6 @@
 # Chapter 2: Kafka, Partitions & Why Databases Hate Waiting in Line
 
-*Part I · Core Building Blocks · 9 min read*
+*Part I · Core Building Blocks · 9 min core · 18 min with deep dives*
 
 Suppose 1,000 hungry customers walk into a bakery at 9:00 AM.
 
@@ -41,6 +41,18 @@ Worker 2 finishes *first* (`CANCELLED`), and 150 milliseconds later Worker 1 fin
 
 Because `Hash("Alice")` always produces the exact same number, every event for Alice lands on the exact same conveyor belt (`Partition 0`), in the exact order she clicked [1].
 
+:::deepdive Broker Durability (`acks=all` + `ISR`) & `KIP-98` Exactly-Once Producers | +5 min
+
+1. **Why `acks=1` Loses Committed Financial Events [1, 2]:**
+   - Each Kafka partition has **1 Leader** and `R - 1` **Follower replicas** (typically `replication.factor = 3`). Followers continuously fetch the Leader's log; replicas caught up within `replica.lag.time.max.ms` form the **In-Sync Replica set (`ISR`)** [2].
+   - With `acks=1`, the Leader replies `OK` the instant bytes hit its local page cache—if that broker loses power `2 ms` later before Followers replicate offset `900`, the newly elected Leader **truncates offset `900` forever**!
+   - For zero data loss on payments/orders, enforce **`acks=all` (`-1`) + `min.insync.replicas = 2` + `unclean.leader.election.enable = false`**: writes succeed only after at least **2 ISR brokers** acknowledge, trading availability (`NotEnoughReplicasException` if 2 of 3 brokers die) over silent data loss [1, 2].
+2. **`KIP-98` Idempotent & Transactional Producers [4]:**
+   - What if a producer sends `Charge $50`, the Leader appends it, and the network drops the `ACK` so the producer retries? With **`enable.idempotence = true` (`KIP-98`)**, each producer receives a `ProducerID (PID)` and tags every batch with a monotonically increasing **`SequenceNumber`** per partition—the broker deduplicates `Seq #42` in `O(1)` memory without writing twice [4]!
+   - For Kafka-to-Kafka `consume -> transform -> produce` pipelines, **Kafka Transactions (`transactional.id`)** run a 2-phase commit Coordinator that atomically commits output records *and* input consumer offsets together (`isolation.level = read_committed`)—though side effects to **external** REST/SQL systems still require idempotency keys or a Transactional Outbox [4]!
+
+:::
+
 ---
 
 ### 3) What If Celebrity "User X" Floods Partition 0? (Hot-Key Salting)
@@ -60,6 +72,16 @@ Suppose your `notifications` topic has **12 Partitions**, and your 12 worker ser
 What happens to the 12 new pods? **They sit at 0% CPU doing nothing.**
 
 Because Kafka never lets two workers in the same Consumer Group read the same Partition (otherwise both workers would process offset #42 and send duplicate emails), **your maximum worker parallelism is strictly capped by the number of partitions** [1]. That is why production teams over-provision partition counts upfront (e.g., `30` to `64` partitions) or decouple slow external HTTP calls onto an async worker pool after reading.
+
+:::deepdive Surviving Rebalance Storms (`CooperativeSticky`), Log Compaction & Tiered Retries | +4 min
+
+1. **Why Stop-the-World Consumer Rebalances Cause Production Outages [1, 2]:**
+   - Under legacy **Eager Rebalancing**, whenever 1 pod restarts or a slow LLM/HTTP call exceeds `max.poll.interval.ms`, **every consumer in the entire group revokes all partitions simultaneously**, freezing consumption across all 64 partitions for seconds!
+   - Fix: Enable **`CooperativeStickyAssignor`** (incremental rebalancing revokes *only* the partitions moving to the new pod while the other 62 partitions keep streaming uninterrupted) and decouple slow processing threads from the poll loop with bounded backpressure [2].
+2. **Retention vs. Log Compaction (`cleanup.policy = compact`) [2]:**
+   - Event streams (`clicks`) use time/size retention (`7 days`). Changelog/state topics (`user_profiles`, CDC snapshots) use **Log Compaction**, where background cleaner threads retain **at least the latest value for every message key** (`key -> null` acts as a deletion **tombstone**)—letting new services bootstrap local state caches directly from Kafka [2].
+
+:::
 
 ---
 
@@ -94,3 +116,4 @@ Because Kafka never lets two workers in the same Consumer Group read the same Pa
 - **[1]** Neha Narkhede, Gwen Shapira & Todd Palino, *Kafka: The Definitive Guide* (O'Reilly) — Partitions, Consumer Groups & Delivery Guarantees
 - **[2]** Jay Kreps, *The Log: What every software engineer should know about real-time data's unifying abstraction* & Apache Kafka Design Docs — [kafka.apache.org/documentation](https://kafka.apache.org/documentation/)
 - **[3]** Alex Xu, *System Design Interview (Vol. 1 & 2)*, Notification Service & Message Queues — [ByteByteGo](https://bytebytego.com/)
+- **[4]** Apache Kafka KIP-98, *Exactly Once Delivery and Transactional Messaging* — [cwiki.apache.org/confluence/display/KAFKA/KIP-98](https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging)

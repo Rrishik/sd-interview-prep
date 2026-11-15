@@ -144,49 +144,17 @@ body {
   color: #ffffff;
   border-color: var(--blue);
 }
-.depth-switch {
-  display: inline-flex;
-  align-items: center;
-  background: var(--bg-Warm);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 2px;
-  gap: 2px;
-}
-.depth-btn {
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.25;
-  padding: 5px 10px;
-  border-radius: 5px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-.depth-btn:hover:not(.active) {
-  color: var(--text);
-}
-.depth-btn.active {
-  background: var(--blue);
-  color: #ffffff;
-}
 @media (max-width: 600px) {
   .masthead { padding: 6px 10px; gap: 6px; }
   .mast-actions { gap: 4px; }
-  .brand-title { font-size: 15.5px; }
+  .brand-title { font-size: 16px; }
   .hide-xs { display: none; }
-  .top-btn, .menu-btn { padding: 5px 7px; font-size: 12px; }
-  .depth-btn { padding: 4px 7px; font-size: 11.5px; }
+  .top-btn, .menu-btn { padding: 5px 8px; font-size: 12px; }
 }
 @media (max-width: 400px) {
-  .brand-title { font-size: 14px; }
+  .brand-title { font-size: 14.5px; }
   .hide-xxs { display: none; }
   .top-btn, .menu-btn { padding: 5px 6px; font-size: 11.5px; }
-  .depth-btn { padding: 3px 6px; font-size: 11px; }
 }
 .sidebar-backdrop {
   display: none;
@@ -732,15 +700,11 @@ details.deep-dive[open] > summary.deep-dive-summary .dd-left::before {
   <div class="mast-left">
     <button class="menu-btn" onclick="toggleSidebar()" aria-label="Toggle chapter list">☰ <span class="hide-xs">Chapters</span></button>
     <div class="brand">
-      <span class="brand-title">System Design<span class="hide-xs"> Field Guide</span></span>
+      <span class="brand-title">System Design Field Guide</span>
       <span class="brand-sub">First-Principles Stories & Visual Architectures</span>
     </div>
   </div>
   <div class="mast-actions">
-    <div class="depth-switch" role="group" aria-label="Reading depth" title="Global reading depth: concise Core chapters vs expanded Deep Dives">
-      <button type="button" class="depth-btn active" data-depth="core" onclick="setReadingDepth('core')">Core</button>
-      <button type="button" class="depth-btn" data-depth="deep" onclick="setReadingDepth('deep')">Deep</button>
-    </div>
     <button class="top-btn" id="toggle-threads-btn" onclick="toggleAllThreads()" title="Expand or collapse all inline Q&A threads">💬 <span class="hide-xs">Threads (</span><span id="thread-total-count">0</span><span class="hide-xs">)</span></button>
     <button class="top-btn" onclick="openSourceModal()" title="Suggest a new source via GitHub Issue" aria-label="Suggest a new source">+ <span class="hide-xs">Suggest </span><span class="hide-xxs">Source</span></button>
     <button class="top-btn" onclick="openTokenModal()" id="gh-token-btn" title="Connect GitHub token for 1-click issue posting">🔑 <span class="hide-xs" id="gh-token-label">GitHub</span></button>
@@ -5718,17 +5682,6 @@ function closeSidebar() {
   document.getElementById('sidebar-backdrop').classList.remove('open');
 }
 
-function setReadingDepth(mode) {
-  const isDeep = mode === 'deep';
-  localStorage.setItem('sd_reading_depth', isDeep ? 'deep' : 'core');
-  document.querySelectorAll('details.deep-dive').forEach(d => {
-    d.open = isDeep;
-  });
-  document.querySelectorAll('.depth-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-depth') === (isDeep ? 'deep' : 'core'));
-  });
-}
-
 function toggleTheme() {
   const cur = document.documentElement.getAttribute('data-theme');
   const next = cur === 'dark' ? 'light' : 'dark';
@@ -6188,8 +6141,6 @@ async function submitSuggestedSource() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  const savedDepth = localStorage.getItem('sd_reading_depth') || 'core';
-  setReadingDepth(savedDepth);
   const h = (location.hash || '').replace('#', '');
   if (h && document.getElementById('chap-' + h)) {
     openChapter(h);

@@ -1,6 +1,6 @@
 # Chapter 14: Agent Memory (Working, Episodic, Semantic) & KV Prompt Caching
 
-*Part IV · Autonomous Agent Systems · 8 min core · 18 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 22 min with deep dives*
 
 By itself, an LLM has the memory of a goldfish: the microsecond an HTTP response finishes streaming, the model forgets you ever existed.
 
@@ -69,6 +69,19 @@ During prefill, a causal Transformer computes **Key (`K`)** and **Value (`V`)** 
    - Serializing tool schemas from an unsorted `HashMap`/`Set` (random key order busts the prefix hash).
    - Summarizing or rewriting old turns on *every* step instead of waiting for the `75%` token watermark.
 
+:::deepdive Editable Core Memory Blocks, Sleep-Time Compute & Hybrid 3-Store Fusion | +4 min
+
+1. **Typed Core Memory Blocks (`MemGPT` / `Letta`) [7, 8]:**
+   - Instead of stuffing unstructured notes into the system prompt, partition pinned in-context memory into discrete, character-capped **Memory Blocks** (`human`, `persona`, `repo_conventions`, `current_task`) mutated through explicit tools (`block_append`, `block_replace`, `block_summarize`) [7, 8]. Enforcing a hard character cap per block (`e.g., 2,000 chars`) prevents silent context bloat while keeping block diffs auditable in versioned storage.
+2. **Sleep-Time Compute (Off-Critical-Path Consolidation) [8]:**
+   - Running memory pruning, deduplication, and cross-session synthesis *synchronously* during a live chat turn inflates `p99` user latency. **Sleep-Time Compute** delegates memory maintenance to a background agent that runs asynchronously during idle windows between turns or sessions [8]:
+     - **`0 ms` user-facing latency penalty** on the primary request path.
+     - **Asymmetric model pairing:** A fast model serves live responses while a slower, stronger reasoning model audits raw transcripts offline, resolves contradicted facts, and precomputes `learned_context` blocks for the next session [8].
+3. **Hybrid 3-Store Memory Architecture (`Mem0`: Vector + Graph + KV) [9, 10]:**
+   - Single-store memory breaks on either exact lookups or multi-hop relationships. Production memory layers write in parallel to **KV / Relational** (`O(1)` exact user settings), **Vector (`HNSW`)** (semantic episode similarity), and a **Knowledge Graph** (entity-relation triples like `Alice -> owns -> BillingAPI -> uses -> Kafka`), fusing candidates via weighted `α·Relevance + β·Importance + γ·Recency` scoring [9, 10].
+
+:::
+
 ---
 
 ### Analogy, Where It Breaks & Real System
@@ -110,3 +123,7 @@ During prefill, a causal Transformer computes **Key (`K`)** and **Value (`V`)** 
 - **[4]** Anthropic Documentation, *Prompt Caching: KV-Cache Prefix Reuse for Multi-Turn Agents* — [platform.claude.com/docs/en/build-with-claude/prompt-caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
 - **[5]** Woosuk Kwon et al., *Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM)* (SOSP 2023) — [arxiv.org/abs/2309.06180](https://arxiv.org/abs/2309.06180)
 - **[6]** OWASP GenAI Security Project, *OWASP Top 10 for LLM & Agentic Applications (Memory Poisoning & Indirect Injection)* — [genai.owasp.org/llm-top-10](https://genai.owasp.org/llm-top-10/)
+- **[7]** Charles Packer et al., *MemGPT: Towards LLMs as Operating Systems* (2023) — [arxiv.org/abs/2310.08560](https://arxiv.org/abs/2310.08560)
+- **[8]** Kevin Lin, Charles Packer et al. (Letta / UC Berkeley), *Sleep-time Compute: Beyond Inference Scaling at Test-time* (2025) — [arxiv.org/abs/2504.13171](https://arxiv.org/abs/2504.13171)
+- **[9]** Prateek Chhikara et al., *Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory* (2025) — [arxiv.org/abs/2504.19413](https://arxiv.org/abs/2504.19413)
+- **[10]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 14: Memory Blocks, Sleep-Time Compute & Hybrid Memory* — [aiengineeringfromscratch.com/learn/agent-engineering/the-agent-loop](https://aiengineeringfromscratch.com/learn/agent-engineering/the-agent-loop)

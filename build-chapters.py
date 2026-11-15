@@ -1017,7 +1017,7 @@ Static benchmarks ignore the hardest day-2 RAG problem: **source documents and u
         "ch12-agents-guardrails-evals.md",
         """# Chapter 12: AI Agents, Tool Guardrails & Evaluation Pipelines
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
+*Part III · AI & LLM Engineering Systems · 8 min core · 21 min with deep dives*
 
 A standard RAG pipeline is a **railroad track**: every user query goes through `Retrieve -> Rerank -> Generate` in a fixed number of steps.
 
@@ -1083,6 +1083,20 @@ Never rely on a single uncalibrated LLM-as-Judge score:
 
 ---
 
+:::deepdive Meta's "Rule of Two", Multi-Agent Failure Modes (MASFT) & PVE Gates | +4 min
+
+1. **Pure vs. Consequential Tool Split & Meta's "Rule of Two" [7, 8]:**
+   - Classify every tool in your registry as either **Pure** (read-only, deterministic, safe to run speculatively) or **Consequential** (mutates state, spends money, or sends data externally) [8].
+   - Enforce **Meta's Rule of Two**: *a single agent turn or session context may combine at most TWO of three properties*: **(A) Untrusted Input** (web pages, external emails, PR comments), **(B) Sensitive Data Access** (private repos, PII, credentials), and **(C) Consequential External Action** (outbound network/email, database mutation, git push) [7]. Whenever `A + B + C` meet in one loop, an indirect injection inside `A` [10] can exfiltrate `B` via `C`—so the runtime must deterministically drop one leg (restrict `C` to read-only, isolate `A` behind a toolless reader, or pause for human confirmation).
+2. **Multi-Agent System Failure Taxonomy (`MASFT`) [9]:**
+   - Empirical trace audits across multi-agent benchmarks (`MASFT`, Cemri et al.) show failures cluster into three buckets that single-turn evals miss: **(1) Specification & Design** (role drift, disobeyed constraints, step repetition), **(2) Inter-Agent Misalignment** (context dropped across handoffs, reasoning–action mismatch, ignoring peer critiques), and **(3) Verification & Termination** (declaring premature success without running checks, or hallucinating past a `400` tool error) [9].
+3. **Pre-Execution `PVE` (`Prompt–Validator–Executor`) Gate [8, 10]:**
+   - Before executing any consequential tool call, run a fast (`<50 ms`), isolated **Validator** that sees **only** the user's original trusted request and the proposed `tool(args)`—*never* the untrusted retrieved documents—blocking hijacked tool calls before execution [10].
+
+:::
+
+---
+
 ### Quick Self-Check
 
 <details>
@@ -1114,13 +1128,17 @@ Never rely on a single uncalibrated LLM-as-Judge score:
 - **[4]** IETF RFC 8693, *OAuth 2.0 Token Exchange (On-Behalf-Of Delegation & Audience Scoping)* — [datatracker.ietf.org/doc/html/rfc8693](https://datatracker.ietf.org/doc/html/rfc8693)
 - **[5]** OWASP GenAI Security Project, *OWASP Top 10 for Large Language Model Applications (Prompt Injection & Excessive Agency)* — [genai.owasp.org/llm-top-10](https://genai.owasp.org/llm-top-10/)
 - **[6]** Lianmin Zheng et al., *Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena* (NeurIPS 2023) — [arxiv.org/abs/2306.05685](https://arxiv.org/abs/2306.05685)
+- **[7]** Meta AI Security, *Agents Rule of Two: A Practical Approach to AI Agent Security* (2025) — [ai.meta.com/blog/practical-ai-agent-security](https://ai.meta.com/blog/practical-ai-agent-security/)
+- **[8]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 13: The Tool Interface & Trust Split* — [aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface](https://aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface)
+- **[9]** Mert Cemri et al. (UC Berkeley), *Why Do Multi-Agent LLM Systems Fail? (MASFT)* (2025) — [arxiv.org/abs/2503.13657](https://arxiv.org/abs/2503.13657)
+- **[10]** Kai Greshake et al., *Not What You've Signed Up For: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection* (AISec 2023) — [arxiv.org/abs/2302.12173](https://arxiv.org/abs/2302.12173)
 """
     ),
     (
         "ch13-agent-loops-orchestration.md",
         """# Chapter 13: Agent Loop Architectures (ReAct, Plan-and-Execute & Multi-Agent DAGs)
 
-*Part IV · Autonomous Agent Systems · 8 min core · 18 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 22 min with deep dives*
 
 When people first hear **"AI Agent,"** they often picture something mystical—a digital coworker improvising freely inside a GPU.
 
@@ -1196,6 +1214,23 @@ When orchestrating multiple agents, the first architectural decision is **who ow
 - **Hard Loop Ceilings:** Enforce strict caps on `max_steps` (e.g., `6`), `max_token_budget`, and `wall_clock_timeout_ms`, plus duplicate call detection (`hash(tool_name + canonical_args)`) to break retry loops immediately.
 - **Precision First on Write Actions:** When an agent can mutate user settings or production records, a **False Positive** breaks state (high blast radius), while a **False Negative** safely falls back to standard search. Tune thresholds for **`>90%` precision** first, then expand tool coverage to raise recall.
 
+:::deepdive Native Reasoning Channels, ReWOO, CRITIC, Reflexion & LATS Search | +4 min
+
+1. **From Prompt `Thought:` Strings to Native Reasoning Channels [1, 11]:**
+   - Early 2022 ReAct prompted models to print literal `"Thought: ..."` strings inside the visible assistant reply [1]. Modern reasoning APIs (`Responses API`, `Extended Thinking`) move internal reasoning onto a **dedicated reasoning channel** passed (often encrypted) across tool turns—preserving multi-step latent plans without leaking raw chain-of-thought into user replies [11].
+2. **Advanced Reasoning & Search Loops (`ReWOO`, `CRITIC`, `Reflexion`, `LATS`):**
+
+| Pattern | Core Mechanism | Token & Latency Profile | Best Production Use Case |
+| :--- | :--- | :--- | :--- |
+| **`ReWOO`** *(Xu et al.)* [6] | **Planner** emits full step graph with `#E1`, `#E2` placeholders; **Workers** run tools without chat history; **Solver** answers once. | **`~5×` fewer tokens** than ReAct; enables distilling Planner into a `7B–8B` model. | Known-tool research & multi-API lookups where observations don't alter topology. |
+| **`CRITIC`** *(Gou et al.)* [7, 8] | Replaces ungrounded `Self-Refine` [7] with **external verifier feedback** (compiler, unit tests, SQL `EXPLAIN`, calculator) on each critique loop. | `2–4` turns; high precision because feedback is deterministic truth. | Code/SQL synthesis, schema repair, and factual claim verification. |
+| **`Reflexion`** *(Shinn et al.)* [9] | On trial failure, a **Self-Reflector** writes a short verbal postmortem into an episodic buffer prepended to the next attempt (*Verbal RL*). | `2–3` full episode retries, zero weight updates. | Iterative test-fixing and multi-step debugging tasks. |
+| **`ToT` / `LATS`** *(Yao; Zhou et al.)* [10] | **Monte Carlo Tree Search (`MCTS`)** over reasoning/action branches (`Select -> Expand -> Simulate -> Backpropagate`). | **`10–30×` token multiplier** (never run over non-idempotent write tools!). | High-stakes offline code synthesis, theorem proving, or complex planning. |
+
+3. **State Graphs vs. Actor Mailboxes [11]:** Use **Checkpointed State Graphs** (typed shared state + deterministic node reducers) for auditable single-workflow orchestration, and **Async Actor Runtimes** (isolated per-agent message mailboxes with independent crash supervision) for event-driven multi-agent concurrency.
+
+:::
+
 ---
 
 ### Analogy, Where It Breaks & Real System
@@ -1236,13 +1271,19 @@ When orchestrating multiple agents, the first architectural decision is **who ow
 - **[3]** Sehoon Kim et al., *An LLM Compiler for Parallel Function Calling* (ICML 2024) — [arxiv.org/abs/2312.04511](https://arxiv.org/abs/2312.04511)
 - **[4]** Anthropic Engineering, *How We Built Our Multi-Agent Research System* (2025) — [anthropic.com/research/multi-agent-research-system](https://www.anthropic.com/research/multi-agent-research-system)
 - **[5]** OpenAI Developers, *Orchestrating Multiple Agents: Handoffs vs. Agents-as-Tools* (2025–2026) — [developers.openai.com/api/docs/guides/agents/orchestration](https://developers.openai.com/api/docs/guides/agents/orchestration)
+- **[6]** Binfeng Xu et al., *ReWOO: Decoupling Reasoning from Observations for Efficient Augmented Language Models* (2023) — [arxiv.org/abs/2305.18323](https://arxiv.org/abs/2305.18323)
+- **[7]** Aman Madaan et al., *Self-Refine: Iterative Refinement with Self-Feedback* (NeurIPS 2023) — [arxiv.org/abs/2303.17651](https://arxiv.org/abs/2303.17651)
+- **[8]** Zhibin Gou et al., *CRITIC: Large Language Models Can Self-Correct with Tool-Interactive Critiquing* (ICLR 2024) — [arxiv.org/abs/2305.11738](https://arxiv.org/abs/2305.11738)
+- **[9]** Noah Shinn et al., *Reflexion: Language Agents with Verbal Reinforcement Learning* (NeurIPS 2023) — [arxiv.org/abs/2303.11366](https://arxiv.org/abs/2303.11366)
+- **[10]** Andy Zhou et al., *Language Agent Tree Search (LATS)* (ICML 2024) — [arxiv.org/abs/2310.04406](https://arxiv.org/abs/2310.04406)
+- **[11]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 14: The Agent Loop, ReWOO, CRITIC & Actor Runtimes* — [aiengineeringfromscratch.com/learn/agent-engineering/the-agent-loop](https://aiengineeringfromscratch.com/learn/agent-engineering/the-agent-loop)
 """
     ),
     (
         "ch14-agent-memory-and-caching.md",
         """# Chapter 14: Agent Memory (Working, Episodic, Semantic) & KV Prompt Caching
 
-*Part IV · Autonomous Agent Systems · 8 min core · 18 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 22 min with deep dives*
 
 By itself, an LLM has the memory of a goldfish: the microsecond an HTTP response finishes streaming, the model forgets you ever existed.
 
@@ -1311,6 +1352,19 @@ During prefill, a causal Transformer computes **Key (`K`)** and **Value (`V`)** 
    - Serializing tool schemas from an unsorted `HashMap`/`Set` (random key order busts the prefix hash).
    - Summarizing or rewriting old turns on *every* step instead of waiting for the `75%` token watermark.
 
+:::deepdive Editable Core Memory Blocks, Sleep-Time Compute & Hybrid 3-Store Fusion | +4 min
+
+1. **Typed Core Memory Blocks (`MemGPT` / `Letta`) [7, 8]:**
+   - Instead of stuffing unstructured notes into the system prompt, partition pinned in-context memory into discrete, character-capped **Memory Blocks** (`human`, `persona`, `repo_conventions`, `current_task`) mutated through explicit tools (`block_append`, `block_replace`, `block_summarize`) [7, 8]. Enforcing a hard character cap per block (`e.g., 2,000 chars`) prevents silent context bloat while keeping block diffs auditable in versioned storage.
+2. **Sleep-Time Compute (Off-Critical-Path Consolidation) [8]:**
+   - Running memory pruning, deduplication, and cross-session synthesis *synchronously* during a live chat turn inflates `p99` user latency. **Sleep-Time Compute** delegates memory maintenance to a background agent that runs asynchronously during idle windows between turns or sessions [8]:
+     - **`0 ms` user-facing latency penalty** on the primary request path.
+     - **Asymmetric model pairing:** A fast model serves live responses while a slower, stronger reasoning model audits raw transcripts offline, resolves contradicted facts, and precomputes `learned_context` blocks for the next session [8].
+3. **Hybrid 3-Store Memory Architecture (`Mem0`: Vector + Graph + KV) [9, 10]:**
+   - Single-store memory breaks on either exact lookups or multi-hop relationships. Production memory layers write in parallel to **KV / Relational** (`O(1)` exact user settings), **Vector (`HNSW`)** (semantic episode similarity), and a **Knowledge Graph** (entity-relation triples like `Alice -> owns -> BillingAPI -> uses -> Kafka`), fusing candidates via weighted `α·Relevance + β·Importance + γ·Recency` scoring [9, 10].
+
+:::
+
 ---
 
 ### Analogy, Where It Breaks & Real System
@@ -1352,6 +1406,10 @@ During prefill, a causal Transformer computes **Key (`K`)** and **Value (`V`)** 
 - **[4]** Anthropic Documentation, *Prompt Caching: KV-Cache Prefix Reuse for Multi-Turn Agents* — [platform.claude.com/docs/en/build-with-claude/prompt-caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
 - **[5]** Woosuk Kwon et al., *Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM)* (SOSP 2023) — [arxiv.org/abs/2309.06180](https://arxiv.org/abs/2309.06180)
 - **[6]** OWASP GenAI Security Project, *OWASP Top 10 for LLM & Agentic Applications (Memory Poisoning & Indirect Injection)* — [genai.owasp.org/llm-top-10](https://genai.owasp.org/llm-top-10/)
+- **[7]** Charles Packer et al., *MemGPT: Towards LLMs as Operating Systems* (2023) — [arxiv.org/abs/2310.08560](https://arxiv.org/abs/2310.08560)
+- **[8]** Kevin Lin, Charles Packer et al. (Letta / UC Berkeley), *Sleep-time Compute: Beyond Inference Scaling at Test-time* (2025) — [arxiv.org/abs/2504.13171](https://arxiv.org/abs/2504.13171)
+- **[9]** Prateek Chhikara et al., *Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory* (2025) — [arxiv.org/abs/2504.19413](https://arxiv.org/abs/2504.19413)
+- **[10]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 14: Memory Blocks, Sleep-Time Compute & Hybrid Memory* — [aiengineeringfromscratch.com/learn/agent-engineering/the-agent-loop](https://aiengineeringfromscratch.com/learn/agent-engineering/the-agent-loop)
 """
     ),
     (
@@ -1472,7 +1530,7 @@ What happens when you upgrade from `embed-v1` (`768-dim`) to `embed-v2` (`1,024-
         "ch16-mcp-tools-and-safety.md",
         """# Chapter 16: Model Context Protocol (MCP), Tool Contracts & Prompt Injection Defense
 
-*Part IV · Autonomous Agent Systems · 8 min core · 19 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 23 min with deep dives*
 
 Connecting 5 internal AI agents to 10 enterprise microservices used to mean writing **50 bespoke integration wrappers** (`M × N` glue code), each with its own brittle JSON parser and ad-hoc retry logic.
 
@@ -1551,6 +1609,23 @@ In an LLM, **system instructions and untrusted external data (emails, tickets, w
 3. **Deterministic Policy Gate + HITL:** Gate every high-blast-radius write tool behind an OPA/RBAC rule (`amount <= $25`) and explicit user confirmation UI.
 4. **Sandboxed Code Execution:** Run any generated code or shell diagnostic inside an ephemeral **microVM (`Firecracker`), `gVisor`, or `WASM` sandbox** with a read-only root filesystem, `cgroups` CPU/RAM limits, and a default-deny egress firewall.
 
+:::deepdive Stateless MCP (2026-07-28), OAuth 2.1 (CIMD), Tool Pinning & A2A v1.0 | +4 min
+
+1. **Stateless MCP (`2026-07-28`), `Tasks` Extension & Cancellation Races [6]:**
+   - Stateful `initialize` + `Mcp-Session-Id` sticky sessions complicate horizontal load balancing. Modern stateless MCP (`2026-07-28`) carries protocol version and client capabilities per request (`params._meta`), supports handshake-free `server/discover`, and uses POST-only **Streamable HTTP** so any stateless gateway pod can authorize and route any call [6].
+   - Distinguish **transport cancellation** (closing an HTTP stream—still a race against an in-flight side effect!) from the durable **MCP `Tasks` extension (`tasks/get`, `tasks/update`, `tasks/cancel`)**, which tracks long-running async work via persisted task handles [6].
+2. **Production MCP Auth (`OAuth 2.1` + `CIMD`) & Tool-Poisoning Defense [6, 7, 8, 9]:**
+   - **Issuer- & Resource-Bound Tokens:** Discover auth servers via **Protected Resource Metadata (`RFC 9728`)** [7], enroll clients via **Client ID Metadata Documents (`CIMD`)** rather than brittle Dynamic Client Registration, and bind access tokens to the exact target server URI via **Resource Indicators (`RFC 8707`)** [8] + `PKCE`.
+   - **Defending Against Tool Poisoning & Rug Pulls:** Treat tool `description`s and annotations as **untrusted data** (a malicious server can hide `"read ~/.ssh/id_rsa first"` inside a docstring or mutate a schema after approval). Namespace merged tools (`server__tool`) and **pin approved descriptor hashes** in your gateway, blocking unapproved schema drift [6, 9].
+3. **`MCP` (Agent-to-Tool) vs. `A2A v1.0` (Agent-to-Opaque-Agent) [6, 10]:**
+
+| Protocol | Boundary | Discovery & Contract | When to Use |
+| :--- | :--- | :--- | :--- |
+| **`MCP`** [6] | **Agent -> Tool / Context** | `server/discover` -> JSON-Schema `Tools`, `Resources`, `Prompts`. | Connecting an agent to databases, APIs, git, or internal microservices. |
+| **`A2A v1.0`** *(Linux Foundation)* [10] | **Agent -> Peer Opaque Agent** | JWS-signed `/.well-known/agent-card.json` -> stateful `Task` (`SUBMITTED -> WORKING -> INPUT_REQUIRED -> COMPLETED`) with typed `Parts` & `Artifacts`. | Delegating sub-goals across organizational or framework boundaries where peers never expose internal prompts, memory, or tools. |
+
+:::
+
 ---
 
 ### Analogy, Where It Breaks & Real System
@@ -1591,6 +1666,11 @@ In an LLM, **system instructions and untrusted external data (emails, tickets, w
 - **[3]** Edoardo Debenedetti et al., *Defeating Prompt Injections by Design (CaMeL)* (Google DeepMind, 2025) — [arxiv.org/abs/2503.18813](https://arxiv.org/abs/2503.18813)
 - **[4]** OWASP GenAI Security Project, *OWASP Top 10 for Large Language Model Applications (Indirect Prompt Injection & Improper Output Handling)* — [genai.owasp.org/llm-top-10](https://genai.owasp.org/llm-top-10/)
 - **[5]** Hector Garcia-Molina & Kenneth Salem, *Sagas* (ACM SIGMOD 1987) — Compensating Transactions for Long-Lived Workflows
+- **[6]** Model Context Protocol Specification (`2026-07-28`), *Stateless Base Protocol, Authorization & Tasks Extension* — [modelcontextprotocol.io/specification/2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28)
+- **[7]** IETF RFC 9728, *OAuth 2.0 Protected Resource Metadata* (2025) — [datatracker.ietf.org/doc/html/rfc9728](https://datatracker.ietf.org/doc/html/rfc9728)
+- **[8]** IETF RFC 8707, *Resource Indicators for OAuth 2.0* (2020) — [datatracker.ietf.org/doc/html/rfc8707](https://datatracker.ietf.org/doc/html/rfc8707)
+- **[9]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 13: MCP Security, OAuth 2.1, Registry Drift & A2A* — [aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface](https://aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface)
+- **[10]** Linux Foundation / A2A Project, *Agent2Agent (A2A) Protocol Specification v1.0* — [a2a-protocol.org/latest](https://a2a-protocol.org/latest/)
 """
     ),
     (
@@ -2061,6 +2141,379 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 - **[4]** Alexandru Agache et al. (AWS), *Firecracker: Lightweight Virtualization for Serverless Applications* (USENIX NSDI 2020) — [usenix.org/conference/nsdi20/presentation/agache](https://www.usenix.org/conference/nsdi20/presentation/agache)
 - **[5]** John Yang et al., *SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering* (NeurIPS 2024) — [arxiv.org/abs/2405.15793](https://arxiv.org/abs/2405.15793)
 - **[6]** IETF RFC 8693, *OAuth 2.0 Token Exchange (Delegated On-Behalf-Of Security Tokens)* — [datatracker.ietf.org/doc/html/rfc8693](https://datatracker.ietf.org/doc/html/rfc8693)
+"""
+    ),
+    (
+        "ch21-prompt-decoding-and-lora.md",
+        """# Chapter 21: Prompt Conditioning, Constrained Decoding (FSM/CFG) & LoRA/QLoRA Math
+
+*Part V · LLM Internals, Harnesses & Multimodal · 9 min core · 19 min with deep dives*
+
+Ask an LLM `"Extract the product, price, and stock status as JSON"` and `90%` of the time it works.
+
+The other `10%` of the time—usually at 3:00 AM under peak load—it replies `"Sure! Here is the JSON: {...}"` wrapped in markdown fences, drops a closing brace on token truncation, or invents `"inStock": "yes"` instead of a boolean, crashing your downstream microservice [1, 3].
+
+Closing the gap between **probabilistic token generation** and **deterministic software interfaces** requires mastering four layers below high-level frameworks: **prompt distribution conditioning**, **token-level constrained decoding**, **streamed parallel tool-call reassembly**, and **parameter-efficient fine-tuning (`LoRA` / `QLoRA`)** [1, 3, 6, 8].
+
+{{diagram:09-prompt-decoding-lora.excalidraw}}
+
+---
+
+### 1) Prompt Anatomy as Probability-Distribution Conditioning
+
+An LLM is trained over everything from peer-reviewed distributed-systems papers to zero-upvote forum posts. A prompt is not a magic incantation—it is a **prior that narrows conditional next-token probability `P(y_t | x, y_<t)`** onto the exact slice of behavior, format, and domain rigor you want [1]:
+
+1. **Separate the Three Message Slots:**
+   - **System Instruction:** Highest-priority behavioral contract, role invariants, and refusal/scope rules. Keep rules crisp (`<500–800` tokens) and free of internal contradictions (*"Be exhaustive"* + *"Stay under 50 words"*) so compliance does not degrade [1].
+   - **User Turn + XML Data Delimiters:** Wrap variable or untrusted inputs inside explicit tags (`<document>`, `<schema>`, `<examples>`) rather than mixing instructions and raw text in one paragraph [1].
+   - **Assistant Prefill / Output Contract:** Place immutable instructions at the very start (preserving Chapter 14's GPU KV prefix cache) and re-anchor the exact output contract at the very end of the prompt to counter U-shaped **Lost-in-the-Middle** attention decay [1, 2].
+2. **Constraint Taxonomy & Sampling Hygiene (`temperature` XOR `top_p`):**
+   - Pair **negative constraints** (*"Do NOT invent fields missing from `<document>`"*), **positive invariants** (*"Cite chunk IDs on every metric"*), and **conditional fallbacks** (*"If input is ambiguous, emit `status: needs_clarification`"*).
+   - Set `temperature = 0.0` for extraction, classification, routing, and code; `0.3` for analytical synthesis; `0.7–1.0` for creative ideation. **Never tune `temperature` and `top_p` simultaneously**—truncating nucleus probability mass after sharpening logits produces brittle, unpredictable sampling [1].
+
+---
+
+### 2) The Structured Output Spectrum & Constrained Decoding (`FSM` / `CFG`)
+
+Why does `"Respond only in JSON"` fail `5%–15%` of the time? Because at every decode step, the model samples from `100,000+` vocabulary tokens—and after emitting `{"price":`, thousands of English words have non-zero probability unless masked out at the decoder level [3, 4]:
+
+| Level | Mechanism | Schema Guarantee | Production Trade-Off |
+| :--- | :--- | :--- | :--- |
+| **1. Prompt-Only** | `"Return valid JSON matching..."` | **None (`~85–92%`)** | Fails on markdown fences, preambles, trailing commas, and smaller models [1]. |
+| **2. JSON Mode** | `response_format: json_object` | **Valid syntax only** | Parses as JSON, but keys may be missing, renamed, or wrong types [1, 5]. |
+| **3. Validate + Retry** | Pydantic / Zod parse -> feed validation error back | **High (after `1–3` retries)** | Multiplies tail latency (`2×–3×`) and token cost whenever validation trips [1]. |
+| **4. Constrained Decoding** | **JSON Schema (`2020-12`) -> FSM / CFG logit mask** (`Outlines`, `XGrammar`, Strict Mode) | **`100%` syntactic & schema compliance in `1` pass** | Zero retry latency; requires handling `length` truncation & typed `refusal` [3, 4, 5]. |
+
+**How Constrained Decoding Works Under the Hood (`Outlines` & `XGrammar`) [3, 4]:**
+1. Ahead of inference, the engine compiles your **JSON Schema** into a **Deterministic Finite Automaton (`FSM`)** for regular fields or a **Pushdown Automaton / Context-Free Grammar (`CFG`)** for nested recursive objects, pre-indexing valid token transitions across the model's `128k` subword vocabulary [3, 4].
+2. During each `10–25 ms` decode step, a `<50 µs` bitmask lookup sets the logit of every schema-violating token to **`-∞` prior to `softmax`**—making invalid JSON mathematically un-sampleable without hurting throughput [4]!
+3. **Three Branches Every Caller Must Still Handle [5]:** Even under strict grammar masking, always inspect (a) **`parsed` payload**, (b) **`finish_reason == "length"`** (output hit `max_tokens` mid-object), and (c) **typed `refusal`** (safety policy declined the request outside the target schema).
+
+:::deepdive Parallel Tool Calls, Streamed Argument Reassembly & Cross-Provider Traps | +5 min
+
+1. **Collapsing Fan-Out Latency with Parallel Tool Calls [5, 6, 7]:**
+   - Answering *"Compare latency in `us-east`, `eu-west`, and `ap-south`"* via serial ReAct takes `3` LLM turns + `3` sequential tool RTTs (`~4.2s`). With parallel tool calling enabled, the model emits **all `3` call objects in a single turn**, your host runs them via `asyncio.gather`, and wall-clock time drops to `max(t_1, t_2, t_3)`—cutting fan-out latency by **`60%–70%`** [6].
+   - **When You MUST Disable Parallel Calls (`parallel_tool_calls: false`):** Whenever tools have **stateful ordering dependencies** (`create_branch` before `commit_file`), mutate shared rows, or hit strict downstream concurrency caps [5, 6, 7].
+2. **The Streamed Partial-JSON & ID-Correlation Trap [5, 6, 7]:**
+   - Over streaming SSE, arguments for `3` concurrent calls arrive as interleaved partial strings (`delta.tool_calls[index].function.arguments` on OpenAI [5] or `input_json_delta` blocks keyed by `tool_use_id` on Anthropic [7]).
+   - **Never call `json.loads()` on partial stream chunks!** Maintain an isolated string accumulator per `(index, tool_call_id)`, parse JSON **only** on `finish_reason == "tool_calls"` / `content_block_stop`, and attach the exact `tool_call_id` to every `tool` result message so out-of-order completions correlate unambiguously [6].
+
+:::
+
+---
+
+### 3) Prompting vs. RAG vs. Fine-Tuning — And Exact `LoRA` / `QLoRA` Math
+
+Reach for the right customization lever before touching model weights [1, 8]:
+- **Prompting + Few-Shot:** Task rules, formatting, and reasoning scaffolds you can specify in `<2,000` tokens.
+- **RAG:** Volatile, factual, or ACL-scoped enterprise knowledge requiring freshness and source citations.
+- **Fine-Tuning (`LoRA` / `QLoRA`):** Consistent domain style/taxonomy, ultra-compact prompts (dropping `3,000` few-shot tokens per call), or **distilling a frontier planner/classifier into a cheap, `15 ms` `8B` model** [1, 8].
+
+**Why Full Fine-Tuning Blows Up VRAM (`~56 GB` for `8B`):**
+Updating all `8B` parameters in `FP16/BF16` requires `16 GB` (weights) + `16 GB` (gradients) + `32 GB` (`FP32` Adam momentum & variance states) ≈ **`64 GB` VRAM** *before* batch activations—and risks **catastrophic forgetting** of general reasoning [8, 9].
+
+**`LoRA` (*Low-Rank Adaptation*, Hu et al.) & `QLoRA` (*4-bit NF4*, Dettmers et al.) [8, 9]:**
+- Freeze pretrained weight matrix `W (d × d)` and inject two rank-`r` adapter matrices (`A` of shape `r × d`, `B` of shape `d × r` with `r << d`, typically `r = 8, 16, 32`):
+  `y = Wx + (α / r) · B · A · x`
+- On a `4096 × 4096` projection (`16,777,216` params), rank `r = 16` trains only `2 × 4096 × 16 = 131,072` params (**`0.78%` of weights!**). Initialize `A ~ N(0, σ²)` and **`B = 0`** so `(α / r) · B · A = 0` at Step 0 [8].
+- **`QLoRA`** quantizes frozen `W` into information-theoretically optimal **4-bit NormalFloat (`NF4`)** (`~4 GB` for `8B` weights) with double quantization and paged optimizers while keeping tiny `BF16` LoRA adapters trainable—fitting an `8B` fine-tune inside **`~6 GB` VRAM** at near-identical quality [9]!
+
+:::deepdive Serving LoRA at Scale (Merged Weights vs. S-LoRA) & Matryoshka Embeddings | +5 min
+
+1. **Zero-Latency Adapter Merge vs. Multi-Tenant `S-LoRA` Pool [8, 10]:**
+   - **Single production model:** Offline-compute `W_merged = W + (α / r) · B · A` (dequantizing `NF4` `W` to `BF16` first so 4-bit rounding does not crush small updates) and serve with **zero extra inference latency (`0 ms`)** [8, 9].
+   - **Hundreds of per-tenant adapters (`S-LoRA` in `vLLM`) [10]:** Keep **one shared frozen base model** (`16 GB`) in GPU HBM, batch the base `Wx` GEMM across all concurrent requests, and page `~50 MB` tenant-specific `(B_i, A_i)` adapters dynamically from unified memory via custom CUDA kernels—serving **thousands of custom models on a single GPU** [10].
+2. **Bonus Vector-RAM Lever — Matryoshka Representation Learning (`MRL`) [11]:**
+   - Modern embedding models (`text-embedding-3-large`, `Nomic`, `Qwen3-Embedding`) train nested prefixes (`d = 64, 128, 256, 512, ..., 3072`) simultaneously so early coordinates carry coarse semantic signal [11]. Truncating + L2-renormalizing `3072-d` embeddings down to **`512-d`** cuts HNSW RAM and network I/O by **`6×`** while retaining `97%+` of full-dimension retrieval Recall@10 [1, 11]!
+
+:::
+
+---
+
+### Analogy, Where It Breaks & Real System
+
+- **Real-world analogy:** **Prompting** is giving a chef a detailed recipe card; **Constrained Decoding** is pouring batter into a cast-iron waffle mold so it physically cannot bake into any other shape; **`LoRA`** is bolting a lightweight precision jig onto a factory press instead of melting and recasting the 10-ton steel machine.
+- **Where the analogy breaks:** A waffle mold guarantees **shape**, not **taste**! Constrained decoding guarantees `{"diagnosis": string, "confidence": float}` parses `100%` of the time, but cannot stop the model from putting a hallucinated diagnosis inside that valid string—you still need grounded context and semantic guardrails [3, 5].
+- **Real production system:** **OpenAI Structured Outputs**, **`vLLM` (`XGrammar` + `S-LoRA`)**, and **HuggingFace PEFT / bitsandbytes (`QLoRA`)** power grammar-guaranteed tool calls and multi-tenant adapter serving in production [4, 5, 9, 10].
+
+---
+
+### Quick Self-Check
+
+<details>
+<summary><strong>Q1: How does token-level Constrained Decoding guarantee 100% JSON Schema compliance without post-hoc retry loops?</strong></summary>
+<p><strong>Answer:</strong> It compiles the JSON Schema into a Finite State Machine (FSM) or Context-Free Grammar (CFG) over the tokenizer vocabulary and masks every syntactically or type-invalid next token to <code>-∞</code> logit before <code>softmax</code> at each decode step.</p>
+</details>
+
+<details>
+<summary><strong>Q2: What breaks if your streaming SSE client calls <code>json.loads()</code> as tool-call deltas arrive during parallel function calling?</strong></summary>
+<p><strong>Answer:</strong> Streamed tool arguments arrive as partial string slices interleaved across multiple concurrent calls. Parsing early throws syntax errors; you must buffer chunks per <code>(index, tool_call_id)</code> until the call block completes, then parse once and return results tagged with each <code>tool_call_id</code>.</p>
+</details>
+
+<details>
+<summary><strong>Q3: In LoRA (<code>y = Wx + (α / r) · B · A · x</code>), why is <code>A</code> initialized randomly while <code>B</code> is initialized to all zeros?</strong></summary>
+<p><strong>Answer:</strong> Setting <code>B = 0</code> makes <code>B · A = 0</code> on Step 0 so the model starts training from the exact pretrained base model distribution without injecting random initial noise, while non-zero <code>A</code> ensures non-zero gradients flow into <code>B</code> on the first backward pass.</p>
+</details>
+
+<details>
+<summary><strong>Q4: Why does full fine-tuning an 8B model take ~56–64 GB of GPU VRAM whereas 4-bit QLoRA fits in ~6 GB?</strong></summary>
+<p><strong>Answer:</strong> Full FP16 fine-tuning stores <code>16 GB</code> weights, <code>16 GB</code> full gradients, and <code>32 GB</code> FP32 Adam optimizer states across all 8B parameters. QLoRA freezes base weights in 4-bit NF4 (<code>~4 GB</code>) and stores gradients and Adam states only for the <code>&lt;1%</code> trainable LoRA adapter weights.</p>
+</details>
+
+---
+
+### Sources & References
+- **[1]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 11: Prompt Engineering, Structured Outputs, Embeddings & LoRA* — [aiengineeringfromscratch.com/learn/llm-engineering/prompt-engineering](https://aiengineeringfromscratch.com/learn/llm-engineering/prompt-engineering)
+- **[2]** Nelson F. Liu et al., *Lost in the Middle: How Language Models Use Long Contexts* (TACL 2024) — [arxiv.org/abs/2307.03172](https://arxiv.org/abs/2307.03172)
+- **[3]** Brandon T. Willard & Rémi Louf, *Efficient Guided Generation for Large Language Models (Outlines FSM)* (2023) — [arxiv.org/abs/2307.09702](https://arxiv.org/abs/2307.09702)
+- **[4]** Yixin Dong et al., *XGrammar: Flexible and Efficient Structured Generation Engine for Large Language Models* (2024) — [arxiv.org/abs/2411.15100](https://arxiv.org/abs/2411.15100)
+- **[5]** OpenAI Developers, *Function Calling & Structured Outputs Guide* — [platform.openai.com/docs/guides/function-calling](https://platform.openai.com/docs/guides/function-calling)
+- **[6]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 13: The Tool Interface & Parallel Streaming Tool Calls* — [aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface](https://aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface)
+- **[7]** Anthropic Documentation, *Tool Use Overview & Parallel Tool Execution* — [platform.claude.com/docs/en/agents-and-tools/tool-use/overview](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview)
+- **[8]** Edward J. Hu et al., *LoRA: Low-Rank Adaptation of Large Language Models* (ICLR 2022) — [arxiv.org/abs/2106.09685](https://arxiv.org/abs/2106.09685)
+- **[9]** Tim Dettmers et al., *QLoRA: Efficient Finetuning of Quantized LLMs* (NeurIPS 2023) — [arxiv.org/abs/2305.14314](https://arxiv.org/abs/2305.14314)
+- **[10]** Ying Sheng et al., *S-LoRA: Serving Thousands of Concurrent LoRA Adapters* (MLSys 2024) — [arxiv.org/abs/2311.03285](https://arxiv.org/abs/2311.03285)
+- **[11]** Aditya Kusupati et al., *Matryoshka Representation Learning* (NeurIPS 2022) — [arxiv.org/abs/2205.13147](https://arxiv.org/abs/2205.13147)
+"""
+    ),
+    (
+        "ch22-agent-harnesses-and-skills.md",
+        """# Chapter 22: Agent Harnesses ("Workbenches"), Portable Skills & Multi-Session Delegation
+
+*Part V · LLM Internals, Harnesses & Multimodal · 9 min core · 19 min with deep dives*
+
+Drop a frontier coding model into a real monorepo with nothing but a chat prompt—*"Add rate-limit headers to the checkout API"*—and watch how it fails:
+
+It edits four files, quietly modifies an unrelated auth config, floods its own context window with `60 KB` of raw test output, declares `"All done!"` while two integration tests are still red, and leaves zero structured state for the next session [1, 2].
+
+The model did not fail at writing code—**the harness failed at framing engineering work**. Production teams separate *model intelligence* from **Harness ("Workbench") Engineering** and **Portable Agent Skills (`SKILL.md`)** [1, 2, 3].
+
+{{diagram:10-agent-harness-and-skills.excalidraw}}
+
+---
+
+### 1) The 7 Surfaces of a Production Agent Harness ("Workbench")
+
+An orchestration framework (`LangGraph`, `Agents SDK`) runs the step loop; a **Workbench** is the deterministic operating environment around that loop—making **versioned repository files**, never volatile chat history, the system of record [1, 2]:
+
+| Workbench Surface | Artifact / Mechanism | Failure Mode When Missing |
+| :--- | :--- | :--- |
+| **1. Router Instructions** | Concise (`<150-line`) root `AGENTS.md` map + machine-checkable rules (startup, forbidden ops, definition of done). | Monolithic `3,000-word` instruction manuals rot and drown attention [1]. |
+| **2. Schema-First Repo State** | `agent_state.json` & `task_board.json` persisted via JSON Schema validation + atomic `tmp -> rename()` writes. | Next session restarts from zero or trusts hallucinated chat summaries [1]. |
+| **3. Idempotent Init Probe** | Fast startup script probing runtime versions, build cache, and baseline test health into `init_probe.json`. | Agent wastes 5 turns per session rediscovering broken local dependencies [1]. |
+| **4. Glob Scope Contract** | `allowed_globs`, `forbidden_globs` (`.github/workflows/**`), acceptance proofs, and rollback plan checked against `git diff`. | Unbounded scope creep and drive-by edits in unrelated subsystems [1]. |
+| **5. Bounded Feedback Runner** | Executes commands and records `{cmd, exit_code, head, tail, log_uri}` with deterministic byte truncation. | `80 KB` build logs blow token budgets, or agent ignores non-zero exit codes [1, 2]. |
+| **6. Verification Gate** | Deterministic function over lint + targeted tests + scope diff -> `verification_report.json` (**blocks on any red check**). | `"Looks good to me"` ships broken builds to `main` [1]. |
+| **7. Read-Only Reviewer Role** | Separate **Reviewer** pass (with **zero edit tools**) grading the diff + verification report against an explicit rubric. | Builder grades its own homework and rationalizes subtle regressions [1, 6]. |
+
+---
+
+### 2) Portable Agent Skills (`SKILL.md`) & 3-Tier Progressive Disclosure
+
+Suppose your engineering platform ships **200 domain skills** (`db-migration`, `incident-triage`, `k8s-rollout`, `openapi-lint`). Injecting all 200 full playbooks into every prompt burns `250,000+` tokens; injecting none forces engineers to memorize file paths [3, 4].
+
+Production runtimes treat **Skill Discovery and Disclosure as a 3-Tier Compiler Pipeline** [3, 4]:
+1. **Scope Precedence & Collision Policy:** Scan `Workspace (.agents/skills) -> User -> Org Policy -> Built-in` with an explicit precedence rank, logging rejected packages and shadowing collisions deterministically [4].
+2. **Three-Tier Context Budgeting:**
+   - **Tier 1 — Compact Catalog (`~60–100` tokens/skill):** Only `name` + sharp routing `description` (*"Use when X. Do NOT use for Y."*) enters the initial prompt—budgeted independently from working context [3, 4].
+   - **Tier 2 — Active `SKILL.md` Body:** Loaded into context **only after** explicit user (`/skill`) or implicit model selection [3].
+   - **Tier 3 — On-Demand Branch Resources & Scripts:** Specific reference files (`postgres.md` vs `mysql.md`) and deterministic validation scripts are read only when the active workflow branch needs them—canonicalizing paths via `realpath()` inside the skill root to block `..` traversal and symlink escapes [3, 4].
+3. **Security Invariant — Skills Are Context, Not Authority:** Activating a `SKILL.md` package **never grants tool permissions, creates a sandbox, or trusts untrusted repository data**; host capability policies, command allowlists, and OS sandboxing remain strictly independent layers [3, 4].
+
+:::deepdive Skill Routing Evals (Near-Misses & Abstention), 2x2 Invocation & Voyager Libraries | +5 min
+
+1. **The `2 × 2` Human-vs-Model Invocation Policy [4]:**
+   - Model `user_invocable` (slash-menu visibility) and `model_invocable` (auto-routing eligibility) as independent booleans: high-consequence workflows like `/cut-release` set `user_invocable: true, model_invocable: false`, while background `repo-style-guide` sets `model_invocable: true` [4].
+2. **Testing Skills Across 6 Independent Layers [4]:**
+   - Production skill CI gates test: (1) Package structure & YAML frontmatter schema, (2) **Trigger routing** across *positives*, *clear negatives*, **near-misses**, and **explicit abstention** (verifying the router picks *zero* skills when none apply!), (3) Artifact/instruction adherence, (4) Deterministic helper-script unit tests, (5) Path/command containment, and (6) **With-Skill vs. No-Skill A/B pass-rate delta** across repeated trials [4].
+3. **Executable Skill Libraries (`Voyager`, Wang et al.) [5]:**
+   - Rather than re-deriving primitive tool sequences from scratch, lifelong agents index **verified executable skill programs** by description embeddings—composing complex behaviors hierarchically once each new skill passes automated sandbox verification [5].
+
+:::
+
+---
+
+### 3) Parallel Worktree Delegation, Multi-Session Handoffs & The Feedback Ratchet
+
+- **Wave Isolation via `git worktree`:** Delegate subtasks in parallel **only** when their write scopes are provably disjoint! Compute dependency waves from the task DAG, assign each worker an isolated **`git worktree`** plus exclusive `allowed_globs`, and require a green `verification_report.json` from every worker before the integrator merges—never having the integrator rewrite worker code from scratch [1, 6].
+- **7-Field Machine-Generated Handoff Packets:** When a long task spans multiple sessions or hits `75%` context fullness, generate a structured handoff directly from workbench files—`(1) goal, (2) completed_ids, (3) base_sha & diff_stat, (4) latest_verification_verdict, (5) active_blockers, (6) architectural_decisions, (7) deterministic_first_next_step`—eliminating prose drift across compactions [1].
+
+:::deepdive The Feedback Ratchet: Promoting Every Agent Failure to the Earliest Deterministic Layer | +4 min
+
+When an agent makes a production mistake, appending *"IMPORTANT: Never do X!"* to `AGENTS.md` is the **weakest possible fix**. Over months, prose patches accumulate into contradictory prompt bloat [1].
+
+Instead, run a **Feedback Ratchet** that promotes every recurring correction to the **earliest deterministic layer** capable of preventing it [1]:
+
+| Layer (Strongest -> Weakest) | Mechanism | Reliability & Cost | Example Promotion |
+| :--- | :--- | :--- | :--- |
+| **1. Tool / State Schema** | Remove unsafe arg or tighten JSON Schema `enum` | **`100%`** (`0` tokens) | Remove `force: boolean` from `git_push` tool schema. |
+| **2. Pre-Execution Hook / Linter** | AST / regex / path-glob check in `<5 ms` | **`100%`** (`0` LLM hops) | Block edits touching `migrations/` without `migration-approved` label. |
+| **3. Verification Gate** | Deterministic unit/integration/diff assertion | **`100%` pre-merge** | Fail gate if public API changes lack OpenAPI snapshot update. |
+| **4. CI Golden / Adversarial Eval** | Saved replay trace in regression suite | **Catches model/prompt drift** | Add failing customer trace to pre-deploy eval gate. |
+| **5. `SKILL.md` / `AGENTS.md` Prose** | Scoped workflow judgment rule + **retirement condition** | **Probabilistic** (costs tokens) | Keep prose only where human/model judgment is genuinely required—and prune rules once upstream layers enforce them [1]! |
+
+:::
+
+---
+
+### Analogy, Where It Breaks & Real System
+
+- **Real-world analogy:** A frontier LLM without a harness is a brilliant surgeon operating in a dark room with no chart, no sterile field boundary, and no post-op vitals checklist. The **7-Surface Harness** is the operating theater, instrument tray (`SKILL.md` progressive trays), surgical boundary drape (`Scope Contract`), and independent pathology sign-off (`Verification Gate + Read-Only Reviewer`).
+- **Where the analogy breaks:** Hospital checklists rely on human discipline; software harnesses can enforce **100% deterministic refusal in code**—literally making it impossible for an agent to mark a task complete while `verification_report.json` has `exit_code != 0` [1].
+- **Real production system:** **SWE-agent's Agent-Computer Interface (ACI)**, **Claude Code / Codex `SKILL.md` & `AGENTS.md` harnesses**, and **GitHub Copilot Coding Agent** pair worktree isolation, bounded command viewers, progressive skill loading, and mandatory CI verification gates [1, 2, 3].
+
+---
+
+### Quick Self-Check
+
+<details>
+<summary><strong>Q1: Why should root <code>AGENTS.md</code> act as a short routing map (&lt;150 lines) rather than a 3,000-word encyclopedia of every team rule?</strong></summary>
+<p><strong>Answer:</strong> Every line in root <code>AGENTS.md</code> taxes every single turn of every task, diluting attention on rules that actually apply and quickly rotting out of sync with code. A compact router points the agent to subsystem docs and progressive <code>SKILL.md</code> files only when relevant.</p>
+</details>
+
+<details>
+<summary><strong>Q2: How does 3-Tier Progressive Disclosure let an agent support 200 installed skills without blowing its context window?</strong></summary>
+<p><strong>Answer:</strong> Tier 1 loads only compact <code>name + trigger description</code> metadata (~80 tokens/skill) into the catalog; Tier 2 loads the selected <code>SKILL.md</code> body only upon activation; Tier 3 loads branch-specific reference files or scripts strictly on demand.</p>
+</details>
+
+<details>
+<summary><strong>Q3: Why must the Reviewer Agent in a coding workbench have zero file-editing tools?</strong></summary>
+<p><strong>Answer:</strong> Separating Builder from Marker prevents self-licensing bias and silent scope drift: a read-only Reviewer inspects the diff, scope report, and deterministic test results against a rubric and emits structured findings without silently mutating code past the verification gate.</p>
+</details>
+
+<details>
+<summary><strong>Q4: According to the Feedback Ratchet, why shouldn't every agent bug postmortem end by adding another bullet to the system prompt?</strong></summary>
+<p><strong>Answer:</strong> Prose rules are probabilistic and consume context tokens forever. Promoting fixes to schema constraints, pre-execution path/command hooks, or deterministic verification gates guarantees <code>100%</code> prevention at zero token cost.</p>
+</details>
+
+---
+
+### Sources & References
+- **[1]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 14: Agent Workbench Engineering, Scope Contracts, Verification Gates & Feedback Ratchet* — [aiengineeringfromscratch.com/learn/agent-engineering/the-agent-loop](https://aiengineeringfromscratch.com/learn/agent-engineering/the-agent-loop)
+- **[2]** John Yang et al., *SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering* (NeurIPS 2024) — [arxiv.org/abs/2405.15793](https://arxiv.org/abs/2405.15793)
+- **[3]** Agent Skills Open Specification, *Portable `SKILL.md` Package Format, Progressive Disclosure & Trust Boundaries* — [agentskills.io/specification](https://agentskills.io/specification)
+- **[4]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 13: Skill Discovery, Trigger Routing, Permissions & 6-Layer Evals* — [aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface](https://aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface)
+- **[5]** Guanzhi Wang et al., *Voyager: An Open-Ended Embodied Agent with Large Language Models* (TMLR 2024) — [arxiv.org/abs/2305.16291](https://arxiv.org/abs/2305.16291)
+- **[6]** Anthropic Engineering, *Building Effective Agents* (2024) — [anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents)
+"""
+    ),
+    (
+        "ch23-multimodal-cua-and-voice-agents.md",
+        """# Chapter 23: Multimodal Agents — Computer-Use (GUI/DOM) & Sub-600ms Voice Pipelines
+
+*Part V · LLM Internals, Harnesses & Multimodal · 8 min core · 18 min with deep dives*
+
+Text-in, JSON-out agents work beautifully when every enterprise system exposes a clean REST or MCP API.
+
+Then reality hits: a hospital billing workflow lives inside a legacy desktop GUI with zero APIs, and a customer-support phone line demands natural spoken turn-taking in **under `600 milliseconds`**—including instant mid-sentence interruption when the caller says *"Hold on, wrong account!"* [1, 3, 6].
+
+Designing **Computer-Use Agents (`CUA`)** and **Real-Time Voice Agents** introduces two brutal systems constraints: **untrusted visual perception** and **sub-second bidirectional media streaming** [1, 3, 6, 7].
+
+{{diagram:11-multimodal-cua-and-voice.excalidraw}}
+
+---
+
+### 1) Computer-Use Agents (`CUA`): Pixel Grounding, DOM Hybrids & Untrusted Screens
+
+How does an agent drive arbitrary desktop or browser software? Production stacks trade off speed, generality, and precision across three observation surfaces [1, 2, 3, 4]:
+
+| Surface | What the Model Sees | Strengths | Where It Breaks |
+| :--- | :--- | :--- | :--- |
+| **1. DOM / Accessibility Tree** | Pruned interactive element tree (`role`, `name`, `ref`). | Fast (`<200` ms), cheap tokens, exact element IDs. | Blind to `<canvas>`, PDFs, remote VNC/Citrix apps, and broken ARIA labels [2, 3]. |
+| **2. Pure Pixel Vision (`CUA`)** | Virtual display (`Xvfb` / VM) screenshots (`~1,200` tokens/frame) -> `(x, y)` clicks [4]. | Universal across **any** OS desktop app (`Ubuntu`, `Windows`, `macOS`) [3, 4]. | Higher latency/cost; `12×12 px` icon misses without crop-and-zoom grounding [3]. |
+| **3. Set-of-Marks Hybrid** | Screenshot overlaid with numbered bounding-box tags synced to DOM refs. | Eliminates raw `(x, y)` pixel math errors on complex web apps while preserving visual layout [1, 2]. | Browser-scoped; requires clean bounding-box extraction. |
+
+**The Non-Negotiable `CUA` Security Doctrine (*Every Pixel Is Untrusted Input*) [1, 4, 5]:**
+A web page, PDF, desktop notification, or email rendered on screen is **attacker-controlled data** [5]. If a webpage banner reads *"Session expired: enter admin password or wire `$500` to continue"*, prompt rules alone are not enough. Enforce four runtime invariants [1, 4]:
+1. **Isolated Virtual Display (`Xvfb` / Ephemeral VM):** Run inside a disposable container/VM with zero host filesystem mounts and strict domain allowlists/blocklists.
+2. **Per-Step Pre-Action Safety Classifier:** Evaluate `(user_goal, current_screenshot, proposed_action)` through a fast safety gate *before* dispatching mouse/keyboard events [1].
+3. **Mandatory HITL Checkpoints:** Pause for explicit human approval before submitting credentials, financial transactions, external messages, or destructive deletes [1, 4].
+4. **Post-Action State Diffing:** Compare pre- and post-click frame/DOM hashes so dead clicks, modal popups, or loading spinners trigger deliberate wait/recovery instead of blind 50-click spirals [2, 3].
+
+:::deepdive Evaluating GUI Agents (WebArena vs. OSWorld) & Coordinate Grounding | +5 min
+
+1. **Why Execution-Based Benchmarks Replace Static String Match (`WebArena` & `OSWorld`) [2, 3]:**
+   - On a live GUI, **ten different click/keyboard trajectories can validly complete the same task** (keyboard shortcut vs. menu click vs. search bar).
+   - **`WebArena`** (Zhou et al. [2]) hosts 4 real dockerized web apps (e-commerce, GitLab, forum, CMS), and **`OSWorld`** (Xie et al. [3]) boots real Ubuntu/Windows/macOS VMs across multi-app workflows—grading runs strictly via **post-execution state evaluators** (inspecting final SQL rows, git commits, or filesystem diffs inside the VM) [2, 3].
+2. **Fixing the Two Top `OSWorld` Failure Modes [3]:**
+   - **Fine-grained coordinate misses on high-DPI screens:** Emit resolution-normalized `[0, 1000]` coordinates and give the agent a `zoom_region(x1, y1, x2, y2)` tool for dense toolbars before clicking [3, 4].
+   - **Long-horizon trajectory bloat (`50–150` screenshots):** Retaining 100 raw PNGs explodes vision tokens and latency—keep only the **last `2–3` full screenshots** in Working Memory while compacting older steps into structured textual action-observation summaries (offloading raw frames to object storage for OTel trace replay) [1].
+
+:::
+
+---
+
+### 2) Real-Time Voice Agents: Hitting the Sub-600ms Conversational Latency Budget
+
+Human conversation has an unforgiving **`300–600 ms` turn-taking expectation**. Chaining blocking HTTP calls (`upload WAV -> full Whisper STT -> non-streaming LLM -> full MP3 TTS`) takes **`2,500–4,000 ms`**—producing awkward walkie-talkie silence [1, 6, 7].
+
+Production voice agents (`Pipecat`, `LiveKit Agents`) hit **`~450–600 ms`** voice-to-voice using **WebRTC (`UDP` + Opus)** and a **streaming frame pipeline** [6, 7]:
+
+| Pipeline Stage | Target Budget | Engineering Trick That Keeps It Fast |
+| :--- | :--- | :--- |
+| **1. WebRTC Media Ingress** | **`~35–50 ms`** | **UDP/SRTP** via nearest edge SFU avoids TCP head-of-line packet-loss stalls [7]. |
+| **2. VAD + Turn-End Model** | **`~40–60 ms`** | Local `Silero VAD` + lightweight semantic turn-completion model [6, 7]. |
+| **3. Streaming Partial `STT`** | **`~120–160 ms`** | Stream `20 ms` PCM frames continuously so transcript finalizes right as speech stops [6]. |
+| **4. Streaming `LLM` (`TTFT`)** | **`~150–220 ms`** | KV-cached system prefix + concise spoken-style prompt (`1–2` short sentences, zero markdown!) [1]. |
+| **5. Clause-Chunked `TTS`** | **`~120–160 ms`** | Flush tokens to streaming TTS at the **first clause boundary** (`,` / `.` / `?`), streaming first PCM audio frames immediately -> **`~550 ms` E2E** [6, 7]! |
+
+**Streaming Cascade (`STT -> LLM -> TTS`) vs. Native Speech-to-Speech (`Realtime Multimodal`) [1, 7]:**
+- **Native Speech-to-Speech (`~300–450 ms`):** Lowest latency and preserves tone/emotion/laughter directly in audio tokens, but costs `4×–8×` more per minute and makes deterministic text guardrails/redaction harder.
+- **Streaming Cascade (`~550–800 ms`):** Exposes an explicit text boundary between STT, LLM, and TTS—giving regulated enterprise teams **exact PII scrubbing, deterministic tool-call gating, cheap model routing, and searchable transcripts** [6, 7].
+
+:::deepdive Barge-In Cancellation Races, Semantic Turn Detection & Telephony SIP | +5 min
+
+1. **Bidirectional Frame Bus & `<50 ms` Mid-Sentence Barge-In (`Pipecat` / `LiveKit`) [6, 7]:**
+   - In `Pipecat`, processors form a linked pipeline with **two distinct flow directions**: **`DOWNSTREAM`** carries data (`InputAudioRawFrame -> TranscriptionFrame -> LLMTextFrame -> TTSAudioRawFrame`), while **`UPSTREAM`** carries priority control signals (`UserStartedSpeakingFrame`, `CancelFrame`) [6].
+   - When the user interrupts mid-sentence (*barge-in*), client-side **Acoustic Echo Cancellation (`AEC`)** isolates the user's voice from speaker playback, `VAD` emits an immediate **priority `CancelFrame`**, the WebRTC output buffer flushes in **`<50 ms`** so the agent stops talking *instantly*, in-flight LLM + TTS tasks cancel, and **conversation history records only the prefix of words actually spoken before the cutoff** (using TTS word-level alignment timestamps) so the model knows what the caller heard [6, 7]!
+2. **Acoustic VAD + Semantic Turn Detection [7]:**
+   - Pure silence timers (`400 ms`) cut callers off mid-thought (*"My policy number is... uh..."*), while `1,200 ms` timers feel sluggish after *"Yes."* Pairing `VAD` with a `<25 ms` **semantic turn-end classifier** dynamically extends wait time on incomplete clauses and triggers immediately on complete utterances [7].
+3. **Low-Confidence ASR & PSTN/SIP Safety:** On `8 kHz` telephony (`SIP` trunks) or noisy cellular mics, gate consequential tools (`cancel_flight`, `wire_transfer`) behind **explicit verbal read-back confirmation** whenever ASR confidence is low or numeric IDs are spoken [1, 6, 7].
+
+:::
+
+---
+
+### Analogy, Where It Breaks & Real System
+
+- **Real-world analogy:** A **Computer-Use Agent** is a human temp using your screen through remote desktop while looking over untrusted incoming mail; a **Voice Pipeline** is a simultaneous UN interpreter who starts translating Clause 1 into the microphone while listening for the speaker to interrupt on Clause 2.
+- **Where the analogy breaks:** When a human gets interrupted mid-sentence, they naturally remember which word left their mouth last. An LLM pre-generates `80` tokens in `400 ms` while TTS has only spoken `12` words aloud over `3 seconds`—without **TTS word-timestamp truncation**, the LLM falsely assumes the user heard all `80` tokens [6, 7]!
+- **Real production system:** **Anthropic Claude Computer Use / OpenAI CUA / Gemini Computer Use** power sandboxed GUI automation, while **LiveKit Agents** and **Pipecat** power sub-600ms WebRTC & SIP voice agents in production [4, 6, 7].
+
+---
+
+### Quick Self-Check
+
+<details>
+<summary><strong>Q1: Why must a Computer-Use Agent treat every screenshot and DOM node as untrusted data rather than instructions?</strong></summary>
+<p><strong>Answer:</strong> Web pages, emails, and documents rendered on screen are controlled by external parties and can embed visual or DOM prompt injections (e.g., fake system dialogs). Only direct user instructions carry authority, enforced via domain allowlists, per-step safety classifiers, and HITL gates on sensitive actions.</p>
+</details>
+
+<details>
+<summary><strong>Q2: Why do benchmarks like <code>WebArena</code> and <code>OSWorld</code> grade GUI agents on final VM/database state instead of matching a reference click sequence?</strong></summary>
+<p><strong>Answer:</strong> Because GUI tasks admit many valid action trajectories (keyboard shortcuts, search bars, or menu navigation). Inspecting final database rows, git commits, or files verifies true task completion without penalizing valid alternative paths.</p>
+</details>
+
+<details>
+<summary><strong>Q3: How does a streaming voice cascade (<code>VAD -&gt; STT -&gt; LLM -&gt; TTS</code>) hit ~580 ms latency instead of 3+ seconds, and why use WebRTC over HTTP/TCP?</strong></summary>
+<p><strong>Answer:</strong> Every stage streams incrementally—partial ASR feeds the LLM immediately, and LLM tokens flush to TTS at the very first clause boundary rather than waiting for full completion—while WebRTC over UDP avoids TCP head-of-line packet-retransmission stalls.</p>
+</details>
+
+<details>
+<summary><strong>Q4: When a caller barges in 2 seconds into a 10-second agent reply, what three things must happen immediately?</strong></summary>
+<p><strong>Answer:</strong> (1) Flush the WebRTC playback buffer within <code>&lt;50 ms</code> so audio stops immediately, (2) cancel the in-flight LLM and TTS streams via an upstream <code>CancelFrame</code>, and (3) truncate the assistant's recorded transcript turn using TTS word-alignment timestamps so context reflects only what the caller actually heard.</p>
+</details>
+
+---
+
+### Sources & References
+- **[1]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 14: Computer-Use Agents & Real-Time Voice Agents* — [aiengineeringfromscratch.com/learn/agent-engineering/the-agent-loop](https://aiengineeringfromscratch.com/learn/agent-engineering/the-agent-loop)
+- **[2]** Shuyan Zhou et al., *WebArena: A Realistic Web Environment for Building Autonomous Agents* (ICLR 2024) — [arxiv.org/abs/2307.13854](https://arxiv.org/abs/2307.13854)
+- **[3]** Tianbao Xie et al., *OSWorld: Benchmarking Multimodal Agents for Open-Ended Tasks in Real Computer Environments* (NeurIPS 2024) — [arxiv.org/abs/2404.07972](https://arxiv.org/abs/2404.07972)
+- **[4]** Anthropic Documentation, *Computer Use & Tool Use Architecture* — [platform.claude.com/docs/en/agents-and-tools/tool-use/overview](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview)
+- **[5]** Kai Greshake et al., *Not What You've Signed Up For: Indirect Prompt Injection* (AISec 2023) — [arxiv.org/abs/2302.12173](https://arxiv.org/abs/2302.12173)
+- **[6]** Pipecat Open Source Framework, *Frame-Based Real-Time Voice & Multimodal Agent Pipeline* — [github.com/pipecat-ai/pipecat](https://github.com/pipecat-ai/pipecat)
+- **[7]** LiveKit Documentation, *LiveKit Agents: WebRTC Voice Pipelines, Semantic Turn Detection & Barge-In* — [docs.livekit.io/agents](https://docs.livekit.io/agents/)
 """
     ),
 ]

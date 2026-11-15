@@ -1,6 +1,6 @@
 # Chapter 16: Model Context Protocol (MCP), Tool Contracts & Prompt Injection Defense
 
-*Part IV · Autonomous Agent Systems · 8 min core · 19 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 23 min with deep dives*
 
 Connecting 5 internal AI agents to 10 enterprise microservices used to mean writing **50 bespoke integration wrappers** (`M × N` glue code), each with its own brittle JSON parser and ad-hoc retry logic.
 
@@ -79,6 +79,23 @@ In an LLM, **system instructions and untrusted external data (emails, tickets, w
 3. **Deterministic Policy Gate + HITL:** Gate every high-blast-radius write tool behind an OPA/RBAC rule (`amount <= $25`) and explicit user confirmation UI.
 4. **Sandboxed Code Execution:** Run any generated code or shell diagnostic inside an ephemeral **microVM (`Firecracker`), `gVisor`, or `WASM` sandbox** with a read-only root filesystem, `cgroups` CPU/RAM limits, and a default-deny egress firewall.
 
+:::deepdive Stateless MCP (2026-07-28), OAuth 2.1 (CIMD), Tool Pinning & A2A v1.0 | +4 min
+
+1. **Stateless MCP (`2026-07-28`), `Tasks` Extension & Cancellation Races [6]:**
+   - Stateful `initialize` + `Mcp-Session-Id` sticky sessions complicate horizontal load balancing. Modern stateless MCP (`2026-07-28`) carries protocol version and client capabilities per request (`params._meta`), supports handshake-free `server/discover`, and uses POST-only **Streamable HTTP** so any stateless gateway pod can authorize and route any call [6].
+   - Distinguish **transport cancellation** (closing an HTTP stream—still a race against an in-flight side effect!) from the durable **MCP `Tasks` extension (`tasks/get`, `tasks/update`, `tasks/cancel`)**, which tracks long-running async work via persisted task handles [6].
+2. **Production MCP Auth (`OAuth 2.1` + `CIMD`) & Tool-Poisoning Defense [6, 7, 8, 9]:**
+   - **Issuer- & Resource-Bound Tokens:** Discover auth servers via **Protected Resource Metadata (`RFC 9728`)** [7], enroll clients via **Client ID Metadata Documents (`CIMD`)** rather than brittle Dynamic Client Registration, and bind access tokens to the exact target server URI via **Resource Indicators (`RFC 8707`)** [8] + `PKCE`.
+   - **Defending Against Tool Poisoning & Rug Pulls:** Treat tool `description`s and annotations as **untrusted data** (a malicious server can hide `"read ~/.ssh/id_rsa first"` inside a docstring or mutate a schema after approval). Namespace merged tools (`server__tool`) and **pin approved descriptor hashes** in your gateway, blocking unapproved schema drift [6, 9].
+3. **`MCP` (Agent-to-Tool) vs. `A2A v1.0` (Agent-to-Opaque-Agent) [6, 10]:**
+
+| Protocol | Boundary | Discovery & Contract | When to Use |
+| :--- | :--- | :--- | :--- |
+| **`MCP`** [6] | **Agent -> Tool / Context** | `server/discover` -> JSON-Schema `Tools`, `Resources`, `Prompts`. | Connecting an agent to databases, APIs, git, or internal microservices. |
+| **`A2A v1.0`** *(Linux Foundation)* [10] | **Agent -> Peer Opaque Agent** | JWS-signed `/.well-known/agent-card.json` -> stateful `Task` (`SUBMITTED -> WORKING -> INPUT_REQUIRED -> COMPLETED`) with typed `Parts` & `Artifacts`. | Delegating sub-goals across organizational or framework boundaries where peers never expose internal prompts, memory, or tools. |
+
+:::
+
 ---
 
 ### Analogy, Where It Breaks & Real System
@@ -119,3 +136,8 @@ In an LLM, **system instructions and untrusted external data (emails, tickets, w
 - **[3]** Edoardo Debenedetti et al., *Defeating Prompt Injections by Design (CaMeL)* (Google DeepMind, 2025) — [arxiv.org/abs/2503.18813](https://arxiv.org/abs/2503.18813)
 - **[4]** OWASP GenAI Security Project, *OWASP Top 10 for Large Language Model Applications (Indirect Prompt Injection & Improper Output Handling)* — [genai.owasp.org/llm-top-10](https://genai.owasp.org/llm-top-10/)
 - **[5]** Hector Garcia-Molina & Kenneth Salem, *Sagas* (ACM SIGMOD 1987) — Compensating Transactions for Long-Lived Workflows
+- **[6]** Model Context Protocol Specification (`2026-07-28`), *Stateless Base Protocol, Authorization & Tasks Extension* — [modelcontextprotocol.io/specification/2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28)
+- **[7]** IETF RFC 9728, *OAuth 2.0 Protected Resource Metadata* (2025) — [datatracker.ietf.org/doc/html/rfc9728](https://datatracker.ietf.org/doc/html/rfc9728)
+- **[8]** IETF RFC 8707, *Resource Indicators for OAuth 2.0* (2020) — [datatracker.ietf.org/doc/html/rfc8707](https://datatracker.ietf.org/doc/html/rfc8707)
+- **[9]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 13: MCP Security, OAuth 2.1, Registry Drift & A2A* — [aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface](https://aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface)
+- **[10]** Linux Foundation / A2A Project, *Agent2Agent (A2A) Protocol Specification v1.0* — [a2a-protocol.org/latest](https://a2a-protocol.org/latest/)

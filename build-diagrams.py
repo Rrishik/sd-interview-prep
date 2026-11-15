@@ -480,6 +480,80 @@ arrow(els9, "acs2_4", 276, 432, 298, 432)
 arrow(els9, "acs2_5", 522, 432, 544, 432)
 arrow(els9, "acs2_6", 768, 432, 790, 432)
 
+
+# ==============================================================================
+# DIAGRAM 10: 09-prompt-decoding-lora.excalidraw
+# ==============================================================================
+els10 = []
+els10.append(text_el("pd_title", 40, 18, 980, 34, "Prompt Anatomy, Constrained Decoding (FSM/CFG), Parallel Tools & LoRA/QLoRA", size=22, family=2))
+els10.append(text_el("pd_sub", 40, 52, 980, 22, "Token Logit Masking (Outlines / XGrammar)  •  Streamed Tool-ID Accumulators  •  Low-Rank Adapters (y = Wx + α/r BAx)", size=13, family=3, color="#475569"))
+
+container(els10, "pd_c1", 40, 90, 980, 205, "1. PROMPT CONDITIONING, CONSTRAINED DECODING (FSM/CFG) & PARALLEL STREAMING TOOLS", stroke="#1d4ed8", dash="solid")
+lib_node(els10, "pd_pr", 56, 135, 220, 135, "1. Prompt Layout", "System -> Tools -> Docs\nXML tags + start/end\ntemp XOR top_p", LIB_SD, 9, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els10, "pd_fs", 298, 135, 224, 135, "2. FSM Logit Mask", "JSON Schema -> CFG/FSM\nInvalid tokens = -inf\n100% valid or Refusal", LIB_SD, 18, stroke="#047857", bg="#ecfdf5")
+lib_node(els10, "pd_ac", 544, 135, 224, 135, "3. Chunk Buffer", "Buffer per tool_call_id\nNever parse JSON early!\nCorrelate out-of-order", LIB_SW, 2, stroke="#b45309", bg="#fffbeb")
+lib_node(els10, "pd_pf", 790, 135, 212, 135, "4. Parallel Fan-Out", "Concurrent executors\nWall time = max(t_i)\n60-70% latency cut", LIB_SD, 2, stroke="#6d28d9", bg="#f5f3ff")
+arrow(els10, "apd1", 276, 202, 298, 202)
+arrow(els10, "apd2", 522, 202, 544, 202)
+arrow(els10, "apd3", 768, 202, 790, 202)
+
+container(els10, "pd_c2", 40, 320, 980, 205, "2. PARAMETER-EFFICIENT FINE-TUNING: LORA LOW-RANK ADAPTERS & 4-BIT QLORA SERVING", stroke="#047857", dash="solid")
+lib_node(els10, "pd_ql", 56, 365, 294, 135, "Frozen Base Weights (NF4)", "• 8B full FT = ~56 GB VRAM\n• 4-bit NF4 QLoRA = ~6 GB VRAM\n• Prevents catastrophic forgetting", LIB_SD, 6, stroke="#334155", bg="#f8fafc")
+lib_node(els10, "pd_lr", 383, 365, 294, 135, "LoRA Adapter (Wx + α/r BAx)", "• r=16 on 4096x4096 = 0.78% params\n• Init A ~ N(0,σ²), B = 0 (clean start)\n• Ideal for style, format & planners", LIB_SD, 18, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els10, "pd_mg", 710, 365, 292, 135, "Merge vs S-LoRA Serving", "• Single adapter: W' = W + α/r BA\n  (0 ms extra inference latency!)\n• Multi-tenant: vLLM S-LoRA pool", LIB_SW, 4, stroke="#047857", bg="#ecfdf5")
+arrow(els10, "apd4", 350, 432, 383, 432)
+arrow(els10, "apd5", 677, 432, 710, 432)
+
+
+# ==============================================================================
+# DIAGRAM 11: 10-agent-harness-and-skills.excalidraw
+# ==============================================================================
+els11 = []
+els11.append(text_el("ah_title", 40, 18, 980, 34, "Agent Harness ('Workbench') Architecture & Portable SKILL.md Disclosure", size=22, family=2))
+els11.append(text_el("ah_sub", 40, 52, 980, 22, "7 Workbench Surfaces  •  Repo as System of Record  •  3-Tier Skill Disclosure  •  Worktree Wave Isolation", size=13, family=3, color="#475569"))
+
+container(els11, "ah_c1", 40, 90, 980, 205, "1. THE 7-SURFACE AGENT HARNESS ('WORKBENCH') LOOP — REPOSITORY AS SYSTEM OF RECORD", stroke="#1d4ed8", dash="solid")
+lib_node(els11, "ah_sc", 56, 135, 218, 135, "1. Scope & State", "Short AGENTS.md map\nTyped agent_state.json\nAllow/deny file globs", LIB_SD, 9, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els11, "ah_wk", 296, 135, 224, 135, "2. Worktree Run", "Isolated git worktree\nIdempotent init probe\nBounded log excerpts", LIB_SW, 4, stroke="#047857", bg="#ecfdf5")
+lib_node(els11, "ah_vg", 542, 135, 226, 135, "3. Gate & Review", "Deterministic diff/test\nRead-only Reviewer\nBuilder != Marker!", LIB_SD, 16, stroke="#dc2626", bg="#fef2f2")
+lib_node(els11, "ah_ho", 790, 135, 212, 135, "4. Handoff Packet", "7-field state resume\nFeedback ratchet\n0 chat-history rot", LIB_SD, 6, stroke="#6d28d9", bg="#f5f3ff")
+arrow(els11, "aah1", 274, 202, 296, 202)
+arrow(els11, "aah2", 520, 202, 542, 202)
+arrow(els11, "aah3", 768, 202, 790, 202)
+
+container(els11, "ah_c2", 40, 320, 980, 205, "2. PORTABLE AGENT SKILLS (SKILL.MD) — 3-TIER PROGRESSIVE DISCLOSURE COMPILER", stroke="#b45309", dash="solid")
+lib_node(els11, "ah_t1", 56, 365, 294, 135, "Tier 1: Compact Catalog", "• Scope precedence + collision rule\n• Name + positive/near-miss triggers\n• ~80 tokens/skill + abstain option", LIB_SD, 13, stroke="#b45309", bg="#fffbeb")
+lib_node(els11, "ah_t2", 383, 365, 294, 135, "Tier 2: Active SKILL.md", "• Loaded only after trigger match\n• Procedural steps & output schema\n• Context != tool permission grant!", LIB_SD, 9, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els11, "ah_t3", 710, 365, 292, 135, "Tier 3: Bounded Resources", "• On-demand scripts & branch refs\n• realpath() blocks symlink escape\n• Verified via 6-layer skill evals", LIB_SW, 6, stroke="#047857", bg="#ecfdf5")
+arrow(els11, "aah4", 350, 432, 383, 432, "On select")
+arrow(els11, "aah5", 677, 432, 710, 432, "On demand")
+
+
+# ==============================================================================
+# DIAGRAM 12: 11-multimodal-cua-and-voice.excalidraw
+# ==============================================================================
+els12 = []
+els12.append(text_el("mm_title", 40, 18, 980, 34, "Multimodal Agents: Computer-Use (GUI/DOM) & Sub-600ms Voice Pipelines", size=22, family=2))
+els12.append(text_el("mm_sub", 40, 52, 980, 22, "Pixel/DOM Grounding  •  Untrusted Screen Rule  •  WebRTC Frame Pipeline  •  Upstream Barge-In Cancel", size=13, family=3, color="#475569"))
+
+container(els12, "mm_c1", 40, 90, 980, 205, "1. COMPUTER-USE AGENT (CUA) LOOP — PIXEL GROUNDING & PER-STEP SAFETY GATE", stroke="#1d4ed8", dash="solid")
+lib_node(els12, "mm_vm", 56, 135, 218, 135, "1. Virtual Display", "Isolated Xvfb / browser\nScreenshots + DOM\nDomain allowlists", LIB_SW, 5, stroke="#334155", bg="#f8fafc")
+lib_node(els12, "mm_vg", 296, 135, 224, 135, "2. Pixel Grounding", "Predicts (x,y) action\nScreen = UNTRUSTED\nUser = sole authority", LIB_SD, 23, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els12, "mm_sf", 542, 135, 226, 135, "3. Per-Step Safety", "Pre-click classifier\nHITL on login/pay/del\nBlocks GUI injection", LIB_SD, 16, stroke="#dc2626", bg="#fef2f2")
+lib_node(els12, "mm_ex", 790, 135, 212, 135, "4. Act & Observe", "Mouse / key dispatch\nPost-click visual diff\nOTel frame pointers", LIB_SD, 7, stroke="#047857", bg="#ecfdf5")
+arrow(els12, "amm1", 274, 202, 296, 202)
+arrow(els12, "amm2", 520, 202, 542, 202)
+arrow(els12, "amm3", 768, 202, 790, 202)
+
+container(els12, "mm_c2", 40, 320, 980, 205, "2. SUB-600MS REAL-TIME VOICE PIPELINE (BIDIRECTIONAL WEBRTC / PIPECAT FRAMES)", stroke="#6d28d9", dash="solid")
+lib_node(els12, "mm_vd", 56, 365, 220, 135, "1. WebRTC + VAD", "UDP media (~45 ms)\nSilero VAD (~35 ms)\nSemantic turn-end", LIB_SD, 22, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els12, "mm_st", 298, 365, 222, 135, "2. Streaming STT", "Partial ASR (~150 ms)\nConfidence threshold\nStreams to LLM", LIB_SD, 18, stroke="#047857", bg="#ecfdf5")
+lib_node(els12, "mm_lt", 542, 365, 224, 135, "3. LLM + TTS Pipe", "LLM TTFT (~200 ms)\nClause TTS (~150 ms)\nTotal E2E ~580 ms!", LIB_SD, 2, stroke="#6d28d9", bg="#f5f3ff")
+lib_node(els12, "mm_bi", 788, 365, 214, 135, "4. Barge-In Ctrl", "User speaks mid-turn:\nUPSTREAM CancelFrame\nflushes TTS <50 ms", LIB_SW, 1, stroke="#b45309", bg="#fffbeb")
+arrow(els12, "amm4", 276, 432, 298, 432)
+arrow(els12, "amm5", 520, 432, 542, 432)
+arrow(els12, "amm6", 766, 432, 788, 432, "Interrupt")
+
 diagrams = {
     "01-kafka-and-redis.excalidraw": els1,
     "02-database-sharding-keys.excalidraw": els2,
@@ -490,6 +564,9 @@ diagrams = {
     "06-mcp-evals-reactive.excalidraw": els7,
     "07-durable-agent-runtime.excalidraw": els8,
     "08-agent-case-studies.excalidraw": els9,
+    "09-prompt-decoding-lora.excalidraw": els10,
+    "10-agent-harness-and-skills.excalidraw": els11,
+    "11-multimodal-cua-and-voice.excalidraw": els12,
     # Keep mock0-notification-system.excalidraw synced so existing links never break
     "mock0-notification-system.excalidraw": els3,
 }

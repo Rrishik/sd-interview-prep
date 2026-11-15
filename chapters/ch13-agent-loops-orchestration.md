@@ -1,6 +1,6 @@
 # Chapter 13: Agent Loop Architectures (ReAct, Plan-and-Execute & Multi-Agent DAGs)
 
-*Part IV · Autonomous Agent Systems · 8 min core · 18 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 22 min with deep dives*
 
 When people first hear **"AI Agent,"** they often picture something mystical—a digital coworker improvising freely inside a GPU.
 
@@ -76,6 +76,23 @@ When orchestrating multiple agents, the first architectural decision is **who ow
 - **Hard Loop Ceilings:** Enforce strict caps on `max_steps` (e.g., `6`), `max_token_budget`, and `wall_clock_timeout_ms`, plus duplicate call detection (`hash(tool_name + canonical_args)`) to break retry loops immediately.
 - **Precision First on Write Actions:** When an agent can mutate user settings or production records, a **False Positive** breaks state (high blast radius), while a **False Negative** safely falls back to standard search. Tune thresholds for **`>90%` precision** first, then expand tool coverage to raise recall.
 
+:::deepdive Native Reasoning Channels, ReWOO, CRITIC, Reflexion & LATS Search | +4 min
+
+1. **From Prompt `Thought:` Strings to Native Reasoning Channels [1, 11]:**
+   - Early 2022 ReAct prompted models to print literal `"Thought: ..."` strings inside the visible assistant reply [1]. Modern reasoning APIs (`Responses API`, `Extended Thinking`) move internal reasoning onto a **dedicated reasoning channel** passed (often encrypted) across tool turns—preserving multi-step latent plans without leaking raw chain-of-thought into user replies [11].
+2. **Advanced Reasoning & Search Loops (`ReWOO`, `CRITIC`, `Reflexion`, `LATS`):**
+
+| Pattern | Core Mechanism | Token & Latency Profile | Best Production Use Case |
+| :--- | :--- | :--- | :--- |
+| **`ReWOO`** *(Xu et al.)* [6] | **Planner** emits full step graph with `#E1`, `#E2` placeholders; **Workers** run tools without chat history; **Solver** answers once. | **`~5×` fewer tokens** than ReAct; enables distilling Planner into a `7B–8B` model. | Known-tool research & multi-API lookups where observations don't alter topology. |
+| **`CRITIC`** *(Gou et al.)* [7, 8] | Replaces ungrounded `Self-Refine` [7] with **external verifier feedback** (compiler, unit tests, SQL `EXPLAIN`, calculator) on each critique loop. | `2–4` turns; high precision because feedback is deterministic truth. | Code/SQL synthesis, schema repair, and factual claim verification. |
+| **`Reflexion`** *(Shinn et al.)* [9] | On trial failure, a **Self-Reflector** writes a short verbal postmortem into an episodic buffer prepended to the next attempt (*Verbal RL*). | `2–3` full episode retries, zero weight updates. | Iterative test-fixing and multi-step debugging tasks. |
+| **`ToT` / `LATS`** *(Yao; Zhou et al.)* [10] | **Monte Carlo Tree Search (`MCTS`)** over reasoning/action branches (`Select -> Expand -> Simulate -> Backpropagate`). | **`10–30×` token multiplier** (never run over non-idempotent write tools!). | High-stakes offline code synthesis, theorem proving, or complex planning. |
+
+3. **State Graphs vs. Actor Mailboxes [11]:** Use **Checkpointed State Graphs** (typed shared state + deterministic node reducers) for auditable single-workflow orchestration, and **Async Actor Runtimes** (isolated per-agent message mailboxes with independent crash supervision) for event-driven multi-agent concurrency.
+
+:::
+
 ---
 
 ### Analogy, Where It Breaks & Real System
@@ -116,3 +133,9 @@ When orchestrating multiple agents, the first architectural decision is **who ow
 - **[3]** Sehoon Kim et al., *An LLM Compiler for Parallel Function Calling* (ICML 2024) — [arxiv.org/abs/2312.04511](https://arxiv.org/abs/2312.04511)
 - **[4]** Anthropic Engineering, *How We Built Our Multi-Agent Research System* (2025) — [anthropic.com/research/multi-agent-research-system](https://www.anthropic.com/research/multi-agent-research-system)
 - **[5]** OpenAI Developers, *Orchestrating Multiple Agents: Handoffs vs. Agents-as-Tools* (2025–2026) — [developers.openai.com/api/docs/guides/agents/orchestration](https://developers.openai.com/api/docs/guides/agents/orchestration)
+- **[6]** Binfeng Xu et al., *ReWOO: Decoupling Reasoning from Observations for Efficient Augmented Language Models* (2023) — [arxiv.org/abs/2305.18323](https://arxiv.org/abs/2305.18323)
+- **[7]** Aman Madaan et al., *Self-Refine: Iterative Refinement with Self-Feedback* (NeurIPS 2023) — [arxiv.org/abs/2303.17651](https://arxiv.org/abs/2303.17651)
+- **[8]** Zhibin Gou et al., *CRITIC: Large Language Models Can Self-Correct with Tool-Interactive Critiquing* (ICLR 2024) — [arxiv.org/abs/2305.11738](https://arxiv.org/abs/2305.11738)
+- **[9]** Noah Shinn et al., *Reflexion: Language Agents with Verbal Reinforcement Learning* (NeurIPS 2023) — [arxiv.org/abs/2303.11366](https://arxiv.org/abs/2303.11366)
+- **[10]** Andy Zhou et al., *Language Agent Tree Search (LATS)* (ICML 2024) — [arxiv.org/abs/2310.04406](https://arxiv.org/abs/2310.04406)
+- **[11]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 14: The Agent Loop, ReWOO, CRITIC & Actor Runtimes* — [aiengineeringfromscratch.com/learn/agent-engineering/the-agent-loop](https://aiengineeringfromscratch.com/learn/agent-engineering/the-agent-loop)

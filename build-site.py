@@ -414,6 +414,9 @@ def build():
         ("ch18", "ch18-reactive-backend-and-concurrency.md", "Part IV · Autonomous Agent Systems", "18. Reactive Backends & Concurrency", "WebFlux SSE, cancellation, LongAdder, fencing & keyset"),
         ("ch19", "ch19-durable-agent-runtime.md", "Part IV · Autonomous Agent Systems", "19. Durable Agent Runtime & 1M/Day", "Checkpointed Run API, crash recovery, model router & TPM"),
         ("ch20", "ch20-agent-system-design-stories.md", "Part IV · Autonomous Agent Systems", "20. Agent System Design Stories", "12-step blueprint: Coding, Enterprise MCP, Support & Research"),
+        ("ch21", "ch21-prompt-decoding-and-lora.md", "Part V · LLM Internals, Harnesses & Multimodal", "21. Prompting, FSM Decoding & LoRA", "Prompt anatomy, grammar masks, streaming tools & QLoRA"),
+        ("ch22", "ch22-agent-harnesses-and-skills.md", "Part V · LLM Internals, Harnesses & Multimodal", "22. Agent Harnesses & SKILL.md", "7 workbench surfaces, 3-tier skills & worktree waves"),
+        ("ch23", "ch23-multimodal-cua-and-voice-agents.md", "Part V · LLM Internals, Harnesses & Multimodal", "23. Computer-Use & Voice Agents", "Pixel/DOM grounding, untrusted screens & <600ms WebRTC"),
     ]
 
     chapters_data = []

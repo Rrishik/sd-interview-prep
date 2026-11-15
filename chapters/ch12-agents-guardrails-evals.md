@@ -1,6 +1,6 @@
 # Chapter 12: AI Agents, Tool Guardrails & Evaluation Pipelines
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
+*Part III · AI & LLM Engineering Systems · 8 min core · 21 min with deep dives*
 
 A standard RAG pipeline is a **railroad track**: every user query goes through `Retrieve -> Rerank -> Generate` in a fixed number of steps.
 
@@ -66,6 +66,20 @@ Never rely on a single uncalibrated LLM-as-Judge score:
 
 ---
 
+:::deepdive Meta's "Rule of Two", Multi-Agent Failure Modes (MASFT) & PVE Gates | +4 min
+
+1. **Pure vs. Consequential Tool Split & Meta's "Rule of Two" [7, 8]:**
+   - Classify every tool in your registry as either **Pure** (read-only, deterministic, safe to run speculatively) or **Consequential** (mutates state, spends money, or sends data externally) [8].
+   - Enforce **Meta's Rule of Two**: *a single agent turn or session context may combine at most TWO of three properties*: **(A) Untrusted Input** (web pages, external emails, PR comments), **(B) Sensitive Data Access** (private repos, PII, credentials), and **(C) Consequential External Action** (outbound network/email, database mutation, git push) [7]. Whenever `A + B + C` meet in one loop, an indirect injection inside `A` [10] can exfiltrate `B` via `C`—so the runtime must deterministically drop one leg (restrict `C` to read-only, isolate `A` behind a toolless reader, or pause for human confirmation).
+2. **Multi-Agent System Failure Taxonomy (`MASFT`) [9]:**
+   - Empirical trace audits across multi-agent benchmarks (`MASFT`, Cemri et al.) show failures cluster into three buckets that single-turn evals miss: **(1) Specification & Design** (role drift, disobeyed constraints, step repetition), **(2) Inter-Agent Misalignment** (context dropped across handoffs, reasoning–action mismatch, ignoring peer critiques), and **(3) Verification & Termination** (declaring premature success without running checks, or hallucinating past a `400` tool error) [9].
+3. **Pre-Execution `PVE` (`Prompt–Validator–Executor`) Gate [8, 10]:**
+   - Before executing any consequential tool call, run a fast (`<50 ms`), isolated **Validator** that sees **only** the user's original trusted request and the proposed `tool(args)`—*never* the untrusted retrieved documents—blocking hijacked tool calls before execution [10].
+
+:::
+
+---
+
 ### Quick Self-Check
 
 <details>
@@ -97,3 +111,7 @@ Never rely on a single uncalibrated LLM-as-Judge score:
 - **[4]** IETF RFC 8693, *OAuth 2.0 Token Exchange (On-Behalf-Of Delegation & Audience Scoping)* — [datatracker.ietf.org/doc/html/rfc8693](https://datatracker.ietf.org/doc/html/rfc8693)
 - **[5]** OWASP GenAI Security Project, *OWASP Top 10 for Large Language Model Applications (Prompt Injection & Excessive Agency)* — [genai.owasp.org/llm-top-10](https://genai.owasp.org/llm-top-10/)
 - **[6]** Lianmin Zheng et al., *Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena* (NeurIPS 2023) — [arxiv.org/abs/2306.05685](https://arxiv.org/abs/2306.05685)
+- **[7]** Meta AI Security, *Agents Rule of Two: A Practical Approach to AI Agent Security* (2025) — [ai.meta.com/blog/practical-ai-agent-security](https://ai.meta.com/blog/practical-ai-agent-security/)
+- **[8]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 13: The Tool Interface & Trust Split* — [aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface](https://aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface)
+- **[9]** Mert Cemri et al. (UC Berkeley), *Why Do Multi-Agent LLM Systems Fail? (MASFT)* (2025) — [arxiv.org/abs/2503.13657](https://arxiv.org/abs/2503.13657)
+- **[10]** Kai Greshake et al., *Not What You've Signed Up For: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection* (AISec 2023) — [arxiv.org/abs/2302.12173](https://arxiv.org/abs/2302.12173)

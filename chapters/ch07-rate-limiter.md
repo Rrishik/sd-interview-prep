@@ -1,6 +1,6 @@
 # Chapter 7: Distributed Rate Limiter (Token Bucket, Redis Lua & LLM Token Caps)
 
-*Part II · Classic System Design Stories · 8 min read*
+*Part II · Classic System Design Stories · 8 min core · 13 min with deep dives*
 
 Imagine a bug in a customer's retry loop causes their script to call your `POST /checkout` endpoint `50,000 times per second`.
 
@@ -52,6 +52,22 @@ You run a **Dual Token Bucket** in Redis Lua:
 1. **Bucket 1 (RPM):** Deduct `1` request token.
 2. **Bucket 2 (TPM — Tokens Per Minute):** Estimate input tokens (`len(prompt) / 4` + `max_output_tokens`) upfront and deduct from the user's **TPM bucket**; once the streaming response finishes, refund any unused output tokens back into the bucket [3].
 
+:::deepdive Enterprise AI Gateway Quotas: Local Token Leases, Cost-Weighted Buckets & Soft Downgrades | +5 min
+
+When designing a **Multi-Tenant Enterprise AI Gateway** handling `50,000+` concurrent streams, naive per-request `TPM` counting hits three sharp edges [2, 3, 4]:
+
+| Design Option | How Quotas Are Enforced | Trade-Off at `50k` Streams |
+| :--- | :--- | :--- |
+| **Option A: Pod-Local In-Memory Bucket** | Each of `40` gateway pods tracks `TPM / 40` in RAM. | Zero Redis RTT, but **skewed sticky WebSockets/SSE** let one user hit `40×` variance across pods [3]. |
+| **Option B: Central Redis Lua Per Call** | `1` pre-flight `EVALSHA` reserve + `1` post-stream refund per LLM call [2]. | Exact fairness up to `~100k ops/s` per Redis shard; hot enterprise org keys (`org:acme`) can bottleneck a single shard. |
+| **Option C: Hierarchical Token Block Leases** | Gateway pods lease **`10,000-token` tranches** from Redis (`DECRBY`) into local atomic counters and flush unused deltas every `200 ms`. | Cuts central Redis traffic by **`20×–50×`** while keeping global org spend drift bounded to `<1` tranche per pod [3, 4]! |
+
+**Two High-Signal AI Rate-Limiting Upgrades Interviewers Love [4]:**
+1. **Cost-Weighted `Millicent` Buckets (Not Raw Token Counts):** `1,000` **cached prefix tokens** cost `0.1×`, `1,000` uncached input tokens cost `1×`, and `1,000` **autoregressive output tokens** consume **`4×–5×` more GPU decode time & dollars**! Deduct `cost_units = 0.1*cached_in + 1.0*uncached_in + 4.0*out` so neither output-heavy loops nor uncached prompts starve your GPU pool [4].
+2. **Graceful Quota Degradation Before Hard `HTTP 429`:** For interactive IDE/chat tiers, hitting **`80%` of the tenant's minute/daily budget** triggers a **soft model downgrade** (routing routine turns from a `$15/M` frontier model to a `$0.50/M` fast model with a UI badge) and pauses background batch jobs—reserving hard `429 Retry-After` strictly for `100%` exhaustion [4].
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -77,3 +93,4 @@ You run a **Dual Token Bucket** in Redis Lua:
 - **[1]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 4: Design a Rate Limiter — [ByteByteGo](https://bytebytego.com/)
 - **[2]** Paul Tarjan (Stripe), *Scaling your API with rate limiters (Redis Token Bucket + Lua)* — [stripe.com/blog/rate-limiters](https://stripe.com/blog/rate-limiters)
 - **[3]** Cloudflare Engineering, *How we built Cloudflare's Distributed Rate Limiting* — [blog.cloudflare.com](https://blog.cloudflare.com/)
+- **[4]** Rohit Ghumare et al., *AI Engineering from Scratch — LLM Gateway Rate Limits, Cost Attribution & Circuit Breakers* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)

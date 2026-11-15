@@ -419,6 +419,7 @@ def build():
         ("ch23", "ch23-multimodal-cua-and-voice-agents.md", "Part V · LLM Internals, Harnesses & Multimodal", "23. Computer-Use & Voice Agents", "Pixel/DOM grounding, untrusted screens & <600ms WebRTC"),
         ("ch24", "ch24-llm-inference-and-gpu-serving.md", "Part V · LLM Internals, Harnesses & Multimodal", "24. LLM Inference & GPU Serving", "Disaggregated prefill/decode, EAGLE-3, FP8 & break-even"),
         ("ch25", "ch25-ai-system-design-tradeoffs.md", "Part V · LLM Internals, Harnesses & Multimodal", "25. AI Design Trade-Offs & Traps", "10k-repo AST search, <100ms scoring & 10 wrong answers"),
+        ("ch26", "ch26-flagship-ai-system-designs.md", "Part V · LLM Internals, Harnesses & Multimodal", "26. Flagship AI System Designs", "Web Answer Engine, PR Code Reviewer & Doc VLM Pipeline"),
     ]
 
     chapters_data = []

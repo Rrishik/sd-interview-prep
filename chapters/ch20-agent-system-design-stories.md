@@ -1,6 +1,6 @@
 # Chapter 20: End-to-End Agent System Design Stories (Coding, MCP Enterprise, Support & Research)
 
-*Part IV · Autonomous Agent Systems · 9 min core · 20 min with deep dives*
+*Part IV · Autonomous Agent Systems · 9 min core · 24 min with deep dives*
 
 In a senior GenAI or Agent System Design interview, the prompt is intentionally ambiguous:
 *"Design an autonomous bug-fixing agent for our monorepo"* or *"Design an enterprise assistant connecting to Git, Jira, and Postgres."*
@@ -74,6 +74,19 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 
 :::
 
+:::deepdive Whiteboarding Agent Trade-Offs: Option A/B/C, Half-Budget Cuts & Tempting Traps | +4 min
+
+Interviewers routinely ask mid-design: *"Your token bill just doubled—what do you cut first across these four agent architectures without breaking safety?"* [1, 7]:
+
+| Agent Story | Naive Trap to Reject | Production Architecture | First Lever If Budget Halves (`~15×` Multi-Agent Tax) |
+| :--- | :--- | :--- | :--- |
+| **A. Coding Agent** | Shared container with prod credentials & direct push to `main`. | Ephemeral microVM worktree + `Eval-Optimizer` (`max 4` test loops) + Draft PR [4, 5]. | Use fast `8B/Sonnet` model for file localization & test triage; invoke frontier reasoning **only** on diff synthesis. |
+| **B. Enterprise MCP** | `1` global service-account key + `80` tools stuffed in one prompt. | `1:1` MCP clients + `RFC 8693 OBO` token swap + progressive domain routing [3, 6]. | Route `70%` single-tool lookups via a cheap intent router; reserve multi-hop planning for cross-system queries. |
+| **C. Customer Support** | `100%` of `500k` daily tickets routed through an open ReAct loop. | **`80%` Deterministic Workflow** + `20%` Bounded Agent (`<= $25` OPA cap) [1, 2]. | Raise deterministic workflow coverage from `80% -> 92%` of top ticket intents and serve async email tiers on Batch APIs [7]. |
+| **D. Deep Research** | `1` agent running `15` serial web searches (`60k` noisy tokens). | Lead Planner + **parallel isolated Sub-Agents** returning compressed evidence cards (`~15×` tokens vs chat) [1, 7]. | Cap dynamic worker count by query complexity (`1–2` workers for narrow queries; `8+` workers **only** for broad synthesis) [7]. |
+
+:::
+
 ---
 
 ### Analogy, Where It Breaks & Real System
@@ -115,3 +128,4 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 - **[4]** Alexandru Agache et al. (AWS), *Firecracker: Lightweight Virtualization for Serverless Applications* (USENIX NSDI 2020) — [usenix.org/conference/nsdi20/presentation/agache](https://www.usenix.org/conference/nsdi20/presentation/agache)
 - **[5]** John Yang et al., *SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering* (NeurIPS 2024) — [arxiv.org/abs/2405.15793](https://arxiv.org/abs/2405.15793)
 - **[6]** IETF RFC 8693, *OAuth 2.0 Token Exchange (Delegated On-Behalf-Of Security Tokens)* — [datatracker.ietf.org/doc/html/rfc8693](https://datatracker.ietf.org/doc/html/rfc8693)
+- **[7]** Rohit Ghumare et al., *AI Engineering from Scratch — Multi-Agent Research & Production Cost Trade-Offs* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)

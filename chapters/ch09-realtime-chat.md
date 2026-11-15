@@ -1,6 +1,6 @@
 # Chapter 9: Real-Time Chat & Presence (WhatsApp, Slack & Discord)
 
-*Part II · Classic System Design Stories · 8 min read*
+*Part II · Classic System Design Stories · 8 min core · 13 min with deep dives*
 
 In most web systems, the client talks first (`HTTP GET/POST`), and the server answers.
 
@@ -42,6 +42,20 @@ How do WhatsApp and Slack avoid the **presence storm**? [1]
 1. **Heartbeat TTL in Redis:** Bob's client sends a tiny heartbeat every `10 seconds`, refreshing `SET presence:Bob "online" EX 30`. If Bob disconnects, the key simply expires after 30 seconds—no explicit "offline" database write needed!
 2. **Lazy / Scoped Subscription:** Only push live presence updates for the **5–10 people currently visible on Alice's screen** (or inside small groups `< 50` members). For giant 10,000-person channels, fetch online counts lazily on demand or via edge caches [3].
 
+:::deepdive Streaming AI Copilots in Chat: Multi-Device Fan-Out, Stop-Button Cancel & ACLs | +5 min
+
+Modern chat interviews (`Slack AI`, `Discord Bots`, `ChatGPT Multi-Device Sync`) frequently add: *"Now embed a streaming `@AI` assistant inside 1-on-1 and group channels—what changes?"* [4, 5]:
+
+1. **Never Write Every Streamed Token to Cassandra/ScyllaDB (`100×` Write Amplification Trap) [4]:**
+   - A `400-token` LLM answer emits `~120` SSE chunks over `4 seconds`. Writing `120` updates to ScyllaDB melts disk compactions!
+   - Instead: (a) Persist **1 placeholder row** (`status = STREAMING, message_id = snow_99`) at `t = 0`, (b) fan out ephemeral `delta` frames (`{message_id, seq, token_chunk}`) every `40 ms` (`~25 Hz` coalesced) over **Redis Pub/Sub -> WebSocket Gateways** so Alice's **phone and laptop both render smooth live typing**, and (c) write the **final assembled text once** (`status = COMPLETED` or `STOPPED`) when generation ends [4, 5].
+2. **End-to-End `"Stop Generating"` Cancellation (`< 50 ms`) [5]:**
+   - Clicking **Stop** on Alice's phone sends `{"op": "cancel_stream", "message_id": "snow_99"}` over WebSocket -> publishes to Redis control channel `cancel:snow_99` -> triggers the LLM worker's `AbortController` to close the upstream GPU stream immediately, flushing partial text to ScyllaDB so GPU tokens stop burning immediately [5].
+3. **Group-Chat `@AI` Context & ACL Scoping Bug:**
+   - When Alice invokes `@AI summarize project Phoenix` inside a `50-person` public Slack channel, **do NOT run retrieval using Alice's personal `1:1` DM permissions!** Intersect retrieval ACLs strictly with **the channel's membership scope** (`acl == channel_id OR public`), or `@AI` will leak Alice's private executive DMs to all 50 channel members [5]!
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -67,3 +81,5 @@ How do WhatsApp and Slack avoid the **presence storm**? [1]
 - **[1]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 12: Design a Chat System — [ByteByteGo](https://bytebytego.com/)
 - **[2]** Discord Engineering, *How Discord Handles Millions of Concurrent Voice and Chat Users (Elixir & ScyllaDB)* — [discord.com/blog](https://discord.com/blog)
 - **[3]** Slack Engineering, *Flannel: An Application-Level Edge Cache to Make Slack Scale* — [slack.engineering](https://slack.engineering/)
+- **[4]** Discord Engineering, *How Discord Stores Trillions of Messages (ScyllaDB Partitioning & Request Coalescing)* — [discord.com/blog/how-discord-stores-trillions-of-messages](https://discord.com/blog/how-discord-stores-trillions-of-messages)
+- **[5]** Rohit Ghumare et al., *AI Engineering from Scratch — Streaming LLM Delivery, Cancellation & Multi-Tenant Safety* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)

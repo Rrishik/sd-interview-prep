@@ -1,6 +1,6 @@
 # Chapter 5: Global Notification System + AI Smart Digest (30k QPS)
 
-*Part II · Classic System Design Stories · 10 min read*
+*Part II · Classic System Design Stories · 10 min core · 15 min with deep dives*
 
 It is 9:00 AM on Black Friday. Within three seconds, 100,000 merchants trigger flash-sale alerts, payment receipts, and security OTP codes across your platform.
 
@@ -58,6 +58,23 @@ You wrap the LLM call in a **Circuit Breaker** (`2,000 ms` timeout):
 - **Primary path:** Call the fast small model (`GPT-4o-mini` / `Haiku`) to produce a 2-sentence summary (`"3 teammates commented on PR #42 and 2 build checks passed"`).
 - **Fallback path (when circuit is OPEN or times out):** Immediately fall back to a **deterministic template** (`"You have 5 new updates from GitHub and Slack"`). The user still gets their digest on time, and the system never stalls on an LLM outage!
 
+:::deepdive AI Smart Digest Trade-Offs: Urgency Routing, Batch APIs & Anti-Hallucination | +5 min
+
+When an interviewer pushes deeper on *"How do you design the AI Smart Digest without delaying urgent alerts, hallucinating status, or blowing GPU budgets?"*, walk through **Options A -> B -> C** [3, 4, 5]:
+
+| Design Option | Architecture | Cost & Latency | Where It Breaks or Wins |
+| :--- | :--- | :--- | :--- |
+| **Option A: Per-Event LLM Rewrite** | Summarize every notification immediately on arrival. | `12×` system-prompt overhead; `$` explodes at `30k QPS`. | **Fails:** Defeats digest batching and still spams the user's lock screen [3]. |
+| **Option B: Blind `15m` Cron Batch** | Hold *all* non-OTP events in Redis `ZSET` for `15 min`, then call online LLM. | `10×` cheaper than Option A. | **Fails on semi-urgent events:** A `"Prod build broken on release branch"` Slack ping gets trapped for `15 minutes`! |
+| **Option C: Urgency Classifier + Adaptive `ZSET` + Async Batch Lane** | `<5 ms` lightweight classifier routes `P0` immediately, `P1` into `15m` online `ZSET`, and `P2` daily digests into **`50%`-off Async Batch APIs** [4, 5]. | Lowest cost + `<1s` `P0` delivery. | **Wins:** Matches latency and GPU spend to true user urgency [4, 5]. |
+
+**Three Production Guardrails Specific to AI Notification Digests [3, 5]:**
+1. **Cross-Channel Incident Deduplication Before Prompting:** A single outage often emits 1 PagerDuty alert, 3 Slack mentions, and 2 Jira emails. Cluster events by `(entity_id / incident_key)` *before* calling the LLM so the user sees **1 consolidated item** instead of 6 repetitive bullets.
+2. **Strict `[event_id]` Grounding & Polarity Check:** Require structured JSON output `{summary_bullet, source_event_ids: [...]}` where every `event_id` must exist in the user's Redis window—preventing the #1 digest hallucination (*summarizing `"Alice requested changes on PR #42"` as `"Alice approved PR #42"`*) [3, 5]!
+3. **Timezone Quiet Hours & Mute-Rate Feedback Loop:** Schedule `ZSET` flush scores in the recipient's local waking window, and track **notification mute / disable rate** as your primary counter-metric against over-eager urgency promotion [5].
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -83,3 +100,5 @@ You wrap the LLM call in a **Circuit Breaker** (`2,000 ms` timeout):
 - **[1]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 10: Design a Notification System — [ByteByteGo](https://bytebytego.com/)
 - **[2]** AWS Builders' Library, *Timeouts, Retries, and Backoff with Jitter* — [aws.amazon.com/builders-library](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/)
 - **[3]** Chip Huyen, *AI Engineering* (2025) — Latency Fallbacks, Batching & Deterministic Guardrails
+- **[4]** OpenAI Platform Documentation, *Batch API: Asynchronous High-Throughput Workloads at 50% Lower Cost* — [platform.openai.com/docs/guides/batch](https://platform.openai.com/docs/guides/batch)
+- **[5]** Rohit Ghumare et al., *AI Engineering from Scratch — Production LLM Cost, Batching & Guardrail Trade-Offs* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)

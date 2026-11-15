@@ -424,7 +424,7 @@ If you use `Hash(key) % N`, changing `N` from `10` to `9` changes the remainder 
         "ch05-notification-system-ai-digest.md",
         """# Chapter 5: Global Notification System + AI Smart Digest (30k QPS)
 
-*Part II · Classic System Design Stories · 10 min read*
+*Part II · Classic System Design Stories · 10 min core · 15 min with deep dives*
 
 It is 9:00 AM on Black Friday. Within three seconds, 100,000 merchants trigger flash-sale alerts, payment receipts, and security OTP codes across your platform.
 
@@ -482,6 +482,23 @@ You wrap the LLM call in a **Circuit Breaker** (`2,000 ms` timeout):
 - **Primary path:** Call the fast small model (`GPT-4o-mini` / `Haiku`) to produce a 2-sentence summary (`"3 teammates commented on PR #42 and 2 build checks passed"`).
 - **Fallback path (when circuit is OPEN or times out):** Immediately fall back to a **deterministic template** (`"You have 5 new updates from GitHub and Slack"`). The user still gets their digest on time, and the system never stalls on an LLM outage!
 
+:::deepdive AI Smart Digest Trade-Offs: Urgency Routing, Batch APIs & Anti-Hallucination | +5 min
+
+When an interviewer pushes deeper on *"How do you design the AI Smart Digest without delaying urgent alerts, hallucinating status, or blowing GPU budgets?"*, walk through **Options A -> B -> C** [3, 4, 5]:
+
+| Design Option | Architecture | Cost & Latency | Where It Breaks or Wins |
+| :--- | :--- | :--- | :--- |
+| **Option A: Per-Event LLM Rewrite** | Summarize every notification immediately on arrival. | `12×` system-prompt overhead; `$` explodes at `30k QPS`. | **Fails:** Defeats digest batching and still spams the user's lock screen [3]. |
+| **Option B: Blind `15m` Cron Batch** | Hold *all* non-OTP events in Redis `ZSET` for `15 min`, then call online LLM. | `10×` cheaper than Option A. | **Fails on semi-urgent events:** A `"Prod build broken on release branch"` Slack ping gets trapped for `15 minutes`! |
+| **Option C: Urgency Classifier + Adaptive `ZSET` + Async Batch Lane** | `<5 ms` lightweight classifier routes `P0` immediately, `P1` into `15m` online `ZSET`, and `P2` daily digests into **`50%`-off Async Batch APIs** [4, 5]. | Lowest cost + `<1s` `P0` delivery. | **Wins:** Matches latency and GPU spend to true user urgency [4, 5]. |
+
+**Three Production Guardrails Specific to AI Notification Digests [3, 5]:**
+1. **Cross-Channel Incident Deduplication Before Prompting:** A single outage often emits 1 PagerDuty alert, 3 Slack mentions, and 2 Jira emails. Cluster events by `(entity_id / incident_key)` *before* calling the LLM so the user sees **1 consolidated item** instead of 6 repetitive bullets.
+2. **Strict `[event_id]` Grounding & Polarity Check:** Require structured JSON output `{summary_bullet, source_event_ids: [...]}` where every `event_id` must exist in the user's Redis window—preventing the #1 digest hallucination (*summarizing `"Alice requested changes on PR #42"` as `"Alice approved PR #42"`*) [3, 5]!
+3. **Timezone Quiet Hours & Mute-Rate Feedback Loop:** Schedule `ZSET` flush scores in the recipient's local waking window, and track **notification mute / disable rate** as your primary counter-metric against over-eager urgency promotion [5].
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -507,6 +524,8 @@ You wrap the LLM call in a **Circuit Breaker** (`2,000 ms` timeout):
 - **[1]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 10: Design a Notification System — [ByteByteGo](https://bytebytego.com/)
 - **[2]** AWS Builders' Library, *Timeouts, Retries, and Backoff with Jitter* — [aws.amazon.com/builders-library](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/)
 - **[3]** Chip Huyen, *AI Engineering* (2025) — Latency Fallbacks, Batching & Deterministic Guardrails
+- **[4]** OpenAI Platform Documentation, *Batch API: Asynchronous High-Throughput Workloads at 50% Lower Cost* — [platform.openai.com/docs/guides/batch](https://platform.openai.com/docs/guides/batch)
+- **[5]** Rohit Ghumare et al., *AI Engineering from Scratch — Production LLM Cost, Batching & Guardrail Trade-Offs* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
 """
     ),
     (
@@ -602,7 +621,7 @@ Every request misses Redis and hits your database (**cache penetration attack**)
         "ch07-rate-limiter.md",
         """# Chapter 7: Distributed Rate Limiter (Token Bucket, Redis Lua & LLM Token Caps)
 
-*Part II · Classic System Design Stories · 8 min read*
+*Part II · Classic System Design Stories · 8 min core · 13 min with deep dives*
 
 Imagine a bug in a customer's retry loop causes their script to call your `POST /checkout` endpoint `50,000 times per second`.
 
@@ -654,6 +673,22 @@ You run a **Dual Token Bucket** in Redis Lua:
 1. **Bucket 1 (RPM):** Deduct `1` request token.
 2. **Bucket 2 (TPM — Tokens Per Minute):** Estimate input tokens (`len(prompt) / 4` + `max_output_tokens`) upfront and deduct from the user's **TPM bucket**; once the streaming response finishes, refund any unused output tokens back into the bucket [3].
 
+:::deepdive Enterprise AI Gateway Quotas: Local Token Leases, Cost-Weighted Buckets & Soft Downgrades | +5 min
+
+When designing a **Multi-Tenant Enterprise AI Gateway** handling `50,000+` concurrent streams, naive per-request `TPM` counting hits three sharp edges [2, 3, 4]:
+
+| Design Option | How Quotas Are Enforced | Trade-Off at `50k` Streams |
+| :--- | :--- | :--- |
+| **Option A: Pod-Local In-Memory Bucket** | Each of `40` gateway pods tracks `TPM / 40` in RAM. | Zero Redis RTT, but **skewed sticky WebSockets/SSE** let one user hit `40×` variance across pods [3]. |
+| **Option B: Central Redis Lua Per Call** | `1` pre-flight `EVALSHA` reserve + `1` post-stream refund per LLM call [2]. | Exact fairness up to `~100k ops/s` per Redis shard; hot enterprise org keys (`org:acme`) can bottleneck a single shard. |
+| **Option C: Hierarchical Token Block Leases** | Gateway pods lease **`10,000-token` tranches** from Redis (`DECRBY`) into local atomic counters and flush unused deltas every `200 ms`. | Cuts central Redis traffic by **`20×–50×`** while keeping global org spend drift bounded to `<1` tranche per pod [3, 4]! |
+
+**Two High-Signal AI Rate-Limiting Upgrades Interviewers Love [4]:**
+1. **Cost-Weighted `Millicent` Buckets (Not Raw Token Counts):** `1,000` **cached prefix tokens** cost `0.1×`, `1,000` uncached input tokens cost `1×`, and `1,000` **autoregressive output tokens** consume **`4×–5×` more GPU decode time & dollars**! Deduct `cost_units = 0.1*cached_in + 1.0*uncached_in + 4.0*out` so neither output-heavy loops nor uncached prompts starve your GPU pool [4].
+2. **Graceful Quota Degradation Before Hard `HTTP 429`:** For interactive IDE/chat tiers, hitting **`80%` of the tenant's minute/daily budget** triggers a **soft model downgrade** (routing routine turns from a `$15/M` frontier model to a `$0.50/M` fast model with a UI badge) and pauses background batch jobs—reserving hard `429 Retry-After` strictly for `100%` exhaustion [4].
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -679,13 +714,14 @@ You run a **Dual Token Bucket** in Redis Lua:
 - **[1]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 4: Design a Rate Limiter — [ByteByteGo](https://bytebytego.com/)
 - **[2]** Paul Tarjan (Stripe), *Scaling your API with rate limiters (Redis Token Bucket + Lua)* — [stripe.com/blog/rate-limiters](https://stripe.com/blog/rate-limiters)
 - **[3]** Cloudflare Engineering, *How we built Cloudflare's Distributed Rate Limiting* — [blog.cloudflare.com](https://blog.cloudflare.com/)
+- **[4]** Rohit Ghumare et al., *AI Engineering from Scratch — LLM Gateway Rate Limits, Cost Attribution & Circuit Breakers* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
 """
     ),
     (
         "ch08-news-feed-fanout.md",
         """# Chapter 8: News Feed & The Celebrity Fan-Out Problem (Meta & X)
 
-*Part II · Classic System Design Stories · 8 min read*
+*Part II · Classic System Design Stories · 8 min core · 13 min with deep dives*
 
 Suppose you are designing the home timeline for X (Twitter), Instagram, or LinkedIn.
 
@@ -724,6 +760,21 @@ Never pick pure Push or pure Pull—always combine them into the **Hybrid Fan-Ou
 2. **Celebrities / Hot Accounts (`>= 10,000 followers`):** Use **Fan-Out on Read (Pull)**. Write once to the celebrity's cache; when an active follower loads their feed, merge the celebrity's recent posts at read time.
 3. **Hydration via Two-Tier Cache:** Once the Feed Service has the final sorted list of 20 `post_id`s, it batch-fetches (`MGET`) the full post text, image CDN URLs, and like counts from a **Post & User Cache** [1, 3].
 
+:::deepdive Modern AI Feed Ranking: The 4-Stage Retrieval-to-Re-Ranking Funnel | +5 min
+
+No major social feed (`X "For You"`, `Instagram`, `YouTube`, `LinkedIn`) serves pure chronological order anymore—nor can you run a heavy neural network over `100 million` candidate posts inside a **`150 ms`** feed budget! Production AI feeds narrow candidates through a **4-Stage Funnel** [4, 5, 6]:
+
+| Funnel Stage | Input -> Output | Latency Budget | Model & Systems Architecture |
+| :--- | :--- | :--- | :--- |
+| **1. Candidate Sourcing** *(In-Network + Out-of-Network)* | `100M+` -> **`~1,500` posts** | `~25 ms` | Parallel merge of **In-Network Hybrid Redis Fan-Out** (`~750` followed posts) + **Two-Tower User/Item Embedding ANN (`HNSW`)** (`~750` discovery posts) [4, 5]. |
+| **2. Light Pre-Ranker** | `1,500` -> **`~250` posts** | `~15 ms` | Cheap **distilled GBDT / logistic / tiny MLP** using cached static features to prune obvious low-interest candidates before expensive feature hydration [5]. |
+| **3. Heavy Multi-Task Ranker** *(`DLRM` / MaskNet)* | `250` -> **`~50` posts** | `~45 ms` | GPU-batched **Multi-Task Deep Network** [6] predicting calibrated probabilities for both positive and negative heads: `Score = w1·P(like) + w2·P(reply) + w3·E[dwell_sec] - w4·P(mute) - w5·P(report)` [4, 5]. |
+| **4. Diversity, Fatigue & Exploration Re-Ranker** | `50` -> **`20`hydrated posts** | `~10 ms` | Deterministic heuristics: **author-diversity penalty** (never show 4 posts in a row from Bob), seen-post Bloom filter dedup, and a **`2%` cold-start creator exploration slot** [4, 5]. |
+
+**Why Two-Tower Models Power Stage 1 (`100M -> 1,500`) [4]:** Because the **User Tower** `u(user_features)` and **Item Tower** `v(post_features)` only interact via a final dot product `u · v`, item embeddings for millions of posts can be **pre-computed offline/nearline** and indexed in `HNSW`—whereas the **Heavy Cross-Feature Ranker** (`Stage 3`) crosses user × author × real-time context features dynamically and can only afford `~250` items [4, 6]!
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -749,13 +800,16 @@ Never pick pure Push or pure Pull—always combine them into the **Hybrid Fan-Ou
 - **[1]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 11: Design a News Feed System — [ByteByteGo](https://bytebytego.com/)
 - **[2]** Martin Kleppmann, *Designing Data-Intensive Applications (DDIA)*, Chapter 1: Twitter Timeline Fan-Out Case Study (`4.6k writes/sec` vs `300k reads/sec`)
 - **[3]** Meta Engineering, *Serving Facebook Multifeed: Efficiency, Performance, and Fast Builds* — [engineering.fb.com](https://engineering.fb.com/)
+- **[4]** Paul Covington, Jay Adams & Emre Sargin (Google), *Deep Neural Networks for YouTube Recommendations (Two-Stage Candidate Generation & Ranking)* (ACM RecSys 2016) — [research.google/pubs/45530](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf)
+- **[5]** X / Twitter Engineering, *The Recommendation Algorithm (`For You` Sourcing, Light Ranker, Heavy Ranker & Visibility Filters)* — [github.com/twitter/the-algorithm](https://github.com/twitter/the-algorithm)
+- **[6]** Maxim Naumov et al. (Meta), *Deep Learning Recommendation Model for Personalization and Recommendation Systems (`DLRM`)* (2019) — [arxiv.org/abs/1906.00091](https://arxiv.org/abs/1906.00091)
 """
     ),
     (
         "ch09-realtime-chat.md",
         """# Chapter 9: Real-Time Chat & Presence (WhatsApp, Slack & Discord)
 
-*Part II · Classic System Design Stories · 8 min read*
+*Part II · Classic System Design Stories · 8 min core · 13 min with deep dives*
 
 In most web systems, the client talks first (`HTTP GET/POST`), and the server answers.
 
@@ -797,6 +851,20 @@ How do WhatsApp and Slack avoid the **presence storm**? [1]
 1. **Heartbeat TTL in Redis:** Bob's client sends a tiny heartbeat every `10 seconds`, refreshing `SET presence:Bob "online" EX 30`. If Bob disconnects, the key simply expires after 30 seconds—no explicit "offline" database write needed!
 2. **Lazy / Scoped Subscription:** Only push live presence updates for the **5–10 people currently visible on Alice's screen** (or inside small groups `< 50` members). For giant 10,000-person channels, fetch online counts lazily on demand or via edge caches [3].
 
+:::deepdive Streaming AI Copilots in Chat: Multi-Device Fan-Out, Stop-Button Cancel & ACLs | +5 min
+
+Modern chat interviews (`Slack AI`, `Discord Bots`, `ChatGPT Multi-Device Sync`) frequently add: *"Now embed a streaming `@AI` assistant inside 1-on-1 and group channels—what changes?"* [4, 5]:
+
+1. **Never Write Every Streamed Token to Cassandra/ScyllaDB (`100×` Write Amplification Trap) [4]:**
+   - A `400-token` LLM answer emits `~120` SSE chunks over `4 seconds`. Writing `120` updates to ScyllaDB melts disk compactions!
+   - Instead: (a) Persist **1 placeholder row** (`status = STREAMING, message_id = snow_99`) at `t = 0`, (b) fan out ephemeral `delta` frames (`{message_id, seq, token_chunk}`) every `40 ms` (`~25 Hz` coalesced) over **Redis Pub/Sub -> WebSocket Gateways** so Alice's **phone and laptop both render smooth live typing**, and (c) write the **final assembled text once** (`status = COMPLETED` or `STOPPED`) when generation ends [4, 5].
+2. **End-to-End `"Stop Generating"` Cancellation (`< 50 ms`) [5]:**
+   - Clicking **Stop** on Alice's phone sends `{"op": "cancel_stream", "message_id": "snow_99"}` over WebSocket -> publishes to Redis control channel `cancel:snow_99` -> triggers the LLM worker's `AbortController` to close the upstream GPU stream immediately, flushing partial text to ScyllaDB so GPU tokens stop burning immediately [5].
+3. **Group-Chat `@AI` Context & ACL Scoping Bug:**
+   - When Alice invokes `@AI summarize project Phoenix` inside a `50-person` public Slack channel, **do NOT run retrieval using Alice's personal `1:1` DM permissions!** Intersect retrieval ACLs strictly with **the channel's membership scope** (`acl == channel_id OR public`), or `@AI` will leak Alice's private executive DMs to all 50 channel members [5]!
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -822,6 +890,8 @@ How do WhatsApp and Slack avoid the **presence storm**? [1]
 - **[1]** Alex Xu, *System Design Interview (Vol. 1)*, Chapter 12: Design a Chat System — [ByteByteGo](https://bytebytego.com/)
 - **[2]** Discord Engineering, *How Discord Handles Millions of Concurrent Voice and Chat Users (Elixir & ScyllaDB)* — [discord.com/blog](https://discord.com/blog)
 - **[3]** Slack Engineering, *Flannel: An Application-Level Edge Cache to Make Slack Scale* — [slack.engineering](https://slack.engineering/)
+- **[4]** Discord Engineering, *How Discord Stores Trillions of Messages (ScyllaDB Partitioning & Request Coalescing)* — [discord.com/blog/how-discord-stores-trillions-of-messages](https://discord.com/blog/how-discord-stores-trillions-of-messages)
+- **[5]** Rohit Ghumare et al., *AI Engineering from Scratch — Streaming LLM Delivery, Cancellation & Multi-Tenant Safety* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
 """
     ),
     (
@@ -913,7 +983,7 @@ To make 2D map lookups `O(1)`, geospatial systems divide the Earth's surface int
         "ch11-rag-and-llm-systems.md",
         """# Chapter 11: Production RAG, Hybrid Search & Enterprise ACL Security
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
+*Part III · AI & LLM Engineering Systems · 8 min core · 22 min with deep dives*
 
 Every weekend tutorial makes **Retrieval-Augmented Generation (RAG)** look like 10 lines of Python: chop a PDF into 500-word chunks, call an embedding API, dump vectors into a vector database, and pass the top 3 matches to an LLM.
 
@@ -980,6 +1050,21 @@ Static benchmarks ignore the hardest day-2 RAG problem: **source documents and u
 
 :::
 
+:::deepdive RAG Whiteboard Brainstorming: Option A/B/C Matrix, Half-Budget Cuts & Traps | +5 min
+
+In an interview, frame Enterprise RAG as a progression of explicit trade-offs rather than a single static diagram [1, 2, 5]:
+
+| Architecture Option | Latency (`p95`) & Cost | Recall & Precision | When to Pick / Where It Breaks |
+| :--- | :--- | :--- | :--- |
+| **Option A: Dense-Only Vector RAG** | `~550 ms` TTFT · `$` | Misses exact IDs, SKUs & error codes (`~65%` Recall@5). | Internal prototypes `<5k` clean prose docs only [1]. |
+| **Option B: Hybrid (`BM25 + HNSW`) + Cross-Encoder** | `~750 ms` TTFT · `$$` | High accuracy on codes + semantics (`~88%` Recall@5) [2, 4]. | **Production default** for `50k–10M` enterprise docs. |
+| **Option C: Contextual Breadcrumbs + Parent-Child** | `~850 ms` TTFT · `$$$` | Highest multi-section grounding (`~93%+` Recall@5) [2]. | Regulated legal, medical & financial corpora where retrieval misses are costly [2, 5]. |
+
+- **What to Cut First If Budget Halves [5, 6]:** Never cut pre-retrieval ACL filtering or hybrid `BM25`! Instead: (1) truncate embeddings from `3072-d` to **`512-d` Matryoshka (`MRL`)** (cutting vector RAM **`6×`**) [6], (2) narrow Cross-Encoder reranking from `Top 50 -> Top 20` using a distilled `INT8` reranker, and (3) cache ACL-scoped `(acl_hash, canonical_query)` hits for top `30%` FAQ queries [5].
+- **Top 2 RAG Whiteboard Traps [5]:** *"Skip chunking and stuff whole PDFs into a `200k` prompt"* (`20×` higher TTFT/cost + Lost-in-the-Middle decay), and *"Cache RAG answers globally by query embedding"* (instant cross-tenant ACL data leak!).
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -1011,6 +1096,8 @@ Static benchmarks ignore the hardest day-2 RAG problem: **source documents and u
 - **[2]** Anthropic Engineering, *Contextual Retrieval: Combining Contextual Embeddings and Contextual BM25 with Reranking* (2024) — [anthropic.com/news/contextual-retrieval](https://www.anthropic.com/news/contextual-retrieval)
 - **[3]** Eugene Yan et al., *Applied LLMs: What We've Learned From A Year of Building with LLMs* — [applied-llms.org](https://applied-llms.org/)
 - **[4]** Gordon V. Cormack, Charles L. A. Clarke & Stefan Buettcher, *Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods* (ACM SIGIR 2009) — [plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf)
+- **[5]** Rohit Ghumare et al., *AI Engineering from Scratch — Enterprise RAG System Design, Budgets & Trade-Offs* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
+- **[6]** Aditya Kusupati et al., *Matryoshka Representation Learning* (NeurIPS 2022) — [arxiv.org/abs/2205.13147](https://arxiv.org/abs/2205.13147)
 """
     ),
     (
@@ -2026,7 +2113,7 @@ Always ground a `1M runs/day` design prompt with 60-second back-of-the-envelope 
         "ch20-agent-system-design-stories.md",
         """# Chapter 20: End-to-End Agent System Design Stories (Coding, MCP Enterprise, Support & Research)
 
-*Part IV · Autonomous Agent Systems · 9 min core · 20 min with deep dives*
+*Part IV · Autonomous Agent Systems · 9 min core · 24 min with deep dives*
 
 In a senior GenAI or Agent System Design interview, the prompt is intentionally ambiguous:
 *"Design an autonomous bug-fixing agent for our monorepo"* or *"Design an enterprise assistant connecting to Git, Jira, and Postgres."*
@@ -2100,6 +2187,19 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 
 :::
 
+:::deepdive Whiteboarding Agent Trade-Offs: Option A/B/C, Half-Budget Cuts & Tempting Traps | +4 min
+
+Interviewers routinely ask mid-design: *"Your token bill just doubled—what do you cut first across these four agent architectures without breaking safety?"* [1, 7]:
+
+| Agent Story | Naive Trap to Reject | Production Architecture | First Lever If Budget Halves (`~15×` Multi-Agent Tax) |
+| :--- | :--- | :--- | :--- |
+| **A. Coding Agent** | Shared container with prod credentials & direct push to `main`. | Ephemeral microVM worktree + `Eval-Optimizer` (`max 4` test loops) + Draft PR [4, 5]. | Use fast `8B/Sonnet` model for file localization & test triage; invoke frontier reasoning **only** on diff synthesis. |
+| **B. Enterprise MCP** | `1` global service-account key + `80` tools stuffed in one prompt. | `1:1` MCP clients + `RFC 8693 OBO` token swap + progressive domain routing [3, 6]. | Route `70%` single-tool lookups via a cheap intent router; reserve multi-hop planning for cross-system queries. |
+| **C. Customer Support** | `100%` of `500k` daily tickets routed through an open ReAct loop. | **`80%` Deterministic Workflow** + `20%` Bounded Agent (`<= $25` OPA cap) [1, 2]. | Raise deterministic workflow coverage from `80% -> 92%` of top ticket intents and serve async email tiers on Batch APIs [7]. |
+| **D. Deep Research** | `1` agent running `15` serial web searches (`60k` noisy tokens). | Lead Planner + **parallel isolated Sub-Agents** returning compressed evidence cards (`~15×` tokens vs chat) [1, 7]. | Cap dynamic worker count by query complexity (`1–2` workers for narrow queries; `8+` workers **only** for broad synthesis) [7]. |
+
+:::
+
 ---
 
 ### Analogy, Where It Breaks & Real System
@@ -2141,6 +2241,7 @@ Keep this mental checklist ready for any `45-minute` agent design interview [1, 
 - **[4]** Alexandru Agache et al. (AWS), *Firecracker: Lightweight Virtualization for Serverless Applications* (USENIX NSDI 2020) — [usenix.org/conference/nsdi20/presentation/agache](https://www.usenix.org/conference/nsdi20/presentation/agache)
 - **[5]** John Yang et al., *SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering* (NeurIPS 2024) — [arxiv.org/abs/2405.15793](https://arxiv.org/abs/2405.15793)
 - **[6]** IETF RFC 8693, *OAuth 2.0 Token Exchange (Delegated On-Behalf-Of Security Tokens)* — [datatracker.ietf.org/doc/html/rfc8693](https://datatracker.ietf.org/doc/html/rfc8693)
+- **[7]** Rohit Ghumare et al., *AI Engineering from Scratch — Multi-Agent Research & Production Cost Trade-Offs* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
 """
     ),
     (
@@ -2761,6 +2862,122 @@ Memorize why these plausible-sounding answers fail in Senior/Staff interviews [1
 - **[6]** Nelson F. Liu et al., *Lost in the Middle: How Language Models Use Long Contexts* (TACL 2024) — [arxiv.org/abs/2307.03172](https://arxiv.org/abs/2307.03172)
 - **[7]** Yinmin Zhong et al., *DistServe: Disaggregating Prefill and Decoding for Goodput-Optimized LLM Serving* (USENIX OSDI 2024) — [arxiv.org/abs/2401.09670](https://arxiv.org/abs/2401.09670)
 - **[8]** Yuhui Li et al., *EAGLE-3: Scaling up Inference Acceleration of Large Language Models* (2025) — [arxiv.org/abs/2503.01840](https://arxiv.org/abs/2503.01840)
+"""
+    ),
+    (
+        "ch26-flagship-ai-system-designs.md",
+        """# Chapter 26: Flagship AI System Designs — Web Answer Engine, PR Code Reviewer & Doc Intelligence
+
+*Part V · LLM Internals, Harnesses & Multimodal · 9 min core · 20 min with deep dives*
+
+Three open-ended AI System Design prompts show up repeatedly in Senior/Staff loops at frontier labs and developer-platform companies:
+1. **Design a Web-Scale Cited Answer Engine (*Perplexity / SearchGPT*)** serving `10,000+ QPS` with `<1.2s TTFT` and `<60s` breaking-news freshness [1, 2].
+2. **Design an Autonomous Pull-Request Code-Review Bot (*Copilot Code Review / Meta CodeCompose*)** that developers actually trust instead of muting [4, 5].
+3. **Design an Enterprise Multimodal Document Pipeline (`10M` PDFs/day)** extracting tables, charts, and visual bounding-box citations [7, 8].
+
+Let us brainstorm each from naive baseline to production architecture—explicitly naming the **latency budgets, failure modes, and trade-offs** [1, 4, 7, 8].
+
+{{diagram:14-flagship-ai-designs.excalidraw}}
+
+---
+
+### 1) Flagship Design 1: Web-Scale Cited Answer Engine (*Perplexity / SearchGPT*)
+
+Why is web-scale AI search harder than internal Enterprise RAG (Chapter 11)?
+Because the open web has **billions of adversarial SEO/prompt-injection pages** [3], breaking news mutates **every 30 seconds**, and when a major event happens, **`500,000` users ask the exact same question in the same minute** [2]!
+
+| Option | Architecture | Why It Fails or Wins at `10,000 QPS` |
+| :--- | :--- | :--- |
+| **Option A: Live Headless Browser Scrape** | Query Google -> launch Chromium on Top 10 URLs -> parse HTML -> summarize. | **Fails:** `3–6s` page-load tail latency, bot-blocking CAPTCHAs, and `100×` CPU burn. |
+| **Option B: Static Daily Web Vector Index** | Embed crawled pages nightly into HNSW -> retrieve Top 10 -> stream LLM. | **Fails:** Blind to breaking news (`"Fed rate decision 3 mins ago"`) and bloated petabyte float RAM. |
+| **Option C: Temporal Router + Tiered Fresh/Warm Index + `Singleflight` Coalescing** | `<15 ms` classifier routes temporal queries to an **in-RAM `<60s` RSS/news index** + **SSD lexical/vector shards**, coalescing hot queries via `singleflight` [1, 2]. | **Wins:** **`<1.1s` `p95` `TTFT`**, fresh live facts, and `95%` GPU savings during viral news spikes [2]! |
+
+**End-to-End `1,050 ms` `TTFT` Budget & Safety Controls [1, 2, 3]:**
+1. **Query Rewrite + `Singleflight` Coalescing (`~60 ms`):** Expand conversational query into `3` parallel search queries; deduplicate identical in-flight trending queries via **`singleflight` request coalescing** [2] + `30s`-TTL hot-event cache so `50,000` concurrent *"Super Bowl score"* queries trigger **1** upstream synthesis stream fanned out to all subscribers!
+2. **Tiered Retrieval + Sub-Passage Scoring (`~180 ms`):** Fetch Top `80` URLs across the **RAM Fresh Tier** (`<60s` news/social firehose) and **Warm SSD BM25 + Compact Vector Tier**, strip hidden CSS/DOM prompt-injection traps [3], slice into `300-token` windows, and score down to the **Top `10` passages** (`~3,000` tokens) via a distilled `INT8` cross-encoder.
+3. **Streaming Inline Citations (`ALCE` Grounding) (`~800 ms` prefill -> stream) [1]:** Stream markdown claims with `[1]`, `[2]` URL badges while running an async sentence-level entailment check (`ALCE` [1])—suppressing unsupported claims or unverified URLs before link rendering.
+
+---
+
+### 2) Flagship Design 2: Autonomous PR Code-Review Bot (*Copilot Review / CodeCompose*)
+
+Every naive AI PR bot fails the same way: it feeds `git diff` into an LLM, leaves 14 nitpicky comments (*"Consider renaming `i` to `index`"* or hallucinating a null-pointer bug already guarded 20 lines above the diff hunk), and **developers mute the bot within a week**!
+
+Google's **Tricorder** study established the iron law of developer-tool adoption: **any automated analyzer whose "not-useful" (false-positive) rate exceeds `~10%` loses developer trust and gets disabled** [4, 5].
+
+**Four Architectural Pillars of a `<10%` Noise AI PR Reviewer [4, 5, 6]:**
+1. **Deterministic Tools First, LLM Second:** Run `clang-format` / `eslint`, typecheckers, and deterministic `SAST` rules *before* touching an LLM—never spend tokens or probabilistic prose on formatting or syntax errors [4].
+2. **AST Context Expansion Beyond `+-` Diff Hunks (`Tree-sitter` [6]):** A raw `git diff` is context-starved! Parse modified files with `Tree-sitter` [6] to pull the **enclosing function/class body**, **type/interface definitions**, and **1-hop callers/callees** across the repo so the model sees actual pre-conditions, locks, and null guards.
+3. **Two-Stage Generator -> Critic Precision Gate (`Confidence >= 0.85`) [4, 5]:**
+   - **Pass 1 (Bug Hunter):** Proposes candidate defects (`concurrency`, `authz`, `resource leak`, `off-by-one`) with exact `file:start_line-end_line` spans.
+   - **Pass 2 (Skeptical Critic):** Attempts to *disprove* each candidate against the expanded AST context and repo conventions—**dropping `70%–85%` of low-confidence/style nits** so a typical PR receives **`0–3` high-signal comments** [4, 5]!
+4. **Incremental Hunk Hashing & Implicit Acceptance Telemetry:** Key reviewed hunks by `SHA256(file_path + ast_symbol + normalized_hunk)` so a `git push --force` re-reviews **only newly changed hunks** (never re-posting dismissed comments!). Measure quality via **Resolved-by-Subsequent-Commit Rate** and **Thumbs-Down / Dismiss Rate (`<10%` SLO)** [4, 5].
+
+:::deepdive Flagship Design 3: Enterprise Multimodal Document & PDF Intelligence (`10M` Docs/Day) | +5 min
+
+**Prompt:** *Design a system ingesting `10M` complex financial/medical PDFs per day (multi-column layouts, merged-cell tables, scanned charts) for cited Q&A and structured JSON extraction [7, 8].*
+
+1. **Why Naive `pdftotext` + `500-Token` Chunking Breaks:** Plain text extraction scrambles two-column reading order, turns financial tables (`2024 | 2025 | YoY%`) into orphaned numbers, and completely drops bar charts and scanned signatures [7, 8].
+2. **Complexity-Routed Ingestion Pipeline (`Fast Lane` vs. `VLM Lane`) [7, 8]:**
+   - **Page Router (`<5 ms`/page):** Inspect PDF object stream + layout entropy. Route **`70%` clean digital text pages** through fast structural parser (`~20×` cheaper), and route **`30%` table-heavy, chart, or scanned pages** to the **GPU Vision-Language Lane** (`Kafka` batch queue on spot/reserved GPUs) [8].
+   - **Dual Representation (`ColPali` Visual Patches + Structured Markdown Tables) [7]:** Index complex pages both via **late-interaction visual patch embeddings (`ColPali` [7])**—which retrieve directly over rendered page images without brittle OCR cascades—and VLM-extracted **HTML/Markdown tables** paired with exact **`(doc_id, page_num, bbox: [x1, y1, x2, y2])`** coordinates!
+3. **Visual Bounding-Box Provenance:** Every extracted number or RAG claim returns its `(page, bbox)` coordinates so the UI highlights the exact table cell on the rendered PDF—allowing human auditors to verify `$14.2M` in `1 second` [7, 8].
+
+:::
+
+:::deepdive Option Comparison, Half-Budget Cuts & Interview Traps Across All Three | +5 min
+
+| System | What to Cut First If Budget Halves | #1 Tempting Trap Answer to Avoid |
+| :--- | :--- | :--- |
+| **1. Web Answer Engine** | Serve `evergreen` queries (`~60%` of traffic) from quantized `8B/70B FP8` open models + aggressive semantic/exact URL cache; keep frontier synthesis for complex multi-hop queries [8]. | *"Fetch URLs live on every user query without a tiered index or `singleflight` coalescing"* (melts under viral news spikes [2]). |
+| **2. AI PR Code Reviewer** | Skip LLM review on lockfiles, generated code, docs-only PRs, and draft WIP pushes until marked *Ready for Review* (cuts token spend **`~65%`**!) [5, 8]. | *"Optimize for high recall so we catch every possible nit"* (destroys precision, breaches Tricorder's `<10%` noise bar, and gets muted [4]). |
+| **3. Multimodal Doc Pipeline** | Run `VLM / ColPali` **only** on pages where the layout detector spots tables, figures, or low OCR confidence—never render `100%` of plain-text pages through vision encoders [7, 8]. | *"Run synchronous VLM OCR inside the user's upload HTTP request"* (a `200-page` PDF takes minutes—always ingest asynchronously via Kafka + page-level progress state [8]). |
+
+:::
+
+---
+
+### Analogy, Where It Breaks & Real System
+
+- **Real-world analogy:** A **Web Answer Engine** is a live newsroom research desk with a wire-service ticker (`<60s` RAM tier) and fact-checker (`ALCE`); an **AI PR Reviewer** is a Staff Engineer who reads callers before commenting and stays silent when everything is clean (`Tricorder` rule); a **Multimodal Doc Pipeline** is an auditor who uses a magnifying glass (`VLM`) only on dense balance-sheet tables rather than plain cover letters.
+- **Where the analogy breaks:** A human newsroom researcher naturally ignores invisible white-on-white webpage text; an LLM scraper will execute hidden prompt injections inside scraped DOM nodes unless sanitized and isolated from user credentials [3]!
+- **Real production system:** **Perplexity / SearchGPT** (tiered fresh/warm search + inline citations), **GitHub Copilot Code Review / Meta CodeCompose / Google Tricorder** (AST-expanded, precision-gated code review), and **`ColPali` / Azure & AWS Document Intelligence** (layout-routed bbox provenance) [1, 4, 5, 7].
+
+---
+
+### Quick Self-Check
+
+<details>
+<summary><strong>Q1: What happens in a Web-Scale AI Answer Engine when breaking news hits and 200,000 users ask the exact same query within 10 seconds?</strong></summary>
+<p><strong>Answer:</strong> Without request coalescing, 200,000 duplicate retrieval + LLM streams stampede the index and GPUs. Using <strong><code>singleflight</code> in-flight coalescing</strong> plus a short-TTL (<code>15–30s</code>) hot-query cache executes <strong>one</strong> search-and-synthesis pipeline and fans the streamed cited tokens out to all waiting subscribers.</p>
+</details>
+
+<details>
+<summary><strong>Q2: Why does feeding only the raw <code>git diff</code> into an LLM produce high false-positive rates in AI PR Code Review, and what is the Tricorder noise threshold?</strong></summary>
+<p><strong>Answer:</strong> Raw diff hunks omit enclosing function bodies, type contracts, null checks, and callers in other files, causing hallucinated bugs. Google's Tricorder research showed developer tools must stay <strong>below ~10% "not-useful" (false-positive) rate</strong>—achieved via Tree-sitter AST context expansion plus a skeptical Critic confidence gate.</p>
+</details>
+
+<details>
+<summary><strong>Q3: On a <code>git push --force</code> updating 1 file in a 20-file PR, how do you prevent an AI PR Reviewer from re-posting comments developers already dismissed?</strong></summary>
+<p><strong>Answer:</strong> Fingerprint each reviewed hunk by <code>SHA256(file_path + ast_symbol + normalized_diff_hunk)</code> and store dismissed/posted fingerprints per PR—re-evaluating only modified AST hunks on subsequent pushes.</p>
+</details>
+
+<details>
+<summary><strong>Q4: Why do production Document Intelligence pipelines route pages selectively between a fast digital-text parser and a Vision-Language / <code>ColPali</code> GPU lane?</strong></summary>
+<p><strong>Answer:</strong> Roughly <code>60–75%</code> of enterprise PDF pages are clean single-column digital text that parses in milliseconds on CPU, while multi-column tables, charts, and scans require vision-language layout grounding and <code>(page, bbox)</code> coordinates—selective routing cuts GPU vision spend by <code>~3×</code> without losing table accuracy.</p>
+</details>
+
+---
+
+### Sources & References
+- **[1]** Tianyu Gao et al., *Enabling Large Language Models to Generate Text with Citations (`ALCE`)* (EMNLP 2023) — [arxiv.org/abs/2305.14627](https://arxiv.org/abs/2305.14627)
+- **[2]** Go Extended Standard Library, *`golang.org/x/sync/singleflight` — Duplicate Call Suppression & Stampede Coalescing* — [pkg.go.dev/golang.org/x/sync/singleflight](https://pkg.go.dev/golang.org/x/sync/singleflight)
+- **[3]** Kai Greshake et al., *Not What You've Signed Up For: Indirect Prompt Injection in Web-Integrated LLMs* (AISec 2023) — [arxiv.org/abs/2302.12173](https://arxiv.org/abs/2302.12173)
+- **[4]** Caitlin Sadowski et al. (Google), *Tricorder: Building a Program Analysis Ecosystem* (CACM 2018) — [research.google/pubs/tricorder](https://research.google/pubs/tricorder-building-a-program-analysis-ecosystem/)
+- **[5]** Vijayaraghavan Murali et al. (Meta), *AI-assisted Code Authoring at Scale (`CodeCompose`)* (ESEC/FSE 2023) — [arxiv.org/abs/2305.12050](https://arxiv.org/abs/2305.12050)
+- **[6]** Max Brunsfeld et al., *Tree-sitter: Incremental AST Parsing for Source Code Context* — [tree-sitter.github.io/tree-sitter](https://tree-sitter.github.io/tree-sitter/)
+- **[7]** Manuel Faysse et al., *`ColPali`: Efficient Document Retrieval with Vision Language Models* (ICLR 2025) — [arxiv.org/abs/2407.01449](https://arxiv.org/abs/2407.01449)
+- **[8]** Rohit Ghumare et al., *AI Engineering from Scratch — Production AI System Design & Multimodal Pipelines* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
 """
     ),
 ]

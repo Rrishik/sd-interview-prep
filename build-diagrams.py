@@ -602,6 +602,30 @@ lib_node(els14, "ct_sg", 710, 365, 292, 135, "3. Model & Eval Ship Gate", "• H
 arrow(els14, "act4", 350, 432, 383, 432)
 arrow(els14, "act5", 677, 432, 710, 432)
 
+
+# ==============================================================================
+# DIAGRAM 15: 14-flagship-ai-designs.excalidraw
+# ==============================================================================
+els15 = []
+els15.append(text_el("fa_title", 40, 18, 980, 34, "Flagship AI System Designs: Web Answer Engine, PR Code Reviewer & Doc VLM", size=22, family=2))
+els15.append(text_el("fa_sub", 40, 52, 980, 22, "Fresh Crawl + Singleflight  •  AST Caller Expansion & >85% Critic Gate  •  ColPali BBox Provenance", size=13, family=3, color="#475569"))
+
+container(els15, "fa_c1", 40, 90, 980, 205, "1. WEB-SCALE AI ANSWER ENGINE (PERPLEXITY / SEARCHGPT — <1.2S TTFT, INLINE CITATIONS)", stroke="#1d4ed8", dash="solid")
+lib_node(els15, "fa_qr", 56, 135, 218, 135, "1. Query Router", "Fresh (<60s) vs static\n3-5 parallel rewrites\nSingleflight hot cache", LIB_SD, 16, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els15, "fa_wi", 296, 135, 224, 135, "2. Tiered Web Index", "RAM news tier (<60s)\nSSD BM25 + HNSW shards\nSEO/injection shield", LIB_SD, 9, stroke="#047857", bg="#ecfdf5")
+lib_node(els15, "fa_ps", 542, 135, 224, 135, "3. Passage Scorer", "Slice 300-tok windows\nFast cross-encoder\nTop 80 -> 10 (<90 ms)", LIB_SD, 18, stroke="#b45309", bg="#fffbeb")
+lib_node(els15, "fa_cs", 788, 135, 214, 135, "4. Cited Streamer", "Stream [url_id] claims\nNLI span grounding\nFollow-up chips", LIB_SD, 23, stroke="#6d28d9", bg="#f5f3ff")
+arrow(els15, "afa1", 274, 202, 296, 202)
+arrow(els15, "afa2", 520, 202, 542, 202)
+arrow(els15, "afa3", 766, 202, 788, 202)
+
+container(els15, "fa_c2", 40, 320, 980, 205, "2. AUTONOMOUS PR CODE-REVIEW BOT & MULTIMODAL DOCUMENT INTELLIGENCE PIPELINE", stroke="#047857", dash="solid")
+lib_node(els15, "fa_pr", 56, 365, 294, 135, "AST-Expanded PR Reviewer", "• Expand +- diff -> AST callers\n• SAST/lint first, LLM second\n• >85% critic gate (<10% noise!)", LIB_SW, 4, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els15, "fa_hk", 383, 365, 294, 135, "Incremental Hunk Dedupe", "• Hash (file, ast_sym, hunk)\n• Re-review only new push delta\n• Track resolved-by-commit KPI", LIB_SD, 6, stroke="#047857", bg="#ecfdf5")
+lib_node(els15, "fa_dc", 710, 365, 292, 135, "Multimodal Doc VLM Pipe", "• Clean PDF -> fast text lane\n• Tables/charts -> VLM/ColPali\n• (page, bbox) visual citations", LIB_SD, 7, stroke="#6d28d9", bg="#f5f3ff")
+arrow(els15, "afa4", 350, 432, 383, 432)
+arrow(els15, "afa5", 677, 432, 710, 432)
+
 diagrams = {
     "01-kafka-and-redis.excalidraw": els1,
     "02-database-sharding-keys.excalidraw": els2,
@@ -617,6 +641,7 @@ diagrams = {
     "11-multimodal-cua-and-voice.excalidraw": els12,
     "12-llm-inference-serving.excalidraw": els13,
     "13-codebase-rag-and-tradeoffs.excalidraw": els14,
+    "14-flagship-ai-designs.excalidraw": els15,
     # Keep mock0-notification-system.excalidraw synced so existing links never break
     "mock0-notification-system.excalidraw": els3,
 }

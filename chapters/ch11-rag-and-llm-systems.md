@@ -1,6 +1,6 @@
 # Chapter 11: Production RAG, Hybrid Search & Enterprise ACL Security
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 17 min with deep dives*
+*Part III · AI & LLM Engineering Systems · 8 min core · 22 min with deep dives*
 
 Every weekend tutorial makes **Retrieval-Augmented Generation (RAG)** look like 10 lines of Python: chop a PDF into 500-word chunks, call an embedding API, dump vectors into a vector database, and pass the top 3 matches to an LLM.
 
@@ -67,6 +67,21 @@ Static benchmarks ignore the hardest day-2 RAG problem: **source documents and u
 
 :::
 
+:::deepdive RAG Whiteboard Brainstorming: Option A/B/C Matrix, Half-Budget Cuts & Traps | +5 min
+
+In an interview, frame Enterprise RAG as a progression of explicit trade-offs rather than a single static diagram [1, 2, 5]:
+
+| Architecture Option | Latency (`p95`) & Cost | Recall & Precision | When to Pick / Where It Breaks |
+| :--- | :--- | :--- | :--- |
+| **Option A: Dense-Only Vector RAG** | `~550 ms` TTFT · `$` | Misses exact IDs, SKUs & error codes (`~65%` Recall@5). | Internal prototypes `<5k` clean prose docs only [1]. |
+| **Option B: Hybrid (`BM25 + HNSW`) + Cross-Encoder** | `~750 ms` TTFT · `$$` | High accuracy on codes + semantics (`~88%` Recall@5) [2, 4]. | **Production default** for `50k–10M` enterprise docs. |
+| **Option C: Contextual Breadcrumbs + Parent-Child** | `~850 ms` TTFT · `$$$` | Highest multi-section grounding (`~93%+` Recall@5) [2]. | Regulated legal, medical & financial corpora where retrieval misses are costly [2, 5]. |
+
+- **What to Cut First If Budget Halves [5, 6]:** Never cut pre-retrieval ACL filtering or hybrid `BM25`! Instead: (1) truncate embeddings from `3072-d` to **`512-d` Matryoshka (`MRL`)** (cutting vector RAM **`6×`**) [6], (2) narrow Cross-Encoder reranking from `Top 50 -> Top 20` using a distilled `INT8` reranker, and (3) cache ACL-scoped `(acl_hash, canonical_query)` hits for top `30%` FAQ queries [5].
+- **Top 2 RAG Whiteboard Traps [5]:** *"Skip chunking and stuff whole PDFs into a `200k` prompt"* (`20×` higher TTFT/cost + Lost-in-the-Middle decay), and *"Cache RAG answers globally by query embedding"* (instant cross-tenant ACL data leak!).
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -98,3 +113,5 @@ Static benchmarks ignore the hardest day-2 RAG problem: **source documents and u
 - **[2]** Anthropic Engineering, *Contextual Retrieval: Combining Contextual Embeddings and Contextual BM25 with Reranking* (2024) — [anthropic.com/news/contextual-retrieval](https://www.anthropic.com/news/contextual-retrieval)
 - **[3]** Eugene Yan et al., *Applied LLMs: What We've Learned From A Year of Building with LLMs* — [applied-llms.org](https://applied-llms.org/)
 - **[4]** Gordon V. Cormack, Charles L. A. Clarke & Stefan Buettcher, *Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods* (ACM SIGIR 2009) — [plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf)
+- **[5]** Rohit Ghumare et al., *AI Engineering from Scratch — Enterprise RAG System Design, Budgets & Trade-Offs* — [aiengineeringfromscratch.com/interviews](https://aiengineeringfromscratch.com/interviews)
+- **[6]** Aditya Kusupati et al., *Matryoshka Representation Learning* (NeurIPS 2022) — [arxiv.org/abs/2205.13147](https://arxiv.org/abs/2205.13147)

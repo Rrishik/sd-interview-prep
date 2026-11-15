@@ -1,6 +1,6 @@
 # Chapter 12: AI Agents, Tool Guardrails & Evaluation Pipelines
 
-*Part III · AI & LLM Engineering Systems · 8 min core · 21 min with deep dives*
+*Part III · AI & LLM Engineering Systems · 8 min core · 25 min with deep dives*
 
 A standard RAG pipeline is a **railroad track**: every user query goes through `Retrieve -> Rerank -> Generate` in a fixed number of steps.
 
@@ -78,6 +78,23 @@ Never rely on a single uncalibrated LLM-as-Judge score:
 
 :::
 
+:::deepdive Speculative `0 ms` Parallel Guardrails & Hybrid On-Device `SLM` vs. Cloud Routing | +4 min
+
+1. **Eliminating the Serial Guardrail Latency Tax (`0 ms` Added `TTFT`) [2, 5]:**
+   - Running guardrails serially (`Input Classifier 150 ms -> RAG 120 ms -> LLM TTFT 450 ms -> Output Classifier 150 ms`) adds **`+300 ms`** to every turn.
+   - **Speculative Parallel Execution:** Fire the fast input PII/injection classifier **concurrently** with retrieval and speculative LLM prefill, **holding the first outbound SSE byte** in the gateway buffer until the input gate returns `ALLOW`. On the `99%` clean path, `TTFT` overhead is **`0 ms`**; on a `BLOCK` verdict, immediately trigger an upstream `AbortSignal` to cancel token generation with **`0` leaked bytes** [2].
+   - On the outbound stream, scan text deltas at clause boundaries while **buffering `tool_calls` JSON completely on the server** until schema + policy checks pass.
+2. **Hybrid On-Device Small Language Model (`1B–3B` `SLM`) vs. Cloud Frontier Routing [11]:**
+
+| Dimension | On-Device Quantized `SLM` (`1B–3B` `INT4`) [11] | Cloud Frontier Model (`70B–500B+`) |
+| :--- | :--- | :--- |
+| **Latency & Cost** | **`<30–50 ms` local NPU/GPU**, **`$0` marginal cloud cost**, works `100%` offline. | `300–800 ms` network + prefill `TTFT`; billed per `1M` tokens. |
+| **Privacy Boundary** | Raw local screen/clipboard/PII stays strictly on device; scrubs sensitive spans locally. | Receives **only PII-scrubbed structured intents** or consented context across TLS. |
+| **Best Workload** | Intent routing, UI navigation classification, local entity extraction, and PII redaction [11]. | Complex multi-step planning, cross-domain synthesis, and broad code/tool generation [1]. |
+| **Hard Constraint** | Tight RAM/installer budget (`~1–2 GB`) and lower multi-hop world knowledge. | Network availability, tail latency, and per-tenant token quotas. |
+
+:::
+
 ---
 
 ### Quick Self-Check
@@ -115,3 +132,4 @@ Never rely on a single uncalibrated LLM-as-Judge score:
 - **[8]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 13: The Tool Interface & Trust Split* — [aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface](https://aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface)
 - **[9]** Mert Cemri et al. (UC Berkeley), *Why Do Multi-Agent LLM Systems Fail? (MASFT)* (2025) — [arxiv.org/abs/2503.13657](https://arxiv.org/abs/2503.13657)
 - **[10]** Kai Greshake et al., *Not What You've Signed Up For: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection* (AISec 2023) — [arxiv.org/abs/2302.12173](https://arxiv.org/abs/2302.12173)
+- **[11]** Marah Abdin et al., *Phi-3 Technical Report: A Highly Capable Language Model Locally on Your Phone* (2024) — [arxiv.org/abs/2404.14219](https://arxiv.org/abs/2404.14219)

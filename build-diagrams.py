@@ -626,6 +626,30 @@ lib_node(els15, "fa_dc", 710, 365, 292, 135, "Multimodal Doc VLM Pipe", "• Cle
 arrow(els15, "afa4", 350, 432, 383, 432)
 arrow(els15, "afa5", 677, 432, 710, 432)
 
+
+# ==============================================================================
+# DIAGRAM 16: 15-structured-concurrency-runtime.excalidraw
+# ==============================================================================
+els16 = []
+els16.append(text_el("sc_title", 40, 18, 980, 34, "Structured Concurrency, Bounded Channel Backpressure & Pure Agent Reducers", size=22, family=2))
+els16.append(text_el("sc_sub", 40, 52, 980, 22, "TaskGroup / StructuredTaskScope  •  Shielded Checkpoints  •  Lossless vs Conflated Queues  •  Functional Core", size=13, family=3, color="#475569"))
+
+container(els16, "sc_c1", 40, 90, 980, 205, "1. STRUCTURED CONCURRENCY TASK TREE & SHIELDED CANCELLATION CLEANUP", stroke="#1d4ed8", dash="solid")
+lib_node(els16, "sc_ps", 56, 135, 218, 135, "1. Parent Scope", "TaskGroup / JEP 453\nOwns child lifetimes\nSemaphore bulkhead", LIB_SD, 2, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els16, "sc_ab", 296, 135, 224, 135, "2. Sibling Abort", "Child #2 fails @ 50ms\nCancels #1 & #3 fast\nZero orphan sockets", LIB_SD, 16, stroke="#dc2626", bg="#fef2f2")
+lib_node(els16, "sc_sh", 542, 135, 224, 135, "3. Shielded Save", "asyncio.shield() WAL\nNon-cancel cleanup\nNo torn checkpoints!", LIB_SD, 6, stroke="#047857", bg="#ecfdf5")
+lib_node(els16, "sc_jn", 788, 135, 214, 135, "4. Scoped Join", "Awaits all cleanup\nbefore scope exits\nDeterministic span", LIB_SW, 4, stroke="#6d28d9", bg="#f5f3ff")
+arrow(els16, "asc1", 274, 202, 296, 202)
+arrow(els16, "asc2", 520, 202, 542, 202)
+arrow(els16, "asc3", 766, 202, 788, 202)
+
+container(els16, "sc_c2", 40, 320, 980, 205, "2. LOSSLESS VS CONFLATED CHANNELS, FUNCTIONAL CORE REDUCERS & SCHEMA REFLECTION", stroke="#047857", dash="solid")
+lib_node(els16, "sc_ch", 56, 365, 294, 135, "Bounded vs Conflated", "• Tokens: Queue(64) -> rwnd=0\n  lossless TCP backpressure\n• UI status: maxlen=1 drop-old", LIB_SW, 1, stroke="#b45309", bg="#fffbeb")
+lib_node(els16, "sc_fc", 383, 365, 294, 135, "Functional Core Reducer", "• Pure (State,Evt)->(State,Eff)\n• <1 ms zero-mock unit tests\n• Thin Imperative Effect Shell", LIB_SD, 18, stroke="#1d4ed8", bg="#eff6ff")
+lib_node(els16, "sc_sr", 710, 365, 292, 135, "Single-Source Schemas", "• 1 Pydantic/Zod/SourceGen type\n• Emits MCP schema + FSM mask\n• Zero code-to-schema drift!", LIB_SD, 9, stroke="#047857", bg="#ecfdf5")
+arrow(els16, "asc4", 350, 432, 383, 432)
+arrow(els16, "asc5", 677, 432, 710, 432)
+
 diagrams = {
     "01-kafka-and-redis.excalidraw": els1,
     "02-database-sharding-keys.excalidraw": els2,
@@ -642,6 +666,7 @@ diagrams = {
     "12-llm-inference-serving.excalidraw": els13,
     "13-codebase-rag-and-tradeoffs.excalidraw": els14,
     "14-flagship-ai-designs.excalidraw": els15,
+    "15-structured-concurrency-runtime.excalidraw": els16,
     # Keep mock0-notification-system.excalidraw synced so existing links never break
     "mock0-notification-system.excalidraw": els3,
 }

@@ -1,6 +1,6 @@
 # Chapter 16: Model Context Protocol (MCP), Tool Contracts & Prompt Injection Defense
 
-*Part IV · Autonomous Agent Systems · 8 min core · 23 min with deep dives*
+*Part IV · Autonomous Agent Systems · 8 min core · 27 min with deep dives*
 
 Connecting 5 internal AI agents to 10 enterprise microservices used to mean writing **50 bespoke integration wrappers** (`M × N` glue code), each with its own brittle JSON parser and ad-hoc retry logic.
 
@@ -96,6 +96,20 @@ In an LLM, **system instructions and untrusted external data (emails, tickets, w
 
 :::
 
+:::deepdive Client MCP Primitives (`Roots`, `Sampling`, `Elicitation`), `ToolAnnotations` & `500`-Tool Search | +4 min
+
+1. **Completing All 6 MCP Primitives (The 3 Client/Host Capabilities) [1, 6]:**
+   - **`Roots` (`roots/list`):** Host-exposed URI workspace boundaries (`file:///workspace/payments`) telling local/stateful servers where they are permitted to operate *(replaced in stateless `2026-07-28` HTTP servers by explicit per-call URI/scope arguments and OS sandboxes)* [1, 6].
+   - **`Sampling` (`sampling/createMessage`):** Allows an MCP Server to request a bounded LLM completion *through the Host* without holding vendor API keys—while the Host enforces model choice, token budgets, and human approval *(migrated in stateless `2026-07-28` to direct server model calls or multi-round-trip `input_required`)* [6].
+   - **`Elicitation` (`elicitation/create`):** Structured JSON-Schema form prompt pausing mid-call so the Host UI can collect missing user inputs or explicit confirmation [6].
+2. **`ToolAnnotations` Are Untrusted Hints [6]:**
+   - MCP tools declare behavioral hints: `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint`.
+   - **Hard Security Invariant:** Hosts **must treat `ToolAnnotations` from third-party or unverified MCP Servers as untrusted** (a hostile server can label `drop_prod_db` with `readOnlyHint: true`)—never waive human-approval or RBAC gates based solely on self-declared hints [6]!
+3. **Scaling to `200–500` MCP Tools via `search_tools` Tail Injection [2, 11]:**
+   - Injecting `300` MCP JSON Schemas upfront burns `~60,000` tokens/turn and tanks tool-selection accuracy. Instead, index all `server__tool` descriptors in the Host (`BM25 + vector`) behind a single **`search_tools(query, top_k=5)`** meta-tool [11], and append newly discovered tool schemas at the **dynamic conversation tail** so the static token-`0` KV prefix cache stays `100%` intact!
+
+:::
+
 ---
 
 ### Analogy, Where It Breaks & Real System
@@ -141,3 +155,4 @@ In an LLM, **system instructions and untrusted external data (emails, tickets, w
 - **[8]** IETF RFC 8707, *Resource Indicators for OAuth 2.0* (2020) — [datatracker.ietf.org/doc/html/rfc8707](https://datatracker.ietf.org/doc/html/rfc8707)
 - **[9]** Rohit Ghumare et al., *AI Engineering from Scratch — Phase 13: MCP Security, OAuth 2.1, Registry Drift & A2A* — [aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface](https://aiengineeringfromscratch.com/learn/tools-and-protocols/the-tool-interface)
 - **[10]** Linux Foundation / A2A Project, *Agent2Agent (A2A) Protocol Specification v1.0* — [a2a-protocol.org/latest](https://a2a-protocol.org/latest/)
+- **[11]** Anthropic Engineering, *Advanced Tool Use: Scaling Large Tool Catalogs with the Tool Search Tool* (2025) — [anthropic.com/engineering/advanced-tool-use](https://www.anthropic.com/engineering/advanced-tool-use)
